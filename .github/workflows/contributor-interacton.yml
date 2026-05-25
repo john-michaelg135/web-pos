@@ -1,0 +1,70 @@
+name: Contributor Interaction and Automatic Summary
+
+on:
+  pull_request_target:
+    types: [opened, closed]
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  thank-you:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build PR summary
+        if: github.event.action == 'opened'
+        uses: actions/github-script@v9
+        id: summary
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            const fileList = files.slice(0, 10).map((file) => `- ${file.filename}`).join('\n');
+            const extraFiles = files.length > 10 ? `\n- ...and ${files.length - 10} more` : '';
+            const description = pr.body?.trim()
+              ? pr.body.trim().split('\n').slice(0, 3).join(' ')
+              : 'No PR description was provided.';
+
+            const summary = [
+              '### PR Summary',
+              `- Title: ${pr.title}`,
+              `- Files changed: ${files.length}`,
+              `- Description: ${description}`,
+              '- Changed files:',
+              fileList + extraFiles,
+            ].join('\n');
+
+            core.setOutput('body', summary);
+
+      - name: Thank contributor on PR open
+        if: github.event.action == 'opened'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ${{ steps.summary.outputs.body }}
+
+            ---
+
+            Thank you for opening a PR! 🎉🎉🎉 We appreciate and we will review it asap. We will reach you if there are any issues. 🙌🙌🙌
+            @deveramartin
+
+      - name: Thank contributor on merge
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Thank you for your contribution! We appreciate your effort.🎉🎉🎉
+                
