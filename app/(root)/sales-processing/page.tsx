@@ -1,10 +1,9 @@
-import SalesProcessing from "@/pages/SalesProcessing";
- 
+import ViewSalesProcessing from "@/pages/pos/ViewSalesProcessing";
+
+export const metadata = {
+  title: "Sales Processing | R3B2P POS",
+};
+
 export default function SalesProcessingPage() {
-  return (
-    <div style={{ padding: 20 }}>
-      <SalesProcessing />
-    </div>
-  );
+  return <ViewSalesProcessing />;
 }
- 

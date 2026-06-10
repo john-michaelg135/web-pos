@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { STATUS_LABELS } from "./types";
+import { STATUS_LABELS } from "@/components/module-pos/types";
 
 interface OrderFiltersProps {
   show: boolean;
@@ -11,6 +11,10 @@ interface OrderFiltersProps {
   setFilterStatus: (status: string) => void;
   filterLocation: string;
   setFilterLocation: (location: string) => void;
+  filterDate: string;
+  setFilterDate: (date: string) => void;
+  filterPreOrder: string;
+  setFilterPreOrder: (preOrder: string) => void;
   resetFilters: () => void;
   border: string;
   muted: string;
@@ -28,6 +32,10 @@ export default function OrderFilters({
   setFilterStatus,
   filterLocation,
   setFilterLocation,
+  filterDate,
+  setFilterDate,
+  filterPreOrder,
+  setFilterPreOrder,
   resetFilters,
   border,
   muted,
@@ -66,17 +74,18 @@ export default function OrderFilters({
       style={{
         background: cardBg,
         border: `1px solid ${border}`,
-        borderRadius: isMobile ? 20 : 32,
-        padding: isMobile ? 20 : 32,
-        marginBottom: isMobile ? 24 : 32,
+        borderRadius: isMobile ? 24 : 32,
+        padding: isMobile ? "20px 16px" : 32,
+        marginBottom: isMobile ? 20 : 32,
         boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
       }}
     >
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)",
-          gap: isMobile ? 16 : 24,
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+          gap: isMobile ? 12 : 24,
+          marginBottom: isMobile ? 12 : 24,
         }}
       >
         <div>
@@ -117,24 +126,57 @@ export default function OrderFilters({
             <option value="all">All Locations</option>
             <option value="Store">Store</option>
             <option value="Bazaar">Bazaar</option>
+            <option value="Online">Online</option>
+          </select>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+          gap: isMobile ? 12 : 24,
+        }}
+      >
+        <div>
+          <label style={labelStyle}>Date</label>
+          <input 
+            type="date"
+            style={inputStyle}
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>Order Category</label>
+          <select
+            style={inputStyle}
+            value={filterPreOrder}
+            onChange={(e) => setFilterPreOrder(e.target.value)}
+          >
+            <option value="all">All Categories</option>
+            <option value="regular">Regular Orders</option>
+            <option value="pre-order">Pre-orders Only</option>
           </select>
         </div>
         <div style={{ display: "flex", alignItems: "flex-end" }}>
           <button
             onClick={resetFilters}
             style={{
-              height: 44,
-              padding: "0 16px",
+              height: 48,
+              width: "100%",
               borderRadius: 12,
               border: "none",
               background: "#fef2f2",
               color: "#ef4444",
               fontWeight: 700,
-              fontSize: 11,
+              fontSize: 10,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
               cursor: "pointer",
             }}
           >
-            RESET
+            Reset Filters
           </button>
         </div>
       </div>
