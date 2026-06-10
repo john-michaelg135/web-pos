@@ -9,6 +9,8 @@ import { apiClient } from "@/components/module-pos/api";
 import { toast } from "sonner";
 import { CloseLineIcon } from "@/icons/index";
 import { renderVariationBadges } from "@/components/module-pos/utils";
+import { useAuth } from "@/context/AuthContext";
+import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
 interface TopSellingVariation {
   name: string;
@@ -17,6 +19,7 @@ interface TopSellingVariation {
 }
 
 export function ViewSalesAnalytics() {
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = useState(false);
   const [topSellingData, setTopSellingData] = useState<TopSellingVariation[]>([]);
@@ -68,6 +71,11 @@ export function ViewSalesAnalytics() {
     
     fetchTopSelling();
   }, [dateFrom, dateTo]);
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("sales-reports"))) {
+    return <AccessDenied />;
+  }
 
   if (!isMounted) return null;
   return (

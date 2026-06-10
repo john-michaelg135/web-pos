@@ -69,7 +69,7 @@ export default function ReviewDialog({
         <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
           <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <TimeIcon viewBox="0 0 20 20" className="w-5 h-5 text-brand-500" />
-            Review Order
+            {order.status === "refund_requested" ? "Review Refund Request" : "Review Order"}
           </h2>
         </div>
 
@@ -120,12 +120,23 @@ export default function ReviewDialog({
               </div>
             </div>
 
+            {order.status === "refund_requested" && (
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                  Refund Reason
+                </label>
+                <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900 text-red-700 dark:text-red-400 select-none">
+                  {order.remarks || "No reason specified."}
+                </div>
+              </div>
+            )}
+
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                Manager Remarks
+                {order.status === "refund_requested" ? "Manager Remarks" : "Manager Remarks"}
               </label>
               <textarea
-                placeholder="Enter approval or rejection reason..."
+                placeholder={order.status === "refund_requested" ? "Enter refund approval or rejection remarks..." : "Enter approval or rejection reason..."}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 maxLength={500}
@@ -148,13 +159,13 @@ export default function ReviewDialog({
             onClick={onReject}
             className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm"
           >
-            Reject Order
+            {order.status === "refund_requested" ? "Reject Refund" : "Reject Order"}
           </button>
           <button
             onClick={onApprove}
             className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-success-500 hover:bg-success-600 transition-colors shadow-sm"
           >
-            Approve & Process
+            {order.status === "refund_requested" ? "Approve Refund" : "Approve & Process"}
           </button>
         </div>
       </div>

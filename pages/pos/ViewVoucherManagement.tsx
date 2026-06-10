@@ -7,6 +7,8 @@ import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import axios from "axios";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
+import { useAuth } from "@/context/AuthContext";
+import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
 const useTheme = () => {
   try {
@@ -32,6 +34,7 @@ type Voucher = {
 };
 
 export default function ViewVoucherManagement() {
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
@@ -262,6 +265,11 @@ export default function ViewVoucherManagement() {
     const matchesType = typeFilter === "all" || v.type === typeFilter;
     return matchesStatus && matchesQuery && matchesType;
   });
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("voucher-management"))) {
+    return <AccessDenied />;
+  }
 
   if (!isMounted) return null;
 

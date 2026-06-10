@@ -10,8 +10,11 @@ import { StockMovementTable } from "@/components/module-pos/StockMovementTable";
 import { apiClient } from "@/components/module-pos/api";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
+import { useAuth } from "@/context/AuthContext";
+import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
 export function ViewStockManagement() {
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history" | "approvals">("levels");
 
@@ -182,6 +185,11 @@ export function ViewStockManagement() {
       setPendingArrivalData(null);
     }
   };
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("stock-management"))) {
+    return <AccessDenied />;
+  }
 
   if (!isMounted) return null;
 

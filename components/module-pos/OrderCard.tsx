@@ -5,6 +5,7 @@ import { ViewOrderModal } from "./ViewOrderModal";
 
 import { CalenderIcon } from "@/icons/index";
 import { Order, OrderStatus, STATUS_LABELS, STATUS_PIPELINE } from "@/components/module-pos/types";
+import { useAuth } from "@/context/AuthContext";
 
 interface OrderCardProps {
   order: Order;
@@ -35,6 +36,12 @@ export default function OrderCard({
   onApplyRefund,
   isMobile,
 }: OrderCardProps) {
+  const { user } = useAuth();
+  const username = user?.username || "";
+  const isDev = username === "posuser";
+  const isCashier = username === "poscashier";
+  const isOrderManager = username === "posordermanager";
+
   const isPending = order.status === "pending";
   const isRejected = order.status === "rejected";
   const isCompleted = order.status === "completed";
@@ -351,7 +358,7 @@ export default function OrderCard({
             View Order
           </button>
           
-          {isPending && onReview && (
+          {isPending && onReview && (isDev || isOrderManager) && (
             <button
               onClick={onReview}
               style={{
@@ -371,7 +378,7 @@ export default function OrderCard({
               Review Order
             </button>
           )}
-          {isCompleted && onRequestRefund && (
+          {isCompleted && onRequestRefund && (isDev || isCashier) && (
             <button
               onClick={onRequestRefund}
               style={{
@@ -391,7 +398,7 @@ export default function OrderCard({
               Request Refund
             </button>
           )}
-          {order.status === "refund_requested" && onApplyRefund && (
+          {order.status === "refund_requested" && onApplyRefund && (isDev || isOrderManager) && (
             <button
               onClick={onApplyRefund}
               style={{
@@ -408,7 +415,7 @@ export default function OrderCard({
                 boxShadow: `0 10px 15px -3px rgba(239, 68, 68, 0.3)`,
               }}
             >
-              Apply Refund
+              Review Refund
             </button>
           )}
         </div>

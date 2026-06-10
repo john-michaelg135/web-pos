@@ -21,6 +21,8 @@ import { PosTextArea as TextArea } from "@/components/module-pos/PosTextArea";
 import Label from "@/components/form/Label";
 import { toast } from "sonner";
 import { renderVariationBadges } from "@/components/module-pos/utils";
+import { useAuth } from "@/context/AuthContext";
+import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
 
 const MinusIcon = ({ style }: { style?: React.CSSProperties }) => (
@@ -64,10 +66,13 @@ type CartItem = Product & { quantity: number };
 const mockProducts: Product[] = [];
 
 export default function ViewSalesProcessing() {
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [products, setProducts] = useState<Product[]>(mockProducts);
 
   useEffect(() => {
+    if (authLoading || !authUser) return;
+    if (authUser.username !== "posuser" && !authUser.apps.includes("sales-processing")) return;
     setIsMounted(true);
     const fetchProducts = async () => {
       try {
@@ -792,6 +797,11 @@ export default function ViewSalesProcessing() {
   );
 
   if (!isMounted) return null;
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("sales-processing"))) {
+    return <AccessDenied />;
+  }
 
   return (
     <div className="w-full h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-950 flex flex-col gap-4 md:gap-6 overflow-y-auto animate-in fade-in duration-500" style={{ color: text }}>

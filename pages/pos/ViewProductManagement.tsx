@@ -9,10 +9,13 @@ import { VariationFormDialog }  from "@/components/module-pos/VariationFormDialo
 import { DeleteConfirmDialog }  from "@/components/module-pos/DeleteConfirmDialog";
 import { apiClient } from "@/components/module-pos/api";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
 type ViewTab = "products" | "variations";
 
 export default function ViewProductManagement() {
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -214,6 +217,11 @@ export default function ViewProductManagement() {
     } finally {
       setDeleteTarget(null);
     }
+  }
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("product-management"))) {
+    return <AccessDenied />;
   }
 
   if (!isMounted) return null;

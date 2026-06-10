@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
 import { apiClient } from "@/components/module-pos/api";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
+import { useAuth } from "@/context/AuthContext";
+import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
 const useTheme = () => {
   try {
@@ -40,6 +42,7 @@ const SearchIcon = ({ style }: { style?: React.CSSProperties }) => (
 );
 
 export default function ViewOrderManagement() {
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,7 +83,7 @@ export default function ViewOrderManagement() {
             { name: "Order Items", variation: "Mixed", quantity: 1, price: Number(dto.totalAmount) || 0 }
           ],
       total: Number(dto.totalAmount) || 0,
-      status: (dto.orderStatus?.toLowerCase() as OrderStatus) || "pending",
+      status: (dto.orderStatus?.toLowerCase().replace(" ", "_") as OrderStatus) || "pending",
       date: new Date(dto.createdAt || new Date()).toLocaleDateString(),
       location: (Number(dto.locationId) === 2 ? "Bazaar" : Number(dto.locationId) === 3 ? "Online" : "Store"),
       isPreOrder: !!dto.isPreorder,
@@ -137,8 +140,8 @@ export default function ViewOrderManagement() {
     if (!selectedOrder) return;
     try {
       if (selectedOrder.status === "refund_requested") {
-        // Mock refund approve (will be replaced by actual backend call)
-        toast.success("Refund approved");
+        await apiClient.apiPos.orderManagementOrdersApproveRefundUpdate(Number(selectedOrder.id), { approvedBy: 1 });
+        toast.success("Refund approved successfully!");
       } else {
         await apiClient.apiPos.orderManagementOrdersApproveUpdate(Number(selectedOrder.id), { approvedBy: 1 });
         toast.success("Order approved");
@@ -156,8 +159,8 @@ export default function ViewOrderManagement() {
     if (!selectedOrder || !remarks.trim()) return;
     try {
       if (selectedOrder.status === "refund_requested") {
-        // Mock refund reject (will be replaced by actual backend call)
-        toast.success("Refund rejected");
+        await apiClient.apiPos.orderManagementOrdersRejectRefundUpdate(Number(selectedOrder.id), { rejectedBy: 1, rejectionRemarks: remarks });
+        toast.success("Refund rejected successfully!");
       } else {
         await apiClient.apiPos.orderManagementOrdersRejectUpdate(Number(selectedOrder.id), { rejectedBy: 1, rejectionRemarks: remarks });
         toast.success("Order rejected");
@@ -185,7 +188,7 @@ export default function ViewOrderManagement() {
     }
 
     try {
-      // Mock API call (can be replaced by backend endpoint)
+      await apiClient.apiPos.orderManagementOrdersRequestRefundUpdate(Number(selectedOrder.id), { reason: refundReason });
       toast.success("Refund requested successfully.");
       fetchOrders();
     } catch (err) {
@@ -251,6 +254,11 @@ export default function ViewOrderManagement() {
     background: inputBg, color: text,
     outline: "none", boxSizing: "border-box", fontFamily: "inherit",
   };
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("order-management"))) {
+    return <AccessDenied />;
+  }
 
   if (!isMounted) return null;
 
@@ -363,8 +371,8 @@ export default function ViewOrderManagement() {
               cardBg={cardBg}
               inputBg={inputBg}
               onReview={() => { setSelectedOrder(order); setShowReviewDialog(true); }}
-              onRequestRefund={() => confirmRequestRefund(order)}
-              onApplyRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
+              onRequestRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
+              onApplyRefund={() => { setSelectedOrder(order); setShowReviewDialog(true); }}
               onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
               isMobile={isMobile}
             />
@@ -411,46 +419,6 @@ export default function ViewOrderManagement() {
         inputBg={inputBg}
         isMobile={isMobile}
       />
-
-      {/* Confirm Refund Modal */}
-      {showConfirmRefundModal && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <svg viewBox="0 0 24 24" className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                Request Refund
-              </h2>
-            </div>
-
-            {/* Body */}
-            <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Are you sure you want to request a refund for this order?</p>
-            </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
-              <button
-                onClick={() => { setShowConfirmRefundModal(false); setOrderToConfirmRefund(null); }}
-                className="px-4 py-2 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmRefund}
-                className="px-4 py-2 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
