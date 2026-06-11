@@ -76,7 +76,8 @@ export default function ViewSalesProcessing() {
     setIsMounted(true);
     const fetchProducts = async () => {
       try {
-        const { data } = await apiClient.apiPos.orderEntryProductGridList({ locationId: 1 }); // Assume locationId=1 for Store
+        const locationIdVal = authUser.locationId || 1;
+        const { data } = await apiClient.apiPos.orderEntryProductGridList({ locationId: locationIdVal });
         if (data) {
           const mapped = data.map(p => ({
             id: p.variationId?.toString() || "0",
@@ -395,9 +396,10 @@ export default function ViewSalesProcessing() {
             quantity: Number(item.quantity) || 1
         }));
 
+        const locationIdVal = authUser?.locationId || 1;
         if (isInstitutional) {
             const { data: response } = await apiClient.apiPos.orderEntryOrdersInstitutionalCreate({
-                locationId: 1, // Store
+                locationId: locationIdVal,
                 deliveryAddress: `${street}, ${barangay}, ${city}, ${province} ${zipCode}`,
                 contactPerson: contactPerson,
                 customVariationNotes: notes,
@@ -409,7 +411,7 @@ export default function ViewSalesProcessing() {
         } else {
             const { data: response } = await apiClient.apiPos.orderEntryOrdersCreate({
                 orderType: "Store",
-                locationId: 1, // Store
+                locationId: locationIdVal,
                 submittedBy: 1,
                 paymentMethod: paymentMethod === "cash" ? "Cash" : "GCash",
                 applyPwdDiscount: isSeniorPWD,

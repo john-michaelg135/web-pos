@@ -85,7 +85,7 @@ export default function ViewOrderManagement() {
       total: Number(dto.totalAmount) || 0,
       status: (dto.orderStatus?.toLowerCase().replace(" ", "_") as OrderStatus) || "pending",
       date: new Date(dto.createdAt || new Date()).toLocaleDateString(),
-      location: (Number(dto.locationId) === 2 ? "Bazaar" : Number(dto.locationId) === 3 ? "Online" : "Store"),
+      location: dto.locationName || "Unknown",
       isPreOrder: !!dto.isPreorder,
       paymentStatus: (dto.paymentStatus?.toLowerCase() as "pending" | "paid") || "pending",
       remarks: dto.rejectionRemarks || dto.customVariationNotes || "",

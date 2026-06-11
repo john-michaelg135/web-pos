@@ -20,6 +20,7 @@ export function ViewStockManagement() {
 
   // Stock Levels State
   const [selectedLocation, setSelectedLocation] = useState("All");
+  const [locations, setLocations] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
@@ -93,7 +94,24 @@ export function ViewStockManagement() {
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    const fetchLocations = async () => {
+      try {
+        const { data } = await apiClient.apiPos.locationsList();
+        setLocations(data);
+        
+        // If user is a cashier, lock selection to their location
+        if (authUser?.subRole === "Cashier" && authUser.locationId) {
+          const matched = data.find(l => Number(l.locationId) === Number(authUser.locationId));
+          if (matched) {
+            setSelectedLocation(matched.locationName || "All");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch locations:", err);
+      }
+    };
+    fetchLocations();
+  }, [authUser]);
 
   useEffect(() => {
     if (activeTab === "approvals") {
@@ -165,7 +183,7 @@ export function ViewStockManagement() {
   const confirmRecordArrival = async () => {
     if (!pendingArrivalData) return;
     try {
-      const locationId = pendingArrivalData.locationId || 1;
+      const locationId = pendingArrivalData.locationId || authUser?.locationId || 1;
       
       await apiClient.apiPos.inventoryStockReceivingCreate({
         variationId: Number(pendingArrivalData.variationId),
@@ -263,11 +281,13 @@ export function ViewStockManagement() {
                   <select
                     value={selectedLocation}
                     onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all cursor-pointer font-outfit"
+                    disabled={authUser?.subRole === "Cashier"}
+                    className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all cursor-pointer font-outfit disabled:opacity-60"
                   >
-                    <option value="All">All Locations</option>
-                    <option value="Store">Store</option>
-                    <option value="Bazaar">Bazaar</option>
+                    {authUser?.subRole !== "Cashier" && <option value="All">All Locations</option>}
+                    {locations.map(loc => (
+                      <option key={loc.locationId} value={loc.locationName}>{loc.locationName}</option>
+                    ))}
                   </select>
                 </div>
 

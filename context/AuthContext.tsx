@@ -8,6 +8,8 @@ type User = {
   username: string;
   role: string;
   apps: string[];
+  locationId?: number;
+  subRole?: string;
 };
 
 type AuthContextType = {

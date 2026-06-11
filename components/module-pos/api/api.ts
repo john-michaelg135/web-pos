@@ -508,6 +508,7 @@ export interface OrderManagementResponseDto {
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   locationId?: null | number | string;
+  locationName?: null | string;
   deliveryAddress?: null | string;
   institutionalStreet?: null | string;
   institutionalCity?: null | string;
@@ -547,6 +548,7 @@ export interface OrderResponseDto {
   orderType?: string;
   orderSource?: string;
   locationName?: null | string;
+  locationId?: null | number | string;
   /**
    * @format double
    * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?$

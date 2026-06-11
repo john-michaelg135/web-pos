@@ -5,5 +5,6 @@ const basePosUrl = `${apiGatewayUrl.replace(/\/$/, '')}/api/pos`;
 
 export const apiClient = new Api({
   baseURL: basePosUrl,
+  withCredentials: true,
 });
 

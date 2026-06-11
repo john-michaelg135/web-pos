@@ -23,7 +23,7 @@ export type Order = {
   total: number;
   status: OrderStatus;
   date: string;
-  location: "Store" | "Bazaar" | "Online";
+  location: string;
   isPreOrder: boolean;
   paymentStatus: "pending" | "paid";
   remarks?: string;
