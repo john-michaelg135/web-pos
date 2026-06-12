@@ -69,6 +69,8 @@ export default function ViewSalesProcessing() {
   const { user: authUser, isLoading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [locationName, setLocationName] = useState<string>("");
+  const [locationType, setLocationType] = useState<string>("");
 
   useEffect(() => {
     if (authLoading || !authUser) return;
@@ -95,8 +97,24 @@ export default function ViewSalesProcessing() {
         console.error("Error fetching products, falling back to mock:", err);
       }
     };
+
+    const fetchLocationInfo = async () => {
+      try {
+        const { data } = await apiClient.apiPos.locationsList();
+        const locationIdVal = authUser.locationId || 1;
+        const matched = data.find(l => Number(l.locationId) === Number(locationIdVal));
+        if (matched) {
+          setLocationName(matched.locationName || "");
+          setLocationType(matched.locationType || "");
+        }
+      } catch (err) {
+        console.error("Error fetching location info:", err);
+      }
+    };
+
     fetchProducts();
-  }, []);
+    fetchLocationInfo();
+  }, [authUser, authLoading]);
 
   const user = { id: "U-001", name: "Ana Reyes", role: "manager", location: "Store", username: "manager" };
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -835,7 +853,7 @@ export default function ViewSalesProcessing() {
           <span>Process walk-in and institutional orders</span>
           <span>·</span>
           <div style={{ display: "flex", alignItems: "center", gap: 4, background: `${primary}15`, color: primary, padding: "2px 8px", borderRadius: 6, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-            Store <ChevronDownIcon viewBox="0 0 20 20" style={{ width: 14, height: 14 }} />
+            {locationType && locationName ? `${locationType} - ${locationName}` : "Store"} <ChevronDownIcon viewBox="0 0 20 20" style={{ width: 14, height: 14 }} />
           </div>
         </div>
       </div>
