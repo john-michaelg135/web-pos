@@ -12,10 +12,13 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
+import { useRouter } from "next/navigation";
+
 type ViewTab = "products" | "variations";
 
 export default function ViewProductManagement() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -219,12 +222,19 @@ export default function ViewProductManagement() {
     }
   }
 
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("product-management"))) {
-    return <AccessDenied />;
-  }
+  const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("product-management") || authUser.roles?.includes("Admin") || authUser.subRole === "Admin");
 
-  if (!isMounted) return null;
+  useEffect(() => {
+    if (!authLoading && !hasAccess) {
+      router.replace("/access-denied");
+    }
+  }, [authUser, authLoading, hasAccess, router]);
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+
+  if (!hasAccess) {
+    return null;
+  }
 
   return (
     <div className="w-full h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-950 flex flex-col gap-4 md:gap-6 overflow-y-auto">
@@ -236,13 +246,6 @@ export default function ViewProductManagement() {
             Manage products and variations · Admin only
           </p>
         </div>
-        <button
-          onClick={activeTab === "products" ? openAddProduct : openAddVariation}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm"
-        >
-          <span className="text-lg leading-none">+</span>
-          {activeTab === "products" ? "Add Product" : "Add Variation"}
-        </button>
       </div>
 
       {/* Stat cards */}
@@ -291,11 +294,11 @@ export default function ViewProductManagement() {
       ) : (
         <>
           {activeTab === "products" && (
-            <ProductTable products={products} onEdit={openEditProduct} onDelete={handleProductDelete} />
+            <ProductTable products={products} />
           )}
 
           {activeTab === "variations" && (
-            <VariationTable variations={variations} products={products} onEdit={openEditVariation} onDelete={handleVariationDelete} />
+            <VariationTable variations={variations} products={products} onEdit={openEditVariation} />
           )}
         </>
       )}

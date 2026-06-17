@@ -10,6 +10,7 @@ type User = {
   apps: string[];
   locationId?: number;
   subRole?: string;
+  roles?: string[];
 };
 
 type AuthContextType = {
@@ -70,6 +71,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) {
+    // Fallback to prevent Next.js build/prerendering errors when compiled outside of AuthProvider
+    return {
+      user: null,
+      isLoading: true,
+      logout: async () => {},
+    };
+  }
   return ctx;
 };

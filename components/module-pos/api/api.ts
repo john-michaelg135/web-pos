@@ -567,6 +567,7 @@ export interface OrderResponseDto {
   createdAt?: string;
   items?: OrderItemResponseDto[];
   payments?: PaymentResponseDto[];
+  paymentUrl?: null | string;
 }
 
 export interface OrderTrackingDto {
@@ -919,6 +920,11 @@ export interface StockReceivingDto {
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   receivedBy?: null | number | string;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  transferId?: null | number | string;
 }
 
 export interface StockResponseDto {
@@ -2264,108 +2270,5 @@ export class Api<
       }),
   };
   api = {
-    /**
-     * No description
-     *
-     * @tags Voucher
-     * @name VoucherCreate
-     * @request POST:/api/Voucher
-     */
-    voucherCreate: (data: CreateVoucherDto, params: RequestParams = {}) =>
-      this.request<VoucherResponseDto, any>({
-        path: `/api/Voucher`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Voucher
-     * @name VoucherList
-     * @request GET:/api/Voucher
-     */
-    voucherList: (
-      query?: {
-        /** @default false */
-        includeInactive?: boolean;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<VoucherResponseDto[], any>({
-        path: `/api/Voucher`,
-        method: "GET",
-        query: query,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Voucher
-     * @name VoucherDetail
-     * @request GET:/api/Voucher/{id}
-     */
-    voucherDetail: (id: number, params: RequestParams = {}) =>
-      this.request<VoucherResponseDto, any>({
-        path: `/api/Voucher/${id}`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Voucher
-     * @name VoucherPartialUpdate
-     * @request PATCH:/api/Voucher/{id}
-     */
-    voucherPartialUpdate: (
-      id: number,
-      data: UpdateVoucherDto,
-      params: RequestParams = {},
-    ) =>
-      this.request<VoucherResponseDto, any>({
-        path: `/api/Voucher/${id}`,
-        method: "PATCH",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Voucher
-     * @name VoucherDelete
-     * @request DELETE:/api/Voucher/{id}
-     */
-    voucherDelete: (id: number, params: RequestParams = {}) =>
-      this.request<void, any>({
-        path: `/api/Voucher/${id}`,
-        method: "DELETE",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Voucher
-     * @name VoucherCodeDetail
-     * @request GET:/api/Voucher/code/{code}
-     */
-    voucherCodeDetail: (code: string, params: RequestParams = {}) =>
-      this.request<VoucherResponseDto, any>({
-        path: `/api/Voucher/code/${code}`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
   };
 }

@@ -37,10 +37,10 @@ export default function OrderCard({
   isMobile,
 }: OrderCardProps) {
   const { user } = useAuth();
-  const username = user?.username || "";
+  const username = (user?.username || "").toLowerCase();
   const isDev = username === "posuser";
-  const isCashier = username === "poscashier";
-  const isOrderManager = username === "posordermanager";
+  const isCashier = user?.subRole === "Cashier";
+  const isOrderManager = user?.subRole === "OrderManager";
 
   const isPending = order.status === "pending";
   const isRejected = order.status === "rejected";
@@ -187,9 +187,12 @@ export default function OrderCard({
       {!isRejected && (
         <div style={{ position: "relative", padding: isMobile ? "24px 0" : "24px 0 32px", marginBottom: 32 }}>
           {(() => {
-            const currentPipeline = (order.type === "walk-in" || order.type === "store")
-              ? ["pending", "processing", "paid", "completed"] as OrderStatus[]
-              : STATUS_PIPELINE;
+            let currentPipeline = STATUS_PIPELINE;
+            if (order.isPreOrder) {
+              currentPipeline = ["awaiting_stock", "processing", "ready_for_delivery", "shipped", "delivered", "paid", "completed"];
+            } else if (order.type === "walk-in" || order.type === "store") {
+              currentPipeline = ["pending", "processing", "paid", "completed"];
+            }
 
             let currentIndex = currentPipeline.indexOf(order.status);
             if (currentIndex === -1) currentIndex = 0;
@@ -358,7 +361,7 @@ export default function OrderCard({
             View Order
           </button>
           
-          {isPending && onReview && (isDev || isOrderManager) && (
+          {(isPending || order.status === "awaiting_stock") && onReview && (isDev || isOrderManager) && (
             <button
               onClick={onReview}
               style={{
@@ -376,6 +379,46 @@ export default function OrderCard({
               }}
             >
               Review Order
+            </button>
+          )}
+          {order.type === "online" && order.status === "processing" && onStatusUpdate && (isDev || isOrderManager) && (
+            <button
+              onClick={() => onStatusUpdate("shipped")}
+              style={{
+                height: isMobile ? 48 : 56,
+                padding: isMobile ? "0 24px" : "0 40px",
+                borderRadius: isMobile ? 12 : 16,
+                background: primary,
+                color: "#fff",
+                border: "none",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                cursor: "pointer",
+                boxShadow: `0 10px 15px -3px ${primary}33`,
+              }}
+            >
+              Mark Shipped
+            </button>
+          )}
+          {order.type === "online" && ["shipped", "ready_for_delivery", "delivered"].includes(order.status) && onStatusUpdate && (isDev || isOrderManager) && (
+            <button
+              onClick={() => onStatusUpdate("completed")}
+              style={{
+                height: isMobile ? 48 : 56,
+                padding: isMobile ? "0 24px" : "0 40px",
+                borderRadius: isMobile ? 12 : 16,
+                background: "#10b981",
+                color: "#fff",
+                border: "none",
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                cursor: "pointer",
+                boxShadow: `0 10px 15px -3px rgba(16, 185, 129, 0.3)`,
+              }}
+            >
+              Mark Completed
             </button>
           )}
           {isCompleted && onRequestRefund && (isDev || isCashier) && (

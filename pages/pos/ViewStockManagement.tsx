@@ -13,10 +13,13 @@ import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog
 import { useAuth } from "@/context/AuthContext";
 import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
+import { useRouter } from "next/navigation";
+
 export function ViewStockManagement() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history" | "approvals">("levels");
+  const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history">("levels");
 
   // Stock Levels State
   const [selectedLocation, setSelectedLocation] = useState("All");
@@ -37,10 +40,11 @@ export function ViewStockManagement() {
     variationId: string;
     productName: string;
     variationName: string;
-    locationId?: number;
+    locationId: number;
     quantity: number;
     reference: string;
     notes: string;
+    transferId: number;
   } | null>(null);
 
   // Stock Adjustments State
@@ -97,14 +101,16 @@ export function ViewStockManagement() {
     const fetchLocations = async () => {
       try {
         const { data } = await apiClient.apiPos.locationsList();
-        setLocations(data);
         
-        // If user is a cashier, lock selection to their location
-        if (authUser?.subRole === "Cashier" && authUser.locationId) {
-          const matched = data.find(l => Number(l.locationId) === Number(authUser.locationId));
-          if (matched) {
-            setSelectedLocation(matched.locationName || "All");
+        // If user is a cashier, restrict dropdown options to ONLY their location
+        if (authUser?.subRole === "Cashier") {
+          const matched = data.filter(l => Number(l.locationId) === Number(authUser.locationId) && l.locationId !== 999);
+          setLocations(matched);
+          if (matched.length > 0) {
+            setSelectedLocation(matched[0].locationName || "All");
           }
+        } else {
+          setLocations(data);
         }
       } catch (err) {
         console.error("Failed to fetch locations:", err);
@@ -114,9 +120,7 @@ export function ViewStockManagement() {
   }, [authUser]);
 
   useEffect(() => {
-    if (activeTab === "approvals") {
-      fetchAdjustments();
-    } else if (activeTab === "history") {
+    if (activeTab === "history") {
       fetchMovements();
     }
   }, [activeTab]);
@@ -171,10 +175,11 @@ export function ViewStockManagement() {
     variationId: string;
     productName: string;
     variationName: string;
-    locationId?: number;
+    locationId: number;
     quantity: number;
     reference: string;
     notes: string;
+    transferId: number;
   }) => {
     setPendingArrivalData(data);
     setShowConfirmDialog(true);
@@ -183,13 +188,12 @@ export function ViewStockManagement() {
   const confirmRecordArrival = async () => {
     if (!pendingArrivalData) return;
     try {
-      const locationId = pendingArrivalData.locationId || authUser?.locationId || 1;
-      
       await apiClient.apiPos.inventoryStockReceivingCreate({
         variationId: Number(pendingArrivalData.variationId),
-        locationId,
+        locationId: Number(pendingArrivalData.locationId),
         quantityReceived: pendingArrivalData.quantity,
-        notes: pendingArrivalData.notes
+        notes: pendingArrivalData.notes,
+        transferId: pendingArrivalData.transferId
       });
       
       toast.success("Stock received successfully!");
@@ -204,12 +208,22 @@ export function ViewStockManagement() {
     }
   };
 
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("stock-management"))) {
-    return <AccessDenied />;
-  }
+  const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("stock-management"));
+  const isCashier = authUser?.subRole === "Cashier";
 
-  if (!isMounted) return null;
+  useEffect(() => {
+    if (!authLoading) {
+      if (!hasAccess || isCashier) {
+        router.replace("/access-denied");
+      }
+    }
+  }, [authUser, authLoading, hasAccess, isCashier, router]);
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+
+  if (!hasAccess || isCashier) {
+    return null;
+  }
 
   return (
     <div className="w-full h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-950 flex flex-col gap-4 md:gap-6 overflow-y-auto animate-in fade-in duration-500">
@@ -242,13 +256,7 @@ export function ViewStockManagement() {
             >
               Stock History Log
             </button>
-            <button 
-              onClick={() => setActiveTab("approvals")}
-              className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors flex items-center gap-2 ${activeTab === "approvals" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
-            >
-              Approvals Queue
-              <span className="bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] px-2 py-0.5 rounded-full">New</span>
-            </button>
+
           </div>
         </div>
 
@@ -335,103 +343,7 @@ export function ViewStockManagement() {
           </div>
         )}
 
-        {/* Tab Content: Approvals Queue */}
-        {activeTab === "approvals" && (
-          <div className="flex-1 min-h-0 flex flex-col gap-4">
-            {isAdjustmentsLoading ? (
-              <div className="flex justify-center p-12">
-                <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : adjustments.length === 0 ? (
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-8 text-center text-gray-500 dark:text-gray-400">
-                <div className="mx-auto w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4 text-gray-400 dark:text-gray-500">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/>
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Stock Adjustments</h3>
-                <p className="text-sm max-w-md mx-auto">
-                  There are no stock adjustment requests found in the system.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
-                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Adjustment ID</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product / SKU</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Qty</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reason</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Status</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {adjustments.map((adj) => {
-                        const isPending = adj.status === "PendingApproval";
-                        const quantity = Number(adj.quantity) || 0;
-                        const formattedQty = quantity > 0 ? `+${quantity}` : `${quantity}`;
 
-                        return (
-                          <tr key={adj.adjustmentId} className="hover:bg-gray-50/50 dark:hover:bg-gray-950/20 transition-colors">
-                            <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
-                              #{adj.adjustmentId}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-sm font-bold text-gray-900 dark:text-white">{adj.productName || "Unknown Product"}</div>
-                              <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{adj.variationName || "Unknown SKU"}</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                {adj.locationName || `Location ${adj.locationId}`}
-                              </span>
-                            </td>
-                            <td className={`px-6 py-4 text-right font-black text-sm ${quantity > 0 ? "text-success-600 dark:text-success-400" : "text-error-600 dark:text-error-400"}`}>
-                              {formattedQty}
-                            </td>
-                            <td className="px-6 py-4 text-xs text-gray-600 dark:text-gray-300 max-w-[200px] truncate" title={adj.reason}>
-                              {adj.reason}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex justify-center">
-                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border ${
-                                  isPending
-                                    ? "bg-warning-50 dark:bg-warning-500/10 text-warning-600 dark:text-warning-400 border-warning-100 dark:border-warning-900/50"
-                                    : "bg-success-50 dark:bg-success-500/10 text-success-600 dark:text-success-400 border-success-100 dark:border-success-900/50"
-                                }`}>
-                                  {isPending ? "PENDING APPROVAL" : "APPROVED"}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex justify-center">
-                                {isPending ? (
-                                  <button
-                                    onClick={() => handleApproveAdjustment(Number(adj.adjustmentId))}
-                                    className="px-3 py-1.5 text-white text-xs font-bold rounded-lg bg-brand-500 hover:bg-brand-600 shadow-sm shadow-brand-500/20 transition-all"
-                                  >
-                                    Approve
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-                                    Approved
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
 
       <StockAdjustmentFormDialog

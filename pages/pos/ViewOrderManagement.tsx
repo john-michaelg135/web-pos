@@ -41,11 +41,15 @@ const SearchIcon = ({ style }: { style?: React.CSSProperties }) => (
   </svg>
 );
 
+import { useRouter } from "next/navigation";
+
 export default function ViewOrderManagement() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [cashierLocationName, setCashierLocationName] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "history" | "refunds">("pending");
   const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("all");
@@ -89,6 +93,7 @@ export default function ViewOrderManagement() {
       isPreOrder: !!dto.isPreorder,
       paymentStatus: (dto.paymentStatus?.toLowerCase() as "pending" | "paid") || "pending",
       remarks: dto.rejectionRemarks || dto.customVariationNotes || "",
+      paymentUrl: dto.payments?.find(p => p.gatewayReferenceNumber)?.gatewayReferenceNumber || null,
     };
   };
 
@@ -110,10 +115,33 @@ export default function ViewOrderManagement() {
     fetchOrders();
   }, []);
 
+  useEffect(() => {
+    if (authUser?.subRole === "Cashier" && authUser.locationId) {
+      setChannelTab("pos");
+      const fetchCashierLocation = async () => {
+        try {
+          const { data } = await apiClient.apiPos.locationsList();
+          const matched = data.find(l => Number(l.locationId) === Number(authUser.locationId));
+          if (matched) {
+            setCashierLocationName(matched.locationName || "");
+            setFilterLocation(matched.locationName || "Store");
+          }
+        } catch (err) {
+          console.error("Failed to fetch locations in order management:", err);
+        }
+      };
+      fetchCashierLocation();
+    }
+  }, [authUser]);
+
   const resetFilters = () => {
     setFilterType("All");
     setFilterStatus("All");
-    setFilterLocation("All");
+    if (authUser?.subRole === "Cashier") {
+      setFilterLocation(cashierLocationName || "Store");
+    } else {
+      setFilterLocation("All");
+    }
     setFilterDate("");
     setFilterPreOrder("All");
     setSearchQuery("");
@@ -121,6 +149,16 @@ export default function ViewOrderManagement() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
+      // Cashier security lock: Can only see their own location's orders, and cannot see online/web orders at all
+      if (authUser?.subRole === "Cashier") {
+        if (o.type.toLowerCase() === "online") {
+          return false;
+        }
+        if (cashierLocationName && o.location.toLowerCase() !== cashierLocationName.toLowerCase()) {
+          return false;
+        }
+      }
+
       if (channelTab === "pos" && o.type.toLowerCase() === "online") return false;
       if (channelTab === "web" && o.type.toLowerCase() !== "online") return false;
       if (searchQuery && !o.id.toLowerCase().includes(searchQuery.toLowerCase()) && !o.customer.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -134,7 +172,7 @@ export default function ViewOrderManagement() {
       }
       return true;
     });
-  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, filterDate, filterPreOrder]);
+  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, filterDate, filterPreOrder, authUser, cashierLocationName]);
 
   const handleApprove = async () => {
     if (!selectedOrder) return;
@@ -214,23 +252,19 @@ export default function ViewOrderManagement() {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    // In a real app, you would have an endpoint to update status generally, or confirm delivery.
-    // For now, if newStatus === 'completed', we can confirm delivery.
-    if (newStatus === "completed") {
-      try {
-        await apiClient.apiPos.orderManagementOrdersConfirmDeliveryUpdate(Number(orderId), { confirmedBy: 1 });
-        toast.success("Order marked as completed.");
-        fetchOrders();
-      } catch (err) {
-        console.error("Failed to confirm delivery:", err);
-        toast.error("Failed to confirm delivery.");
-      }
+    try {
+      await apiClient.instance.put(`/order-management/orders/${orderId}/status`, { status: newStatus, updatedBy: 1 });
+      toast.success("Order status updated.");
+      fetchOrders();
+    } catch (err) {
+      console.error("Failed to update order status:", err);
+      toast.error("Failed to update order status.");
     }
   };
 
-  const pendingApproval = filteredOrders.filter((o) => o.status === "pending");
+  const pendingApproval = filteredOrders.filter((o) => o.status === "pending" || o.status === "awaiting_stock");
   const activeOrders = filteredOrders.filter((o) => 
-    o.status !== "pending" && (o.isPreOrder || !["completed", "rejected", "refund_requested", "refunded"].includes(o.status))
+    o.status !== "pending" && o.status !== "awaiting_stock" && (o.isPreOrder || !["completed", "rejected", "refund_requested", "refunded"].includes(o.status))
   );
   const historyOrders = filteredOrders.filter((o) => 
     !o.isPreOrder && ["completed", "rejected", "refunded"].includes(o.status)
@@ -255,9 +289,18 @@ export default function ViewOrderManagement() {
     outline: "none", boxSizing: "border-box", fontFamily: "inherit",
   };
 
+  const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("order-management") || authUser.roles?.includes("Admin") || authUser.subRole === "Admin");
+
+  useEffect(() => {
+    if (!authLoading && !hasAccess) {
+      router.replace("/access-denied");
+    }
+  }, [authUser, authLoading, hasAccess, router]);
+
   if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("order-management"))) {
-    return <AccessDenied />;
+
+  if (!hasAccess) {
+    return null;
   }
 
   if (!isMounted) return null;
@@ -302,28 +345,30 @@ export default function ViewOrderManagement() {
       />
 
       {/* Channel Tabs */}
-      <div className="flex-shrink-0 flex border-b border-gray-200 dark:border-gray-800 overflow-x-auto mb-4">
-        <div className="flex gap-4">
-          <button 
-            onClick={() => setChannelTab("all")}
-            className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${channelTab === "all" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
-          >
-            All Orders
-          </button>
-          <button 
-            onClick={() => setChannelTab("pos")}
-            className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${channelTab === "pos" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
-          >
-            POS Orders
-          </button>
-          <button 
-            onClick={() => setChannelTab("web")}
-            className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${channelTab === "web" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
-          >
-            Web Orders
-          </button>
+      {authUser?.subRole !== "Cashier" && (
+        <div className="flex-shrink-0 flex border-b border-gray-200 dark:border-gray-800 overflow-x-auto mb-4">
+          <div className="flex gap-4">
+            <button 
+              onClick={() => setChannelTab("all")}
+              className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${channelTab === "all" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
+            >
+              All Orders
+            </button>
+            <button 
+              onClick={() => setChannelTab("pos")}
+              className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${channelTab === "pos" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
+            >
+              POS Orders
+            </button>
+            <button 
+              onClick={() => setChannelTab("web")}
+              className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${channelTab === "web" ? "border-brand-500 text-brand-600 dark:text-brand-400" : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
+            >
+              Web Orders
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       {/* Status Tabs */}
       <div className="flex-shrink-0" style={{ display: "flex", overflowX: "auto" }}>
         <div style={{ display: "flex", gap: 12, width: isMobile ? "100%" : "auto" }}>

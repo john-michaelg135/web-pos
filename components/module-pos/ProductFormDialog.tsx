@@ -29,6 +29,7 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
   const [isActive,    setIsActive]    = useState(true);
   const [errors,      setErrors]      = useState<FormErrors>({});
   const [touched,     setTouched]     = useState<Set<string>>(new Set());
+  const [confirmAction, setConfirmAction] = useState<"add" | "cancel" | null>(null);
 
   useEffect(() => {
     if (initial) {
@@ -80,13 +81,30 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
   function handleSubmit() {
     setTouched(new Set(["name", "category", "description"]));
     if (!validate(true)) return;
-    onSubmit({
-      name:        name.trim(),
-      category:    category as ProductCategory,
-      description: description.trim(),
-      isActive,
-    });
-    onClose();
+    
+    if (isEdit) {
+      onSubmit({
+        name:        name.trim(),
+        category:    category as ProductCategory,
+        description: description.trim(),
+        isActive,
+      });
+      onClose();
+    } else {
+      setConfirmAction("add");
+    }
+  }
+
+  function handleCancel() {
+    const isDirty = name !== (initial?.name ?? "") ||
+                    category !== (initial?.category ?? "") ||
+                    description !== (initial?.description ?? "");
+
+    if (isDirty) {
+      setConfirmAction("cancel");
+    } else {
+      onClose();
+    }
   }
 
   if (!isOpen) return null;
@@ -205,7 +223,7 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
         {/* Footer */}
         <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
           <button
-            onClick={onClose}
+            onClick={handleCancel}
             className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             Cancel
@@ -218,6 +236,54 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
           </button>
         </div>
       </div>
+
+      {confirmAction && (
+        <div className="fixed inset-0 z-[110000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-6 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              {confirmAction === "add" ? "Confirm Add Product" : "Discard Changes"}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {confirmAction === "add"
+                ? "Are you sure you want to add this product?"
+                : "Are you sure you want to cancel? Any unsaved changes will be lost."}
+            </p>
+            <div className="flex justify-end gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmAction === "add") {
+                    onSubmit({
+                      name: name.trim(),
+                      category: category as ProductCategory,
+                      description: description.trim(),
+                      isActive,
+                    });
+                    onClose();
+                  } else {
+                    onClose();
+                  }
+                  setConfirmAction(null);
+                }}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors ${
+                  confirmAction === "add"
+                    ? "bg-brand-500 hover:bg-brand-600 shadow-lg shadow-brand-500/20"
+                    : "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20"
+                }`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

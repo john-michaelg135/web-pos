@@ -5,6 +5,7 @@ import { apiClient } from "@/components/module-pos/api";
 import { ProductResponseDto } from "@/components/module-pos/api/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
+import { toast } from "sonner";
 
 const useTheme = () => {
   try {
@@ -14,24 +15,36 @@ const useTheme = () => {
   }
 };
 
+interface PendingTransfer {
+  transferId: number;
+  productId: number;
+  sku: string;
+  productName: string;
+  variationName: string;
+  destLocationId: number;
+  transferQuantity: number;
+  status: string;
+  notes: string;
+}
+
 interface StockReceivingFormProps {
   onSuccess: (data: {
     variationId: string;
     productName: string;
     variationName: string;
+    locationId: number;
     quantity: number;
     reference: string;
     notes: string;
+    transferId: number;
   }) => void;
 }
 
 export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
-  const [variationId, setVariationId] = useState("");
-  const [quantity, setQuantity] = useState<number>(0);
-  const [reference, setReference] = useState("");
-  const [notes, setNotes] = useState("");
+  const [transfers, setTransfers] = useState<PendingTransfer[]>([]);
   const [products, setProducts] = useState<ProductResponseDto[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   const { theme } = useTheme();
@@ -40,18 +53,43 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
   const inputBg = dark ? "#1a2231" : "#ffffff";
   const muted = dark ? "#8899aa" : "#667085";
 
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const { data } = await apiClient.apiPos.productCatalogProductsList();
-        setProducts(data);
-      } catch (err) {
-        console.error("Error fetching products", err);
+  const apiGatewayUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/";
+  const scmTransfersUrl = `${apiGatewayUrl.replace(/\/$/, "")}/api/scms/StockTransfers`;
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch POS catalog to match SKUs to variation IDs
+      const { data: prodData } = await apiClient.apiPos.productCatalogProductsList();
+      setProducts(prodData);
+
+      // Fetch POS locations
+      const { data: locData } = await apiClient.apiPos.locationsList();
+      setLocations(locData);
+
+      // Fetch SCM pending transfers
+      const scmResponse = await apiClient.instance.get("/api/scms/api/StockTransfers", {
+        baseURL: apiGatewayUrl
+      });
+      const payload = scmResponse.data;
+      if (payload.success && payload.data) {
+        setTransfers(payload.data);
+      } else {
+        setTransfers([]);
       }
-    };
-    loadProducts();
+    } catch (err: any) {
+      console.error("Error loading pending transfers:", err);
+      toast.error(err.message || "Failed to retrieve pending deliveries from SCM.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
+  // Map products and variations to array of SKUs
   const allVariations = products.flatMap((p) =>
     (p.variations || [])
       .filter((v) => v.isActive)
@@ -59,202 +97,217 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
         variationId: v.variationId?.toString() || "",
         variationName: v.variationName || "",
         productName: p.productName || "",
-        sku: v.variationName || "",
+        sku: (v.variationName || "").split("|")[0] || "",
       }))
   );
 
-  const selectedVar = allVariations.find((v) => v.variationId === variationId);
-
-  const filteredVariations = allVariations.filter(
-    (v) =>
-      v.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.variationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTransfers = transfers.filter((t) =>
+    t.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.notes.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!variationId || quantity <= 0 || !reference) return;
+  const handleConfirm = (transfer: PendingTransfer) => {
+    const matchedVar = allVariations.find(
+      (v) => v.sku.toLowerCase() === transfer.sku.toLowerCase()
+    );
 
-    const selectedVar = allVariations.find((v) => v.variationId === variationId);
+    if (!matchedVar) {
+      toast.error("This product variation is not synced in POS catalog.");
+      return;
+    }
 
     onSuccess({
-      variationId,
-      productName: selectedVar?.productName || "Unknown Product",
-      variationName: selectedVar?.variationName || "Unknown Variation",
-      quantity,
-      reference,
-      notes
+      variationId: matchedVar.variationId,
+      productName: matchedVar.productName,
+      variationName: matchedVar.variationName,
+      locationId: transfer.destLocationId,
+      quantity: transfer.transferQuantity,
+      reference: `SCM-TR-${transfer.transferId}`,
+      notes: transfer.notes || `SCM Stock Transfer ID: ${transfer.transferId}`,
+      transferId: transfer.transferId,
     });
-    setVariationId("");
-    setQuantity(0);
-    setReference("");
-    setNotes("");
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-5">Record New Arrival</h3>
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          
-          {/* Variation Selection Field (Modal Trigger) */}
-          <div className="space-y-1.5 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Variation</label>
-            <div
-              onClick={() => setIsModalOpen(true)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer flex justify-between items-center h-[46px] select-none shadow-sm hover:border-gray-300 dark:hover:border-gray-600 transition-all"
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pending Deliveries</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            Confirm stock arrivals sent from the commissary.
+          </p>
+        </div>
+        <button
+          onClick={loadData}
+          disabled={isLoading}
+          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm disabled:opacity-50"
+        >
+          {isLoading ? (
+            <div style={{ width: 16, height: 16, marginRight: 8 }} className="border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <svg
+              style={{ width: 16, height: 16, marginRight: 8, display: "inline-block", verticalAlign: "middle" }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <div className={selectedVar ? "text-gray-900 dark:text-white font-semibold flex items-center gap-2 truncate pr-2" : "text-gray-400 truncate pr-2"}>
-                {selectedVar ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
-                    <span className="font-bold text-gray-900 dark:text-white truncate">{selectedVar.productName}</span>
-                    {renderVariationBadges(selectedVar.variationName, muted, border, inputBg, true)}
-                  </div>
-                ) : (
-                  <span>Select Variation...</span>
-                )}
-              </div>
-              <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-            {/* Hidden field for HTML5 required constraint validation */}
-            <input type="hidden" value={variationId} required />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Quantity</label>
-            <input
-              type="number"
-              value={quantity || ""}
-              onChange={(e) => {
-                let val = Number(e.target.value);
-                if (val > 100000) val = 100000;
-                setQuantity(val);
-              }}
-              onKeyDown={(e) => {
-                if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
-                  e.preventDefault();
-                }
-              }}
-              placeholder="0"
-              required
-              min="1"
-              max="100000"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-sm"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Reference (PO # / Invoice)</label>
-            <input
-              type="text"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              placeholder="e.g. PO-2026-001"
-              required
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-sm"
-            />
-          </div>
-
-          <div className="space-y-1.5 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Enter additional details or receiving instructions..."
-              rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-sm resize-none"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            className="w-full md:w-auto min-w-[200px] h-[46px] px-8 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold transition-all shadow-md shadow-brand-500/25 flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Record Arrival
-          </button>
-        </div>
-      </form>
-
-      {/* Select Variation Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                Select Variation
-              </h2>
-            </div>
-
-            {/* Body */}
-            <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-hidden flex-1 flex flex-col gap-4">
-              
-              {/* Search Bar */}
-              <input
-                type="text"
-                placeholder="Search by product, variation, or SKU..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                maxLength={25}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
               />
+            </svg>
+          )}
+          Refresh
+        </button>
+      </div>
 
-              {/* Variations List */}
-              <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-1 flex-1">
-                {filteredVariations.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-                    No variations found.
-                  </p>
-                ) : (
-                  filteredVariations.map((v) => (
-                    <div
-                      key={v.variationId}
-                      onClick={() => {
-                        setVariationId(v.variationId);
-                        setIsModalOpen(false);
-                        setSearchTerm("");
-                      }}
-                      className="group flex flex-col sm:flex-row justify-between sm:items-center p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-brand-500 hover:ring-2 hover:ring-brand-500/10 cursor-pointer transition-all"
-                    >
-                      <div className="flex-1 min-w-0 pr-4">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-brand-500 transition-colors">
-                          {v.productName}
-                        </p>
-                        <div className="mt-1">
-                          {renderVariationBadges(v.variationName, muted, border, inputBg, true)}
-                        </div>
-                      </div>
+      {/* Filter and search */}
+      <div className="relative w-full max-w-md">
+        <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+        </span>
+        <input
+          type="text"
+          placeholder="Search SCM deliveries by product or SKU..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          maxLength={25}
+          className="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit"
+        />
+      </div>
+
+      {/* Table of SCM deliveries */}
+      <div className="border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Product Details
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">
+                  Quantity
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Destination
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Reference
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        Fetching pending deliveries from SCM...
+                      </span>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
+                  </td>
+                </tr>
+              ) : filteredTransfers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-12 text-center text-sm text-gray-400 dark:text-gray-500"
+                  >
+                    No pending deliveries found.
+                  </td>
+                </tr>
+              ) : (
+                filteredTransfers.map((t) => {
+                  const matchedVar = allVariations.find(
+                    (v) => v.sku.toLowerCase() === t.sku.toLowerCase()
+                  );
+                  const destLoc = locations.find((l) => l.locationId === t.destLocationId);
+                  const locationName = destLoc ? destLoc.locationName : `Location #${t.destLocationId}`;
 
-            {/* Footer */}
-            <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setSearchTerm("");
-                }}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+                  return (
+                    <tr
+                      key={t.transferId}
+                      className="hover:bg-gray-50/50 dark:hover:bg-gray-950/20 transition-colors"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-bold text-gray-900 dark:text-white">
+                          {t.productName}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          <code className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                            {t.sku}
+                          </code>
+                          {matchedVar ? (
+                            renderVariationBadges(matchedVar.variationName, muted, border, inputBg, true)
+                          ) : (
+                            <span className="text-[10px] font-semibold text-error-500 bg-error-50 dark:bg-error-500/10 px-2 py-0.5 rounded border border-error-200 dark:border-error-900/30">
+                              Not Synced in POS
+                            </span>
+                          )}
+                        </div>
+                        {t.notes && (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 italic">
+                            Note: {t.notes}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-right font-black text-sm text-gray-900 dark:text-white">
+                        {t.transferQuantity} units
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300">
+                          {locationName}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono text-gray-500 dark:text-gray-400">
+                        TR-{t.transferId}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30">
+                          {t.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => handleConfirm(t)}
+                            disabled={!matchedVar}
+                            className="px-4 py-2 text-xs font-bold text-white rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-brand-500/20 transition-all"
+                          >
+                            Confirm Receipt
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 }

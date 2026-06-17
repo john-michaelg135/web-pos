@@ -18,6 +18,7 @@ import { apiClient } from "../../components/module-pos/api";
 import { PosButton as Button } from "@/components/module-pos/PosButton";
 import { PosInput as Input } from "@/components/module-pos/PosInput";
 import { PosTextArea as TextArea } from "@/components/module-pos/PosTextArea";
+import { useRouter } from "next/navigation";
 import Label from "@/components/form/Label";
 import { toast } from "sonner";
 import { renderVariationBadges } from "@/components/module-pos/utils";
@@ -67,6 +68,7 @@ const mockProducts: Product[] = [];
 
 export default function ViewSalesProcessing() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [locationName, setLocationName] = useState<string>("");
@@ -156,8 +158,6 @@ export default function ViewSalesProcessing() {
   // US-6 & US-7: Discounts & Vouchers
   const [isSeniorPWD, setIsSeniorPWD] = useState(false);
   const [idNumber, setIdNumber] = useState("");
-  const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState<{ code: string; discount: number } | null>(null);
   const [isPrintingReceipt, setIsPrintingReceipt] = useState(true);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -253,8 +253,7 @@ export default function ViewSalesProcessing() {
 
   const vatAmount = isSeniorPWD ? 0 : subtotal * 0.12;
   const discountAmount = isSeniorPWD ? subtotal * 0.20 : 0;
-  const voucherDiscount = appliedVoucher ? appliedVoucher.discount : 0;
-  const total = Math.max(0, subtotal - discountAmount - voucherDiscount);
+  const total = Math.max(0, subtotal - discountAmount);
 
   const validate = () => {
     // Normalize empty or zero quantities to 1
@@ -308,59 +307,6 @@ export default function ViewSalesProcessing() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleApplyVoucher = async () => {
-    try {
-      if (!voucherCode.trim()) {
-        toast.error("Error: Please input a voucher code.");
-        return;
-      }
-      const code = voucherCode.trim();
-      if (code.length < 5 || code.length > 15) {
-        toast.error("Voucher code must be between 5 and 15 characters.");
-        return;
-      }
-      if (!/^[a-zA-Z0-9\-_]+$/.test(code)) {
-        toast.error("Invalid voucher code format.");
-        return;
-      }
-
-      const { data: voucher } = await apiClient.api.voucherCodeDetail(code);
-      
-      if (voucher.expiryDate && new Date(voucher.expiryDate) < new Date()) {
-          toast.error("Alert: The Voucher Code you input has already been expired.");
-          return;
-      }
-
-      if (!voucher.isActive) {
-          toast.error("This voucher is no longer active.");
-          return;
-      }
-      
-      // Calculate discount
-      let discount = 0;
-      if (voucher.discountType?.toLowerCase() === "percentage") {
-        discount = subtotal * (Number(voucher.discountValue) / 100);
-      } else {
-        discount = Number(voucher.discountValue) || 0;
-      }
-      
-      // Check minimum spend if applicable
-      if (voucher.minimumSpend && subtotal < Number(voucher.minimumSpend)) {
-          toast.error(`Minimum spend of ₱${voucher.minimumSpend} required.`);
-          return;
-      }
-      
-      setAppliedVoucher({ code: voucher.voucherCode || "", discount });
-      setVoucherCode("");
-    } catch (error: any) {
-      if (error.response?.status === 404) {
-        toast.error("Alert: The Voucher Code you input does not exist.");
-      } else {
-        console.error("Voucher error:", error);
-        toast.error("Invalid or expired voucher code");
-      }
-    }
-  };
 
   const handleCheckout = () => {
     if (cart.length === 0 || total <= 0) {
@@ -398,13 +344,11 @@ export default function ViewSalesProcessing() {
         subtotal,
         vatAmount,
         discountAmount,
-        voucherDiscount,
         total,
         paymentMethod,
         isInstitutional,
         isPreOrder,
         customerDetails: isInstitutional ? { notes, street, barangay, city, province, zipCode, contactPerson, contactNumber } : null,
-        voucherCode: appliedVoucher?.code || null,
       };
 
       let orderId = `ORD-${String(Math.floor(Math.random() * 9000) + 1000)}`;
@@ -433,7 +377,6 @@ export default function ViewSalesProcessing() {
                 submittedBy: 1,
                 paymentMethod: paymentMethod === "cash" ? "Cash" : "GCash",
                 applyPwdDiscount: isSeniorPWD,
-                voucherCode: appliedVoucher?.code || null,
                 items: items
             });
             if (response && response.orderNumber) orderId = response.orderNumber;
@@ -441,6 +384,30 @@ export default function ViewSalesProcessing() {
             // If it's preorder, set it as preorder
             if (isPreOrder && response) {
                 await apiClient.apiPos.orderEntryOrdersPreorderUpdate(Number(response.orderId), { isPreorder: true });
+            }
+
+            if (response && response.paymentUrl) {
+                const url = response.paymentUrl;
+                setCart([]);
+                setNotes("");
+                setStreet("");
+                setBarangay("");
+                setCity("");
+                setProvince("");
+                setZipCode("");
+                setContactPerson("");
+                setContactNumber("");
+                setIsInstitutional(false);
+                setIsPreOrder(false);
+                setIsSeniorPWD(false);
+                setIdNumber("");
+                setShowCheckoutDialog(false);
+
+                toast.success("Order submitted! Redirecting to Xendit payment gateway...");
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 1000);
+                return;
             }
         }
       } catch (err) {
@@ -464,7 +431,6 @@ export default function ViewSalesProcessing() {
       setIsPreOrder(false);
       setIsSeniorPWD(false);
       setIdNumber("");
-      setAppliedVoucher(null);
       setShowCheckoutDialog(false);
       setTimeout(() => setLastOrder(null), 5000);
     } catch (error) {
@@ -702,13 +668,12 @@ export default function ViewSalesProcessing() {
       {/* Footer */}
       <div style={{ padding: isMobile ? 12 : 16, background: dark ? `${inputBg}88` : "#f8fafc88", borderTop: `1px solid ${border}`, display: "flex", flexDirection: "column", gap: 16, flexShrink: 0 }}>
 
-        {/* US-6 & US-7: Discount and Voucher controls on one line layer */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             {/* Senior/PWD Checkbox Toggle */}
             <div
               style={{
-                width: 145,
+                width: "100%",
                 padding: "0 12px",
                 borderRadius: 12,
                 border: `1px solid ${border}`,
@@ -722,20 +687,6 @@ export default function ViewSalesProcessing() {
             >
               <span style={{ fontSize: 12, fontWeight: 700 }}>Senior/PWD</span>
               <input type="checkbox" checked={isSeniorPWD} onChange={(e) => setIsSeniorPWD(e.target.checked)} style={{ width: 16, height: 16, cursor: "pointer" }} />
-            </div>
-
-            {/* Voucher Code input and apply button */}
-            <div style={{ flex: 1, display: "flex", gap: 8, height: 44 }}>
-              <input
-                style={{ ...inputStyle, flex: 1, height: "100%", padding: "0 12px" }}
-                placeholder="Voucher Code"
-                maxLength={15}
-                value={voucherCode} onChange={(e) => setVoucherCode(e.target.value)}
-              />
-              <button
-                onClick={handleApplyVoucher}
-                style={{ padding: "0 14px", borderRadius: 8, background: primary, color: "#fff", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer", height: "100%" }}
-              >Apply</button>
             </div>
           </div>
 
@@ -796,12 +747,7 @@ export default function ViewSalesProcessing() {
               <span>- ₱{discountAmount.toLocaleString()}</span>
             </div>
           )}
-          {appliedVoucher && (
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#f04438", marginBottom: 8 }}>
-              <span>Voucher ({appliedVoucher.code})</span>
-              <span>- ₱{appliedVoucher.discount.toLocaleString()}</span>
-            </div>
-          )}
+
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 8 }}>
             <span style={{ fontSize: 18, fontWeight: 700 }}>Total Price</span>
             <span style={{ fontSize: 28, fontWeight: 700, color: primary }}>₱{total.toLocaleString()}</span>
@@ -816,12 +762,21 @@ export default function ViewSalesProcessing() {
     </div>
   );
 
-  if (!isMounted) return null;
+  const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("sales-processing") || authUser.roles?.includes("Admin") || authUser.subRole === "Admin");
+
+  useEffect(() => {
+    if (!authLoading && !hasAccess) {
+      router.replace("/access-denied");
+    }
+  }, [authUser, authLoading, hasAccess, router]);
 
   if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("sales-processing"))) {
-    return <AccessDenied />;
+
+  if (!hasAccess) {
+    return null;
   }
+
+  if (!isMounted) return null;
 
   return (
     <div className="w-full h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-950 flex flex-col gap-4 md:gap-6 overflow-y-auto animate-in fade-in duration-500" style={{ color: text }}>

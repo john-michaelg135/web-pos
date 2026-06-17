@@ -6,11 +6,9 @@ import { PRODUCT_CATEGORIES } from "@/components/module-pos/types";
 
 interface ProductTableProps {
   products: Product[];
-  onEdit:   (product: Product) => void;
-  onDelete: (product: Product) => void;
 }
 
-export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
+export function ProductTable({ products }: ProductTableProps) {
   const [search,   setSearch]   = useState("");
   const [catFilter, setCatFilter] = useState<ProductCategory | "all">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
@@ -67,13 +65,12 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Product</th>
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Category</th>
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide text-center whitespace-nowrap">Status</th>
-                <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide text-center whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">
+                  <td colSpan={3} className="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">
                     No products found.
                   </td>
                 </tr>
@@ -97,22 +94,6 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
                       }`}>
                         {p.isActive ? "Active" : "Inactive"}
                       </span>
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => onEdit(p)}
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => onDelete(p)}
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-transparent bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 ))

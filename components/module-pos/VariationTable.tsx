@@ -7,10 +7,9 @@ interface VariationTableProps {
   variations: Variation[];
   products:   Product[];
   onEdit:     (variation: Variation) => void;
-  onDelete:   (variation: Variation) => void;
 }
 
-export function VariationTable({ variations, products, onEdit, onDelete }: VariationTableProps) {
+export function VariationTable({ variations, products, onEdit }: VariationTableProps) {
   const [search, setSearch] = useState("");
   const [productFilter, setProductFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
@@ -125,13 +124,7 @@ export function VariationTable({ variations, products, onEdit, onDelete }: Varia
                           onClick={() => onEdit(v)}
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => onDelete(v)}
-                          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-transparent bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 transition-colors"
-                        >
-                          Delete
+                          Edit Price
                         </button>
                       </div>
                     </td>

@@ -12,6 +12,8 @@ import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useAuth } from "@/context/AuthContext";
 import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
+import { useRouter } from "next/navigation";
+
 interface TopSellingVariation {
   name: string;
   sales: number;
@@ -20,6 +22,7 @@ interface TopSellingVariation {
 
 export function ViewSalesAnalytics() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = useState(false);
   const [topSellingData, setTopSellingData] = useState<TopSellingVariation[]>([]);
@@ -72,9 +75,18 @@ export function ViewSalesAnalytics() {
     fetchTopSelling();
   }, [dateFrom, dateTo]);
 
+  const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("sales-reports") || authUser.roles?.includes("Admin") || authUser.subRole === "Admin");
+
+  useEffect(() => {
+    if (!authLoading && !hasAccess) {
+      router.replace("/access-denied");
+    }
+  }, [authUser, authLoading, hasAccess, router]);
+
   if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  if (!authUser || (authUser.username !== "posuser" && !authUser.apps.includes("sales-reports"))) {
-    return <AccessDenied />;
+  
+  if (!hasAccess) {
+    return null;
   }
 
   if (!isMounted) return null;

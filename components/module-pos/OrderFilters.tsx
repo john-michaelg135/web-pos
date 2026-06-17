@@ -2,6 +2,7 @@
 
 import React from "react";
 import { STATUS_LABELS } from "@/components/module-pos/types";
+import { useAuth } from "@/context/AuthContext";
 
 interface OrderFiltersProps {
   show: boolean;
@@ -44,6 +45,9 @@ export default function OrderFilters({
   text,
   isMobile,
 }: OrderFiltersProps) {
+  const { user: authUser } = useAuth();
+  const isCashier = authUser?.subRole === "Cashier";
+
   if (!show) return null;
 
   const labelStyle: React.CSSProperties = {
@@ -119,14 +123,21 @@ export default function OrderFilters({
         <div>
           <label style={labelStyle}>Location</label>
           <select
-            style={inputStyle}
+            style={{ ...inputStyle, opacity: isCashier ? 0.6 : 1, cursor: isCashier ? "not-allowed" : "pointer" }}
             value={filterLocation}
             onChange={(e) => setFilterLocation(e.target.value)}
+            disabled={isCashier}
           >
-            <option value="all">All Locations</option>
-            <option value="Store">Store</option>
-            <option value="Bazaar">Bazaar</option>
-            <option value="Online">Online</option>
+            {isCashier ? (
+              <option value={filterLocation}>{filterLocation}</option>
+            ) : (
+              <>
+                <option value="all">All Locations</option>
+                <option value="Store">Store</option>
+                <option value="Bazaar">Bazaar</option>
+                <option value="Online">Online</option>
+              </>
+            )}
           </select>
         </div>
       </div>

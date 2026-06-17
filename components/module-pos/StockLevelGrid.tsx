@@ -5,6 +5,7 @@ import { apiClient } from "@/components/module-pos/api";
 import { StockResponseDto } from "@/components/module-pos/api/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 
 const useTheme = () => {
   try {
@@ -30,6 +31,7 @@ interface ParsedStock extends Omit<StockResponseDto, 'productName' | 'quantity'>
 }
 
 export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdjustStock }: StockLevelGridProps) {
+  const { user: authUser } = useAuth();
   const [stocks, setStocks] = useState<ParsedStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,6 +69,12 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
   }, []);
 
   const filteredStocks = stocks.filter((stock) => {
+    // Block cashiers from seeing Commissary (Location 999) or other store locations
+    if (authUser?.subRole === "Cashier") {
+      if (stock.locationId === 999 || stock.locationName === "Commissary") return false;
+      if (Number(stock.locationId) !== Number(authUser.locationId)) return false;
+    }
+
     const matchesLoc = selectedLocation === "All" || stock.locationName === selectedLocation;
     const q = searchQuery.toLowerCase();
     const matchesQuery = !q ||
@@ -152,16 +160,20 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-center">
-                          <button
-                            onClick={() => onAdjustStock && onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold })}
-                            className={`px-3 py-1.5 text-white text-xs font-bold rounded-lg transition-all shadow-sm ${
-                              isLowStock 
-                                ? "bg-error-500 hover:bg-error-600 shadow-error-500/20" 
-                                : "bg-brand-500 hover:bg-brand-600 shadow-brand-500/20"
-                            }`}
-                          >
-                            Adjust
-                          </button>
+                          {stock.locationId === 999 || stock.locationName === "Commissary" ? (
+                            <span className="text-xs text-gray-400 dark:text-gray-500 italic">Read-only (SCM)</span>
+                          ) : (
+                            <button
+                              onClick={() => onAdjustStock && onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold })}
+                              className={`px-3 py-1.5 text-white text-xs font-bold rounded-lg transition-all shadow-sm ${
+                                isLowStock 
+                                  ? "bg-error-500 hover:bg-error-600 shadow-error-500/20" 
+                                  : "bg-brand-500 hover:bg-brand-600 shadow-brand-500/20"
+                              }`}
+                            >
+                              Adjust
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -247,21 +259,30 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                         </div>
                       </div>
                       
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onAdjustStock) {
-                            onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold });
-                          }
-                        }}
-                        className={`w-full py-2 text-white text-xs font-bold rounded-lg transition-all shadow-sm ${
-                          isLowStock 
-                            ? "bg-error-500 hover:bg-error-600 shadow-error-500/20" 
-                            : "bg-brand-500 hover:bg-brand-600 shadow-brand-500/20"
-                        }`}
-                      >
-                        Adjust Stock
-                      </button>
+                      {stock.locationId === 999 || stock.locationName === "Commissary" ? (
+                        <button
+                          disabled
+                          className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-bold rounded-lg cursor-not-allowed border border-gray-200 dark:border-gray-700"
+                        >
+                          Read-only (SCMS)
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onAdjustStock) {
+                              onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold });
+                            }
+                          }}
+                          className={`w-full py-2 text-white text-xs font-bold rounded-lg transition-all shadow-sm ${
+                            isLowStock 
+                              ? "bg-error-500 hover:bg-error-600 shadow-error-500/20" 
+                              : "bg-brand-500 hover:bg-brand-600 shadow-brand-500/20"
+                          }`}
+                        >
+                          Adjust Stock
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
