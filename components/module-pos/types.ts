@@ -29,6 +29,7 @@ export type Order = {
   paymentStatus: "pending" | "paid";
   remarks?: string;
   paymentUrl?: string | null;
+  source?: string;
 };
 
 export const STATUS_PIPELINE: OrderStatus[] = [
