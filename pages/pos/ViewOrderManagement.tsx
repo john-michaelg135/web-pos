@@ -75,6 +75,7 @@ export default function ViewOrderManagement() {
     return {
       id: dto.orderId?.toString() || "0",
       type: (dto.orderType?.toLowerCase() as "walk-in" | "store" | "online" | "institutional") || "online",
+      source: dto.orderSource,
       customer: dto.customerId ? `Customer ${dto.customerId}` : "Customer",
       items: dto.items && dto.items.length > 0
         ? dto.items.map((i) => ({
@@ -149,9 +150,11 @@ export default function ViewOrderManagement() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
+      const isWebOrder = o.type.toLowerCase() === "online" || o.source?.toLowerCase() === "e-commerce" || o.source?.toLowerCase() === "ecommerce";
+
       // Cashier security lock: Can only see their own location's orders, and cannot see online/web orders at all
       if (authUser?.subRole === "Cashier") {
-        if (o.type.toLowerCase() === "online") {
+        if (isWebOrder) {
           return false;
         }
         if (cashierLocationName && o.location.toLowerCase() !== cashierLocationName.toLowerCase()) {
@@ -159,8 +162,8 @@ export default function ViewOrderManagement() {
         }
       }
 
-      if (channelTab === "pos" && o.type.toLowerCase() === "online") return false;
-      if (channelTab === "web" && o.type.toLowerCase() !== "online") return false;
+      if (channelTab === "pos" && isWebOrder) return false;
+      if (channelTab === "web" && !isWebOrder) return false;
       if (searchQuery && !o.id.toLowerCase().includes(searchQuery.toLowerCase()) && !o.customer.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       if (filterType !== "All" && o.type.toLowerCase() !== filterType.toLowerCase()) return false;
       if (filterStatus !== "All" && o.status.toLowerCase() !== filterStatus.toLowerCase()) return false;
@@ -264,10 +267,10 @@ export default function ViewOrderManagement() {
 
   const pendingApproval = filteredOrders.filter((o) => o.status === "pending" || o.status === "awaiting_stock");
   const activeOrders = filteredOrders.filter((o) => 
-    o.status !== "pending" && o.status !== "awaiting_stock" && (o.isPreOrder || !["completed", "rejected", "refund_requested", "refunded"].includes(o.status))
+    o.status !== "pending" && o.status !== "awaiting_stock" && (o.isPreOrder || !["completed", "delivered", "rejected", "refund_requested", "refunded"].includes(o.status))
   );
   const historyOrders = filteredOrders.filter((o) => 
-    !o.isPreOrder && ["completed", "rejected", "refunded"].includes(o.status)
+    !o.isPreOrder && ["completed", "delivered", "rejected", "refunded"].includes(o.status)
   );
   const refundOrders = filteredOrders.filter((o) => o.status === "refund_requested");
 

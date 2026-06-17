@@ -28,6 +28,8 @@ export function ViewOrderModal({
 }: ViewOrderModalProps) {
   if (!isOpen) return null;
 
+  const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
+
   return (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div 
@@ -85,7 +87,7 @@ export function ViewOrderModal({
           </div>
 
           {/* Xendit Payment Details for Online Orders */}
-          {order.type === "online" && order.paymentUrl && (
+          {isWebOrder && order.paymentUrl && (
             <div 
               className="p-5 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-6" 
               style={{ borderColor: border, background: `linear-gradient(135deg, ${primary}0A, ${primary}15)` }}
@@ -211,7 +213,7 @@ export function ViewOrderModal({
           className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl no-print" 
           style={{ borderColor: border }}
         >
-          {order.type === "online" && (
+          {isWebOrder && (
             <button
               onClick={() => window.print()}
               className="px-5 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-250 border transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
@@ -253,7 +255,7 @@ export function ViewOrderModal({
             </div>
             <div className="text-right flex flex-col items-end">
               <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 tracking-wider">Payment Method</p>
-              <p className="text-sm font-black uppercase text-black">{order.type === 'online' ? 'Cashless COD / GCash' : 'COD'}</p>
+              <p className="text-sm font-black uppercase text-black">{isWebOrder ? 'Cashless COD / GCash' : 'COD'}</p>
             </div>
           </div>
 
@@ -306,7 +308,7 @@ export function ViewOrderModal({
                 <span className="text-xl">₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
 
-              {order.type === "online" && order.paymentUrl && (
+              {isWebOrder && order.paymentUrl && (
                 <div className="flex flex-col items-center border border-black p-3 bg-white rounded-xl shadow-sm">
                   <img 
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(order.paymentUrl)}`} 

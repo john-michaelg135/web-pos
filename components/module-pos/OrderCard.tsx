@@ -42,9 +42,10 @@ export default function OrderCard({
   const isCashier = user?.subRole === "Cashier";
   const isOrderManager = user?.subRole === "OrderManager";
 
+  const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
   const isPending = order.status === "pending";
   const isRejected = order.status === "rejected";
-  const isCompleted = order.status === "completed";
+  const isCompleted = order.status === "completed" || (isWebOrder && order.status === "delivered");
   const [showViewModal, setShowViewModal] = useState(false);
 
   return (
@@ -188,14 +189,31 @@ export default function OrderCard({
         <div style={{ position: "relative", padding: isMobile ? "24px 0" : "24px 0 32px", marginBottom: 32 }}>
           {(() => {
             let currentPipeline = STATUS_PIPELINE;
-            if (order.isPreOrder) {
+            if (isWebOrder) {
+              currentPipeline = ["pending", "processing", "shipped", "delivered"];
+            } else if (order.isPreOrder) {
               currentPipeline = ["awaiting_stock", "processing", "ready_for_delivery", "shipped", "delivered", "paid", "completed"];
-            } else if (order.type === "walk-in" || order.type === "store") {
+            } else if ((order.type === "walk-in" || order.type === "store") && !isWebOrder) {
               currentPipeline = ["pending", "processing", "paid", "completed"];
             }
 
             let currentIndex = currentPipeline.indexOf(order.status);
-            if (currentIndex === -1) currentIndex = 0;
+            if (isWebOrder) {
+              const statusLower = order.status.toLowerCase();
+              if (statusLower === "pending" || statusLower === "awaiting_stock") {
+                currentIndex = 0;
+              } else if (statusLower === "processing") {
+                currentIndex = 1;
+              } else if (statusLower === "shipped" || statusLower === "ready_for_delivery") {
+                currentIndex = 2;
+              } else if (statusLower === "delivered" || statusLower === "completed" || statusLower === "paid" || statusLower === "refunded" || statusLower === "refund_requested") {
+                currentIndex = 3;
+              } else {
+                currentIndex = 0;
+              }
+            } else {
+              if (currentIndex === -1) currentIndex = 0;
+            }
 
             let visibleSteps = [];
 
@@ -381,7 +399,7 @@ export default function OrderCard({
               Review Order
             </button>
           )}
-          {order.type === "online" && order.status === "processing" && onStatusUpdate && (isDev || isOrderManager) && (
+          {isWebOrder && order.status === "processing" && onStatusUpdate && (isDev || isOrderManager) && (
             <button
               onClick={() => onStatusUpdate("shipped")}
               style={{
@@ -401,9 +419,9 @@ export default function OrderCard({
               Mark Shipped
             </button>
           )}
-          {order.type === "online" && ["shipped", "ready_for_delivery", "delivered"].includes(order.status) && onStatusUpdate && (isDev || isOrderManager) && (
+          {isWebOrder && ["shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (isDev || isOrderManager) && (
             <button
-              onClick={() => onStatusUpdate("completed")}
+              onClick={() => onStatusUpdate("delivered")}
               style={{
                 height: isMobile ? 48 : 56,
                 padding: isMobile ? "0 24px" : "0 40px",
@@ -418,7 +436,7 @@ export default function OrderCard({
                 boxShadow: `0 10px 15px -3px rgba(16, 185, 129, 0.3)`,
               }}
             >
-              Mark Completed
+              Mark Delivered
             </button>
           )}
           {isCompleted && onRequestRefund && (isDev || isCashier) && (
