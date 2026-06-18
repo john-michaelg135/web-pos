@@ -15,8 +15,8 @@ interface OrderCardProps {
   text: string;
   cardBg: string;
   inputBg: string;
-  onReview?: () => void;
-  onStatusUpdate?: (status: OrderStatus) => void;
+
+  onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onRequestRefund?: () => void;
   onApplyRefund?: () => void;
   isMobile?: boolean;
@@ -30,7 +30,6 @@ export default function OrderCard({
   text,
   cardBg,
   inputBg,
-  onReview,
   onStatusUpdate,
   onRequestRefund,
   onApplyRefund,
@@ -41,6 +40,7 @@ export default function OrderCard({
   const isDev = username === "posuser";
   const isCashier = user?.subRole === "Cashier";
   const isOrderManager = user?.subRole === "OrderManager";
+  const isAdmin = user?.subRole === "Admin" || user?.role === "Admin" || user?.roles?.includes("Admin");
 
   const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
   const isPending = order.status === "pending";
@@ -185,35 +185,17 @@ export default function OrderCard({
         </div>
       </div>
 
-      {!isRejected && (
+      {!["rejected", "cancelled", "refunded", "refund_requested"].includes(order.status) && (
         <div style={{ position: "relative", padding: isMobile ? "24px 0" : "24px 0 32px", marginBottom: 32 }}>
           {(() => {
-            let currentPipeline = STATUS_PIPELINE;
-            if (isWebOrder) {
-              currentPipeline = ["pending", "processing", "shipped", "delivered"];
-            } else if (order.isPreOrder) {
-              currentPipeline = ["awaiting_stock", "processing", "ready_for_delivery", "shipped", "delivered", "paid", "completed"];
-            } else if ((order.type === "walk-in" || order.type === "store") && !isWebOrder) {
-              currentPipeline = ["pending", "processing", "paid", "completed"];
-            }
+            const currentPipeline: OrderStatus[] = isWebOrder
+              ? ["pending", "processing", "shipped", "delivered"]
+              : order.type === "institutional"
+              ? ["pending", "processing", "shipped", "completed"]
+              : ["pending", "processing", "paid", "completed"]; // walk-in / store
 
             let currentIndex = currentPipeline.indexOf(order.status);
-            if (isWebOrder) {
-              const statusLower = order.status.toLowerCase();
-              if (statusLower === "pending" || statusLower === "awaiting_stock") {
-                currentIndex = 0;
-              } else if (statusLower === "processing") {
-                currentIndex = 1;
-              } else if (statusLower === "shipped" || statusLower === "ready_for_delivery") {
-                currentIndex = 2;
-              } else if (statusLower === "delivered" || statusLower === "completed" || statusLower === "paid" || statusLower === "refunded" || statusLower === "refund_requested") {
-                currentIndex = 3;
-              } else {
-                currentIndex = 0;
-              }
-            } else {
-              if (currentIndex === -1) currentIndex = 0;
-            }
+            if (currentIndex === -1) currentIndex = 0;
 
             let visibleSteps = [];
 
@@ -376,109 +358,12 @@ export default function OrderCard({
             onMouseOver={(e) => (e.currentTarget.style.background = `${primary}10`)}
             onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            View Order
+            Manage Order
           </button>
           
-          {(isPending || order.status === "awaiting_stock") && onReview && (isDev || isOrderManager) && (
-            <button
-              onClick={onReview}
-              style={{
-                height: isMobile ? 48 : 56,
-                padding: isMobile ? "0 24px" : "0 40px",
-                borderRadius: isMobile ? 12 : 16,
-                background: primary,
-                color: "#fff",
-                border: "none",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                cursor: "pointer",
-                boxShadow: `0 10px 15px -3px ${primary}33`,
-              }}
-            >
-              Review Order
-            </button>
-          )}
-          {isWebOrder && order.status === "processing" && onStatusUpdate && (isDev || isOrderManager) && (
-            <button
-              onClick={() => onStatusUpdate("shipped")}
-              style={{
-                height: isMobile ? 48 : 56,
-                padding: isMobile ? "0 24px" : "0 40px",
-                borderRadius: isMobile ? 12 : 16,
-                background: primary,
-                color: "#fff",
-                border: "none",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                cursor: "pointer",
-                boxShadow: `0 10px 15px -3px ${primary}33`,
-              }}
-            >
-              Mark Shipped
-            </button>
-          )}
-          {isWebOrder && ["shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (isDev || isOrderManager) && (
-            <button
-              onClick={() => onStatusUpdate("delivered")}
-              style={{
-                height: isMobile ? 48 : 56,
-                padding: isMobile ? "0 24px" : "0 40px",
-                borderRadius: isMobile ? 12 : 16,
-                background: "#10b981",
-                color: "#fff",
-                border: "none",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                cursor: "pointer",
-                boxShadow: `0 10px 15px -3px rgba(16, 185, 129, 0.3)`,
-              }}
-            >
-              Mark Delivered
-            </button>
-          )}
-          {isCompleted && onRequestRefund && (isDev || isCashier) && (
-            <button
-              onClick={onRequestRefund}
-              style={{
-                height: isMobile ? 48 : 56,
-                padding: isMobile ? "0 24px" : "0 40px",
-                borderRadius: isMobile ? 12 : 16,
-                background: "#ef4444",
-                color: "#fff",
-                border: "none",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                cursor: "pointer",
-                boxShadow: `0 10px 15px -3px rgba(239, 68, 68, 0.3)`,
-              }}
-            >
-              Request Refund
-            </button>
-          )}
-          {order.status === "refund_requested" && onApplyRefund && (isDev || isOrderManager) && (
-            <button
-              onClick={onApplyRefund}
-              style={{
-                height: isMobile ? 48 : 56,
-                padding: isMobile ? "0 24px" : "0 40px",
-                borderRadius: isMobile ? 12 : 16,
-                background: "#ef4444",
-                color: "#fff",
-                border: "none",
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                cursor: "pointer",
-                boxShadow: `0 10px 15px -3px rgba(239, 68, 68, 0.3)`,
-              }}
-            >
-              Review Refund
-            </button>
-          )}
+
+
+
         </div>
       </div>
       
@@ -491,6 +376,9 @@ export default function OrderCard({
         border={border}
         text={text}
         cardBg={cardBg}
+        onStatusUpdate={onStatusUpdate}
+        onRequestRefund={onRequestRefund}
+        onApplyRefund={onApplyRefund}
       />
     </div>
   );

@@ -8,8 +8,19 @@ export type OrderStatus =
   | "paid"
   | "completed"
   | "rejected"
+  | "cancelled"
   | "refund_requested"
   | "refunded";
+
+export type OrderStatusHistory = {
+  id: number;
+  orderId: number;
+  oldStatus: string;
+  newStatus: string;
+  changedBy?: number | null;
+  remarks?: string | null;
+  createdAt: string;
+};
 
 export type Order = {
   id: string;
@@ -39,6 +50,7 @@ export type Order = {
   seniorPwdCity?: string;
   seniorPwdProvince?: string;
   seniorPwdZipCode?: string;
+  statusHistory?: OrderStatusHistory[];
 };
 
 export const STATUS_PIPELINE: OrderStatus[] = [
@@ -61,6 +73,7 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   paid: "Paid",
   completed: "Completed",
   rejected: "Rejected",
+  cancelled: "Cancelled",
   refund_requested: "Refund Req.",
   refunded: "Refunded",
 };

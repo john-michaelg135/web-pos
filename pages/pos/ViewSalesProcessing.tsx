@@ -653,26 +653,7 @@ export default function ViewSalesProcessing() {
                 >
                   Institutional
                 </button>
-                <button
-                  onClick={() => {
-                    setIsInstitutional(false);
-                    setIsPreOrder(true);
-                    setShowOrderTypeDropdown(false);
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    textAlign: "left",
-                    background: isPreOrder ? (dark ? "#2d3748" : "#f1f5f9") : "transparent",
-                    color: isPreOrder ? primary : text,
-                    border: "none",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Pre-order
-                </button>
+
               </div>
             )}
           </div>
@@ -1069,7 +1050,7 @@ export default function ViewSalesProcessing() {
           <span>Process walk-in and institutional orders</span>
           <span>·</span>
           <div style={{ display: "flex", alignItems: "center", gap: 4, background: `${primary}15`, color: primary, padding: "2px 8px", borderRadius: 6, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-            {locationType && locationName ? `${locationType} - ${locationName}` : "Store"} <ChevronDownIcon viewBox="0 0 20 20" style={{ width: 14, height: 14 }} />
+            {locationType && locationName ? `${locationType} - ${locationName}` : "Store"}
           </div>
         </div>
       </div>

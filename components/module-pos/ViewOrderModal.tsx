@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
-import { Order, STATUS_LABELS } from "@/components/module-pos/types";
+import { Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types";
 import { renderVariationBadges } from "./utils";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 interface ViewOrderModalProps {
   order: Order;
@@ -15,6 +16,9 @@ interface ViewOrderModalProps {
   border: string;
   text: string;
   cardBg: string;
+  onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
+  onRequestRefund?: () => void;
+  onApplyRefund?: () => void;
 }
 
 export function ViewOrderModal({
@@ -26,12 +30,41 @@ export function ViewOrderModal({
   border,
   text,
   cardBg,
+  onStatusUpdate,
+  onRequestRefund,
+  onApplyRefund,
 }: ViewOrderModalProps) {
-  if (!isOpen) return null;
+  const { user } = useAuth();
+  const handleStatusChange = async (status: OrderStatus) => {
+    if (onStatusUpdate) {
+      await onStatusUpdate(status);
+    }
+  };
+
+  const [tempStatus, setTempStatus] = useState<OrderStatus>(order.status);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTempStatus(order.status);
+    }
+  }, [order.status, order.id, isOpen]);
+
+  const username = (user?.username || "").toLowerCase();
+  const isDev = username === "posuser";
+  const isCashier = user?.subRole === "Cashier";
+  const isOrderManager = user?.subRole === "OrderManager";
+  const isAdmin = user?.subRole === "Admin" || user?.role === "Admin" || user?.roles?.includes("Admin");
+  const isAuthorizedToEdit = isDev || isOrderManager || isAdmin;
 
   const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
-
+  const isInstitutional = order.type === "institutional";
   const isPwdOrder = !!order.seniorPwdId;
+
+  const allowedStatuses: OrderStatus[] = isWebOrder
+    ? ["pending", "processing", "shipped", "delivered"]
+    : isInstitutional
+    ? ["pending", "processing", "shipped", "completed"]
+    : ["pending", "processing", "paid", "completed"]; // walk-in / store
 
   const pricing = useMemo(() => {
     if (!isPwdOrder) {
@@ -66,6 +99,8 @@ export function ViewOrderModal({
     };
   }, [order, isPwdOrder]);
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div 
@@ -79,7 +114,7 @@ export function ViewOrderModal({
         >
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold" style={{ color: text }}>
-              Order {order.id}
+              Manage Order {order.id}
             </h2>
             <span
               className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider"
@@ -92,6 +127,12 @@ export function ViewOrderModal({
               {STATUS_LABELS[order.status]}
             </span>
           </div>
+          <button 
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <CloseLineIcon className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Body */}
@@ -128,7 +169,7 @@ export function ViewOrderModal({
                   )}
                 </>
               )}
-              <p className="text-xs font-semibold mt-1" style={{ color: muted }}>Status: <span style={{ color: text }}>{order.paymentStatus === 'paid' ? 'Paid' : 'Pending Payment'}</span></p>
+
             </div>
             <div className="p-4 rounded-xl border" style={{ borderColor: border, background: `${border}10` }}>
               <p className="text-[10px] font-bold uppercase mb-1 tracking-wider" style={{ color: muted }}>Order Information</p>
@@ -226,6 +267,43 @@ export function ViewOrderModal({
             </div>
           )}
 
+          {/* Direct Status Changer (Admin / Order Manager / dev) */}
+          {isAuthorizedToEdit && (
+            <div className="p-4 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: border, background: `${border}10` }}>
+              <div className="flex flex-col gap-1 w-full sm:w-auto">
+                <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>Change Order Status</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 m-0">Directly transition this order to another valid delivery status.</p>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <select
+                  value={tempStatus}
+                  onChange={(e) => setTempStatus(e.target.value as OrderStatus)}
+                  className="text-xs px-3 py-2 rounded-lg border outline-none font-bold transition-all w-full sm:w-auto"
+                  style={{ background: cardBg, borderColor: border, color: text }}
+                >
+                  {allowedStatuses.map((val) => (
+                    <option key={val} value={val}>{STATUS_LABELS[val]}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => {
+                    if (tempStatus === order.status) {
+                      toast.error("Please select a different status to update.");
+                      return;
+                    }
+                    if (window.confirm(`Are you sure you want to change order status from ${STATUS_LABELS[order.status]} to ${STATUS_LABELS[tempStatus]}?`)) {
+                      handleStatusChange(tempStatus);
+                    }
+                  }}
+                  className="px-4 py-2 text-xs font-black uppercase rounded-lg transition-colors border active:scale-95 whitespace-nowrap w-full sm:w-auto"
+                  style={{ borderColor: `${primary}50`, background: `${primary}1A`, color: primary }}
+                >
+                  Update Status
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Items Section */}
           <div>
             <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: muted }}>Order Items</h3>
@@ -265,11 +343,40 @@ export function ViewOrderModal({
             
             {order.remarks && (
               <div className="mt-4 p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800">
-                <p className="text-[10px] font-bold uppercase text-red-500 mb-1 tracking-wider">Remarks</p>
+                <p className="text-[10px] font-bold uppercase text-red-500 mb-1 tracking-wider">Remarks / Reason</p>
                 <p className="text-xs font-medium text-red-700 dark:text-red-400">{order.remarks}</p>
               </div>
             )}
           </div>
+
+          {/* Status History Logs Timeline */}
+          {order.statusHistory && order.statusHistory.length > 0 && (
+            <div className="mt-8 border-t pt-8" style={{ borderColor: border }}>
+              <h3 className="text-xs font-bold mb-5 uppercase tracking-wider" style={{ color: muted }}>Status History Log</h3>
+              <div className="relative border-l border-dashed ml-3 pl-6 flex flex-col gap-6" style={{ borderColor: border }}>
+                {order.statusHistory.map((history, idx) => (
+                  <div key={idx} className="relative">
+                    {/* Timeline Node dot */}
+                    <div 
+                      className="absolute -left-[30px] top-1 w-2.5 h-2.5 rounded-full border bg-white dark:bg-gray-900" 
+                      style={{ borderColor: primary }} 
+                    />
+                    <p className="text-sm font-bold m-0" style={{ color: text }}>
+                      {STATUS_LABELS[history.oldStatus.toLowerCase() as OrderStatus] || history.oldStatus} → {STATUS_LABELS[history.newStatus.toLowerCase() as OrderStatus] || history.newStatus}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5 m-0">
+                      {new Date(history.createdAt).toLocaleString()} {history.changedBy ? `by User #${history.changedBy}` : "(System)"}
+                    </p>
+                    {history.remarks && (
+                      <p className="text-xs mt-1 italic p-2 rounded-lg bg-gray-100 dark:bg-gray-800/50 m-0" style={{ color: text }}>
+                        {history.remarks}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Summary Section */}
           <div className="mt-8 flex justify-start">
@@ -302,25 +409,65 @@ export function ViewOrderModal({
 
         {/* Footer */}
         <div 
-          className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl no-print" 
+          className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl no-print" 
           style={{ borderColor: border }}
         >
-          {isWebOrder && (
+          {/* Actions Left: Cancel / Refund / Review Refund */}
+          <div className="flex items-center gap-2">
+            {/* Cancel Order Button */}
+            {["pending", "awaiting_stock", "processing", "shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to cancel Order #${order.id}?`)) {
+                    handleStatusChange("cancelled");
+                  }
+                }}
+                className="px-4 py-2 text-xs font-bold uppercase text-red-600 border border-red-500/40 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 active:scale-95 transition-all"
+              >
+                Cancel Order
+              </button>
+            )}
+
+            {/* Request Refund Button: visible if order has been paid or is completed */}
+            {(order.status === "completed" || order.paymentStatus === "paid") && !["refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestRefund && (
+              <button
+                onClick={onRequestRefund}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
+              >
+                Request Refund
+              </button>
+            )}
+
+            {/* Approve Refund Button: visible to admin/manager when status is refund_requested */}
+            {order.status === "refund_requested" && onApplyRefund && (isDev || isOrderManager || isAdmin) && (
+              <button
+                onClick={onApplyRefund}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 active:scale-95 transition-all shadow-sm"
+              >
+                Approve Refund
+              </button>
+            )}
+          </div>
+
+          {/* Actions Right: Waybill & Close */}
+          <div className="flex items-center gap-2 ml-auto">
+            {isWebOrder && (
+              <button
+                onClick={() => window.print()}
+                className="px-5 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-250 border transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
+                style={{ borderColor: border }}
+              >
+                Print Waybill
+              </button>
+            )}
             <button
-              onClick={() => window.print()}
-              className="px-5 py-2 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-250 border transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
-              style={{ borderColor: border }}
+              onClick={onClose}
+              className="px-5 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-sm cursor-pointer"
+              style={{ background: primary }}
             >
-              Print Waybill
+              Close
             </button>
-          )}
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-sm cursor-pointer"
-            style={{ background: primary }}
-          >
-            Close
-          </button>
+          </div>
         </div>
 
         {/* Printable Waybill Area */}
