@@ -1087,7 +1087,7 @@ export default function ViewSalesProcessing() {
                   <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: `${muted}99` }}>{category}</h3>
                   <div style={{ height: 1, flex: 1, background: `linear-gradient(90deg, ${border}, transparent)` }} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: isMobile ? 8 : 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(330px, 1fr))", gap: isMobile ? 12 : 20 }}>
                   {products
                     .filter((p) => p.category === category)
                     .map((product) => (
@@ -1482,28 +1482,56 @@ export default function ViewSalesProcessing() {
 }
 
 function ProductCard({ product, onAdd, primary, muted, text, border, cardBg, inputBg, dark, isMobile }: { product: Product; onAdd: () => void; primary: string; muted: string; text: string; border: string; cardBg: string; inputBg: string; dark: boolean; isMobile: boolean }) {
-  const isLow = product.stock <= 15;
+  const isOutOfStock = product.stock <= 0;
+  const isLow = product.stock > 0 && product.stock <= 15;
   return (
     <div
-      onClick={onAdd}
-      style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 8, padding: isMobile ? 6 : 8, borderRadius: isMobile ? 8 : 10, background: cardBg, border: `1px solid ${border}`, cursor: "pointer" }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = dark ? `0 20px 25px -5px ${primary}33` : "0 20px 25px -5px rgba(0,0,0,0.1)"; e.currentTarget.style.borderColor = `${primary}44`; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = border; }}
+      onClick={isOutOfStock ? undefined : onAdd}
+      style={{ 
+        display: "flex", 
+        alignItems: "center", 
+        gap: isMobile ? 10 : 14, 
+        padding: isMobile ? 10 : 14, 
+        borderRadius: isMobile ? 10 : 12, 
+        background: isOutOfStock ? (dark ? "#1a2231" : "#f2f4f7") : cardBg, 
+        border: `1px solid ${border}`, 
+        cursor: isOutOfStock ? "not-allowed" : "pointer",
+        opacity: isOutOfStock ? 0.6 : 1
+      }}
+      onMouseEnter={(e) => { 
+        if (isOutOfStock) return;
+        e.currentTarget.style.boxShadow = dark ? `0 20px 25px -5px ${primary}33` : "0 20px 25px -5px rgba(0,0,0,0.1)"; 
+        e.currentTarget.style.borderColor = `${primary}44`; 
+      }}
+      onMouseLeave={(e) => { 
+        if (isOutOfStock) return;
+        e.currentTarget.style.boxShadow = "none"; 
+        e.currentTarget.style.borderColor = border; 
+      }}
     >
-      <div style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, borderRadius: isMobile ? 8 : 10, background: inputBg, border: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 16 : 20 }}>
+      <div style={{ width: isMobile ? 44 : 56, height: isMobile ? 44 : 56, borderRadius: isMobile ? 10 : 12, background: inputBg, border: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 20 : 26 }}>
         {product.category === "Ube Halaya" ? "🍠" : "🫙"}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{product.name}</h3>
-          <div style={{ padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 700, background: isLow ? "#f04438" : inputBg, color: isLow ? "#fff" : muted, border: `1px solid ${isLow ? "#f04438" : border}` }}>
-            {product.stock}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+          <h3 style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, margin: 0, color: isOutOfStock ? muted : text, lineHeight: 1.2 }}>{product.name}</h3>
+          <div style={{ 
+            padding: "4px 10px", 
+            borderRadius: 8, 
+            fontSize: isOutOfStock ? 10 : 11, 
+            fontWeight: 700, 
+            background: isOutOfStock ? "#667085" : (isLow ? "#f04438" : inputBg), 
+            color: (isOutOfStock || isLow) ? "#fff" : muted, 
+            border: `1px solid ${isOutOfStock ? "#667085" : (isLow ? "#f04438" : border)}`,
+            whiteSpace: "nowrap"
+          }}>
+            {isOutOfStock ? "OUT OF STOCK" : `Remaining Stocks: ${product.stock}`}
           </div>
         </div>
-        <div style={{ marginTop: 2, marginBottom: 4 }}>
+        <div style={{ marginTop: 4, marginBottom: 6, opacity: isOutOfStock ? 0.7 : 1 }}>
           {renderVariationBadges(product.variation, muted, border, inputBg, false)}
         </div>
-        <p style={{ fontSize: 16, fontWeight: 700, color: primary, margin: 0 }}>₱{product.price}</p>
+        <p style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: isOutOfStock ? muted : primary, margin: 0 }}>₱{product.price}</p>
       </div>
     </div>
   );
