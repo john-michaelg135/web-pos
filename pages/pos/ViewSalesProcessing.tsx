@@ -1184,7 +1184,7 @@ export default function ViewSalesProcessing() {
                     </div>
                   )}
 
-                  {isPreOrder && (
+                  {!isInstitutional && (
                     <div>
                       <Label>Payment Method</Label>
                       <div className="grid grid-cols-2 gap-3 mt-2">
@@ -1194,7 +1194,7 @@ export default function ViewSalesProcessing() {
                         </button>
                         <button onClick={() => setPaymentMethod("gcash")} className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors ${paymentMethod === "gcash" ? "border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400" : "border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600"}`}>
                           <BoxIconLine viewBox="0 0 24 24" className="w-5 h-5" />
-                          <span className="text-xs font-bold uppercase">GCash</span>
+                          <span className="text-xs font-bold uppercase">E-Wallet / Card / QR PH</span>
                         </button>
                       </div>
                     </div>

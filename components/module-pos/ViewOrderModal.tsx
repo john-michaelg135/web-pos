@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CloseLineIcon } from "@/icons/index";
+import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
 import { Order, STATUS_LABELS } from "@/components/module-pos/types";
 import { renderVariationBadges } from "./utils";
 import { toast } from "sonner";
@@ -149,59 +149,80 @@ export function ViewOrderModal({
             </div>
           </div>
 
-          {/* Xendit Payment Details for Online Orders */}
-          {isWebOrder && order.paymentUrl && (
+          {/* Xendit Payment Details */}
+          {order.paymentUrl && (
             <div 
               className="p-5 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-6" 
               style={{ borderColor: border, background: `linear-gradient(135deg, ${primary}0A, ${primary}15)` }}
             >
-              <div className="flex-1 w-full">
-                <h4 className="text-xs font-bold uppercase mb-2 tracking-wider animate-pulse" style={{ color: primary }}>
-                  Xendit Cashless GCash COD Payment Link
-                </h4>
-                <p className="text-xs mb-4" style={{ color: muted }}>
-                  Scan the QR code to pay via GCash, or copy the checkout URL to send to the customer.
-                </p>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={order.paymentUrl} 
-                    className="flex-1 text-xs px-3 py-2 rounded-lg border outline-none font-mono" 
-                    style={{ background: cardBg, borderColor: border, color: muted }}
-                  />
-                  <button 
-                    onClick={() => {
-                      if (order.paymentUrl) {
-                        navigator.clipboard.writeText(order.paymentUrl);
-                        toast.success("Payment URL copied to clipboard!");
-                      }
-                    }}
-                    className="px-4 py-2 text-xs font-bold uppercase rounded-lg transition-colors border active:scale-95"
-                    style={{ 
-                      borderColor: `${primary}50`, 
-                      background: `${primary}1A`, 
-                      color: primary 
-                    }}
+              {order.paymentStatus?.toLowerCase() === "paid" ? (
+                <div className="flex items-center gap-4 w-full py-2 px-1">
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 border"
+                    style={{ borderColor: `${primary}30`, background: `${primary}10`, color: primary }}
                   >
-                    Copy Link
-                  </button>
+                    <CheckCircleIcon className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-wider m-0" style={{ color: primary }}>
+                      Cashless Payment Confirmed
+                    </h4>
+                    <p className="text-xs mt-1 m-0 text-gray-500 dark:text-gray-400">
+                      The transaction was successfully processed and confirmed paid via Xendit.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              
-              <div 
-                className="p-3 bg-white rounded-xl border flex flex-col items-center justify-center shadow-sm shrink-0"
-                style={{ borderColor: border }}
-              >
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(order.paymentUrl)}`} 
-                  alt="GCash Payment QR Code" 
-                  className="w-[140px] h-[140px]"
-                />
-                <span className="text-[9px] font-bold uppercase mt-2 text-gray-500 tracking-wider">
-                  GCash Scan to Pay
-                </span>
-              </div>
+              ) : (
+                <>
+                  <div className="flex-1 w-full">
+                    <h4 className="text-xs font-bold uppercase mb-2 tracking-wider animate-pulse" style={{ color: primary }}>
+                      Xendit Cashless Payment Link
+                    </h4>
+                    <p className="text-xs mb-4" style={{ color: muted }}>
+                      Scan the QR code to pay via E-Wallet, Card, or QR PH, or copy the checkout URL to send to the customer.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={order.paymentUrl} 
+                        className="flex-1 text-xs px-3 py-2 rounded-lg border outline-none font-mono" 
+                        style={{ background: cardBg, borderColor: border, color: muted }}
+                      />
+                      <button 
+                        onClick={() => {
+                          if (order.paymentUrl) {
+                            navigator.clipboard.writeText(order.paymentUrl);
+                            toast.success("Payment URL copied to clipboard!");
+                          }
+                        }}
+                        className="px-4 py-2 text-xs font-bold uppercase rounded-lg transition-colors border active:scale-95"
+                        style={{ 
+                          borderColor: `${primary}50`, 
+                          background: `${primary}1A`, 
+                          color: primary 
+                        }}
+                      >
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div 
+                    className="p-3 bg-white rounded-xl border flex flex-col items-center justify-center shadow-sm shrink-0"
+                    style={{ borderColor: border }}
+                  >
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(order.paymentUrl)}`} 
+                      alt="Cashless Payment QR Code" 
+                      className="w-[140px] h-[140px]"
+                    />
+                    <span className="text-[9px] font-bold uppercase mt-2 text-gray-500 tracking-wider">
+                      Scan to Pay
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -326,7 +347,7 @@ export function ViewOrderModal({
             </div>
             <div className="text-right flex flex-col items-end">
               <p className="text-[10px] font-bold uppercase text-gray-500 mb-1 tracking-wider">Payment Method</p>
-              <p className="text-sm font-black uppercase text-black">{isWebOrder ? 'Cashless COD / GCash' : 'COD'}</p>
+              <p className="text-sm font-black uppercase text-black">{isWebOrder ? 'Cashless COD / E-Wallet / Card' : 'COD'}</p>
             </div>
           </div>
 
@@ -397,7 +418,7 @@ export function ViewOrderModal({
                 </div>
               </div>
 
-              {isWebOrder && order.paymentUrl && (
+              {order.paymentUrl && order.paymentStatus?.toLowerCase() !== "paid" && (
                 <div className="flex flex-col items-center border border-black p-3 bg-white rounded-xl shadow-sm">
                   <img 
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(order.paymentUrl)}`} 
@@ -405,7 +426,7 @@ export function ViewOrderModal({
                     className="w-[120px] h-[120px]"
                   />
                   <span className="text-[8px] font-black uppercase text-black tracking-wider mt-1.5">
-                    GCash Scan to Pay
+                    Scan to Pay
                   </span>
                 </div>
               )}
