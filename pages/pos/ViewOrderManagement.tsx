@@ -76,7 +76,7 @@ export default function ViewOrderManagement() {
       id: dto.orderId?.toString() || "0",
       type: (dto.orderType?.toLowerCase() as "walk-in" | "store" | "online" | "institutional") || "online",
       source: dto.orderSource,
-      customer: dto.contactPerson ? dto.contactPerson : (dto.customerId ? `Customer ${dto.customerId}` : "Customer"),
+      customer: (dto as any).seniorPwdName ? (dto as any).seniorPwdName : (dto.contactPerson ? dto.contactPerson : (dto.customerId ? `Customer ${dto.customerId}` : "Customer")),
       items: dto.items && dto.items.length > 0
         ? dto.items.map((i) => ({
             name: i.productName || "Order Item",
@@ -95,6 +95,15 @@ export default function ViewOrderManagement() {
       paymentStatus: (dto.paymentStatus?.toLowerCase() as "pending" | "paid") || "pending",
       remarks: dto.rejectionRemarks || dto.customVariationNotes || "",
       paymentUrl: dto.payments?.find(p => p.gatewayReferenceNumber)?.gatewayReferenceNumber || null,
+      deliveryAddress: dto.deliveryAddress || "",
+      customVariationNotes: dto.customVariationNotes || "",
+      seniorPwdId: (dto as any).seniorPwdId || "",
+      seniorPwdName: (dto as any).seniorPwdName || "",
+      seniorPwdStreet: (dto as any).seniorPwdStreet || "",
+      seniorPwdBarangay: (dto as any).seniorPwdBarangay || "",
+      seniorPwdCity: (dto as any).seniorPwdCity || "",
+      seniorPwdProvince: (dto as any).seniorPwdProvince || "",
+      seniorPwdZipCode: (dto as any).seniorPwdZipCode || "",
     };
   };
 

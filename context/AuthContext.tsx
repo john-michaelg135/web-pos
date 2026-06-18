@@ -42,21 +42,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const validate = async (): Promise<User | null> => {
     try {
-      const res = await api.get("/api/auth/validate?tokenType=sso");
-      return res.data;
+      const res = await api.get("/api/erp-auth/validate");
+      const userData = res.data.user;
+      if (!userData) return null;
+
+      const flatApps: string[] = [];
+      if (userData.apps) {
+        userData.apps.forEach((app: any) => {
+          flatApps.push(app.appName.toLowerCase());
+          if (app.modules) {
+            app.modules.forEach((mod: any) => {
+              const normalized = mod.moduleName
+                .toLowerCase()
+                .replace(/ & /g, "-")
+                .replace(/&/g, "-")
+                .replace(/ /g, "-");
+              flatApps.push(normalized);
+            });
+          }
+        });
+      }
+
+      return {
+        ...userData,
+        apps: flatApps
+      };
     } catch { return null; }
   };
 
   const refresh = async (): Promise<boolean> => {
     try {
-      await api.post("/api/auth/refresh?tokenType=sso");
+      await api.post("/api/erp-auth/refresh");
       return true;
     } catch { return false; }
   };
 
   const logout = async (): Promise<void> => {
     try {
-      await api.post("/api/auth/logout?tokenType=sso");
+      await api.post("/api/erp-auth/logout");
     } finally {
       setUser(null);
     }

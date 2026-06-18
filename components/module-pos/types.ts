@@ -30,6 +30,15 @@ export type Order = {
   remarks?: string;
   paymentUrl?: string | null;
   source?: string;
+  deliveryAddress?: string;
+  customVariationNotes?: string;
+  seniorPwdId?: string;
+  seniorPwdName?: string;
+  seniorPwdStreet?: string;
+  seniorPwdBarangay?: string;
+  seniorPwdCity?: string;
+  seniorPwdProvince?: string;
+  seniorPwdZipCode?: string;
 };
 
 export const STATUS_PIPELINE: OrderStatus[] = [

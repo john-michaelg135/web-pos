@@ -66,6 +66,15 @@ type CartItem = Product & { quantity: number };
 
 const mockProducts: Product[] = [];
 
+const toTitleCase = (str: string) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .replace(/\b[a-z]/g, (char) => char.toUpperCase())
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
 export default function ViewSalesProcessing() {
   const { user: authUser, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -167,6 +176,12 @@ export default function ViewSalesProcessing() {
   // US-6 & US-7: Discounts & Vouchers
   const [isSeniorPWD, setIsSeniorPWD] = useState(false);
   const [idNumber, setIdNumber] = useState("");
+  const [pwdCustomerName, setPwdCustomerName] = useState("");
+  const [pwdStreet, setPwdStreet] = useState("");
+  const [pwdBarangay, setPwdBarangay] = useState("");
+  const [pwdCity, setPwdCity] = useState("");
+  const [pwdProvince, setPwdProvince] = useState("");
+  const [pwdZipCode, setPwdZipCode] = useState("");
   const [isPrintingReceipt, setIsPrintingReceipt] = useState(true);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -260,9 +275,43 @@ export default function ViewSalesProcessing() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * (Number(item.quantity) || 0), 0);
 
+  const pwdDetails = useMemo(() => {
+    if (!isSeniorPWD) {
+      return {
+        vatExempt: 0,
+        discount: 0,
+        total: subtotal
+      };
+    }
+    let vatExemptTotal = 0;
+    let discountTotal = 0;
+    let finalTotal = 0;
+
+    cart.forEach(item => {
+      const qty = Number(item.quantity) || 0;
+      const basePrice = item.price;
+      const vatExemptPrice = Math.round((basePrice / 1.12) * 100) / 100;
+      const discountedPrice = Math.round((vatExemptPrice * 0.80) * 100) / 100;
+      
+      const itemVatExempt = (basePrice - vatExemptPrice) * qty;
+      const itemDiscount = (vatExemptPrice * 0.20) * qty;
+      const itemFinal = discountedPrice * qty;
+
+      vatExemptTotal += itemVatExempt;
+      discountTotal += itemDiscount;
+      finalTotal += itemFinal;
+    });
+
+    return {
+      vatExempt: vatExemptTotal,
+      discount: discountTotal,
+      total: finalTotal
+    };
+  }, [cart, isSeniorPWD, subtotal]);
+
   const vatAmount = isSeniorPWD ? 0 : subtotal * 0.12;
-  const discountAmount = isSeniorPWD ? subtotal * 0.20 : 0;
-  const total = Math.max(0, subtotal - discountAmount);
+  const discountAmount = isSeniorPWD ? pwdDetails.discount : 0;
+  const total = isSeniorPWD ? pwdDetails.total : subtotal;
 
   const validate = () => {
     // Normalize empty or zero quantities to 1
@@ -280,22 +329,34 @@ export default function ViewSalesProcessing() {
 
     const newErrors: Record<string, string> = {};
     if (isInstitutional) {
-      if (!contactPerson.trim()) {
+      const normContactPerson = toTitleCase(contactPerson);
+      const normStreet = toTitleCase(street);
+      const normBarangay = toTitleCase(barangay);
+      const normCity = toTitleCase(city);
+      const normProvince = toTitleCase(province);
+
+      setContactPerson(normContactPerson);
+      setStreet(normStreet);
+      setBarangay(normBarangay);
+      setCity(normCity);
+      setProvince(normProvince);
+
+      if (!normContactPerson.trim()) {
         newErrors.contactPerson = "Please input Contact Name";
       }
       if (!contactNumber.trim()) {
         newErrors.contactNumber = "Please enter Contact Number.";
       }
-      if (!street.trim()) {
+      if (!normStreet.trim()) {
         newErrors.street = "Please input Street";
       }
-      if (!barangay.trim()) {
+      if (!normBarangay.trim()) {
         newErrors.barangay = "Please input Barangay";
       }
-      if (!city.trim()) {
+      if (!normCity.trim()) {
         newErrors.city = "Please input City";
       }
-      if (!province.trim()) {
+      if (!normProvince.trim()) {
         newErrors.province = "Please input Province";
       }
       if (!zipCode.trim()) {
@@ -310,6 +371,39 @@ export default function ViewSalesProcessing() {
         newErrors.idNumber = "Please input information";
       } else if (!/^\d{2}-\d{4}-\d{3}-\d{7}$/.test(trimmedId)) {
         newErrors.idNumber = "Invalid format. Expected: RR-PPMM-BBB-NNNNNNN";
+      }
+
+      const normPwdCustomerName = toTitleCase(pwdCustomerName);
+      const normPwdStreet = toTitleCase(pwdStreet);
+      const normPwdBarangay = toTitleCase(pwdBarangay);
+      const normPwdCity = toTitleCase(pwdCity);
+      const normPwdProvince = toTitleCase(pwdProvince);
+
+      setPwdCustomerName(normPwdCustomerName);
+      setPwdStreet(normPwdStreet);
+      setPwdBarangay(normPwdBarangay);
+      setPwdCity(normPwdCity);
+      setPwdProvince(normPwdProvince);
+
+      if (!normPwdCustomerName.trim()) {
+        newErrors.pwdCustomerName = "Please input Customer Name";
+      }
+      if (!normPwdStreet.trim()) {
+        newErrors.pwdStreet = "Please input Street";
+      }
+      if (!normPwdBarangay.trim()) {
+        newErrors.pwdBarangay = "Please input Barangay";
+      }
+      if (!normPwdCity.trim()) {
+        newErrors.pwdCity = "Please input City";
+      }
+      if (!normPwdProvince.trim()) {
+        newErrors.pwdProvince = "Please input Province";
+      }
+      if (!pwdZipCode.trim()) {
+        newErrors.pwdZipCode = "Please input Zip Code";
+      } else if (!/^\d{4}$/.test(pwdZipCode.trim())) {
+        newErrors.pwdZipCode = "Zip Code must be 4 digits";
       }
     }
     setErrors(newErrors);
@@ -380,13 +474,20 @@ export default function ViewSalesProcessing() {
             });
             if (response && response.orderNumber) orderId = response.orderNumber;
         } else {
-            const { data: response } = await apiClient.apiPos.orderEntryOrdersCreate({
+            const { data: response } = await (apiClient.apiPos.orderEntryOrdersCreate as any)({
                 orderType: "Store",
                 locationId: locationIdVal,
                 submittedBy: 1,
                 paymentMethod: paymentMethod === "cash" ? "Cash" : "GCash",
                 applyPwdDiscount: isSeniorPWD,
-                items: items
+                items: items,
+                seniorPwdId: isSeniorPWD ? idNumber : null,
+                seniorPwdName: isSeniorPWD ? pwdCustomerName : null,
+                seniorPwdStreet: isSeniorPWD ? pwdStreet : null,
+                seniorPwdBarangay: isSeniorPWD ? pwdBarangay : null,
+                seniorPwdCity: isSeniorPWD ? pwdCity : null,
+                seniorPwdProvince: isSeniorPWD ? pwdProvince : null,
+                seniorPwdZipCode: isSeniorPWD ? pwdZipCode : null
             });
             if (response && response.orderNumber) orderId = response.orderNumber;
             
@@ -410,6 +511,12 @@ export default function ViewSalesProcessing() {
                 setIsPreOrder(false);
                 setIsSeniorPWD(false);
                 setIdNumber("");
+                setPwdCustomerName("");
+                setPwdStreet("");
+                setPwdBarangay("");
+                setPwdCity("");
+                setPwdProvince("");
+                setPwdZipCode("");
                 setShowCheckoutDialog(false);
 
                 toast.success("Order submitted! Redirecting to Xendit payment gateway...");
@@ -440,6 +547,12 @@ export default function ViewSalesProcessing() {
       setIsPreOrder(false);
       setIsSeniorPWD(false);
       setIdNumber("");
+      setPwdCustomerName("");
+      setPwdStreet("");
+      setPwdBarangay("");
+      setPwdCity("");
+      setPwdProvince("");
+      setPwdZipCode("");
       setShowCheckoutDialog(false);
       setTimeout(() => setLastOrder(null), 5000);
     } catch (error) {
@@ -739,6 +852,139 @@ export default function ViewSalesProcessing() {
                 }}
               />
               {errors.idNumber && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.idNumber}</span>}
+
+              {/* Customer Name */}
+              <label style={{ ...labelStyle, marginTop: 6 }}>Customer Name <span style={{ color: "#f04438" }}>*</span></label>
+              <input
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.pwdCustomerName ? "#f04438" : inputBorder,
+                  boxShadow: errors.pwdCustomerName ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
+                }}
+                maxLength={50}
+                placeholder="Juan Dela Cruz"
+                value={pwdCustomerName}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                  setPwdCustomerName(cleaned);
+                  if (errors.pwdCustomerName) setErrors(prev => { const { pwdCustomerName, ...rest } = prev; return rest; });
+                }}
+                onBlur={() => {
+                  setPwdCustomerName(toTitleCase(pwdCustomerName));
+                }}
+              />
+              {errors.pwdCustomerName && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdCustomerName}</span>}
+
+              {/* Street */}
+              <label style={{ ...labelStyle, marginTop: 6 }}>Street <span style={{ color: "#f04438" }}>*</span></label>
+              <input
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.pwdStreet ? "#f04438" : inputBorder,
+                  boxShadow: errors.pwdStreet ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
+                }}
+                maxLength={100}
+                placeholder="123 Maple St."
+                value={pwdStreet}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                  setPwdStreet(cleaned);
+                  if (errors.pwdStreet) setErrors(prev => { const { pwdStreet, ...rest } = prev; return rest; });
+                }}
+                onBlur={() => {
+                  setPwdStreet(toTitleCase(pwdStreet));
+                }}
+              />
+              {errors.pwdStreet && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdStreet}</span>}
+
+              {/* Barangay */}
+              <label style={{ ...labelStyle, marginTop: 6 }}>Barangay <span style={{ color: "#f04438" }}>*</span></label>
+              <input
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.pwdBarangay ? "#f04438" : inputBorder,
+                  boxShadow: errors.pwdBarangay ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
+                }}
+                maxLength={50}
+                placeholder="Barangay 12"
+                value={pwdBarangay}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                  setPwdBarangay(cleaned);
+                  if (errors.pwdBarangay) setErrors(prev => { const { pwdBarangay, ...rest } = prev; return rest; });
+                }}
+                onBlur={() => {
+                  setPwdBarangay(toTitleCase(pwdBarangay));
+                }}
+              />
+              {errors.pwdBarangay && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdBarangay}</span>}
+
+              {/* City & Province */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 6 }}>
+                <div>
+                  <label style={labelStyle}>City <span style={{ color: "#f04438" }}>*</span></label>
+                  <input
+                    style={{
+                      ...inputStyle,
+                      borderColor: errors.pwdCity ? "#f04438" : inputBorder,
+                      boxShadow: errors.pwdCity ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
+                    }}
+                    maxLength={50}
+                    placeholder="City"
+                    value={pwdCity}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                      setPwdCity(cleaned);
+                      if (errors.pwdCity) setErrors(prev => { const { pwdCity, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => {
+                      setPwdCity(toTitleCase(pwdCity));
+                    }}
+                  />
+                  {errors.pwdCity && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdCity}</span>}
+                </div>
+                <div>
+                  <label style={labelStyle}>Province <span style={{ color: "#f04438" }}>*</span></label>
+                  <input
+                    style={{
+                      ...inputStyle,
+                      borderColor: errors.pwdProvince ? "#f04438" : inputBorder,
+                      boxShadow: errors.pwdProvince ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
+                    }}
+                    maxLength={50}
+                    placeholder="Province"
+                    value={pwdProvince}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                      setPwdProvince(cleaned);
+                      if (errors.pwdProvince) setErrors(prev => { const { pwdProvince, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => {
+                      setPwdProvince(toTitleCase(pwdProvince));
+                    }}
+                  />
+                  {errors.pwdProvince && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdProvince}</span>}
+                </div>
+              </div>
+
+              {/* Zip Code */}
+              <label style={{ ...labelStyle, marginTop: 6 }}>Zip Code <span style={{ color: "#f04438" }}>*</span></label>
+              <input
+                style={{
+                  ...inputStyle,
+                  borderColor: errors.pwdZipCode ? "#f04438" : inputBorder,
+                  boxShadow: errors.pwdZipCode ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
+                }}
+                maxLength={4}
+                placeholder="1000"
+                value={pwdZipCode}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setPwdZipCode(val);
+                  if (errors.pwdZipCode) setErrors(prev => { const { pwdZipCode, ...rest } = prev; return rest; });
+                }}
+              />
+              {errors.pwdZipCode && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdZipCode}</span>}
             </div>
           )}
         </div>
@@ -748,18 +994,24 @@ export default function ViewSalesProcessing() {
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", color: `${muted}99`, marginBottom: 8 }}>
             <span>Subtotal</span>
-            <span style={{ color: text }}>₱{subtotal.toLocaleString()}</span>
+            <span style={{ color: text }}>₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           {isSeniorPWD && (
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#f04438", marginBottom: 8 }}>
-              <span>Senior/PWD Discount (20%)</span>
-              <span>- ₱{discountAmount.toLocaleString()}</span>
-            </div>
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#f04438", marginBottom: 8 }}>
+                <span>VAT Exemption (12%)</span>
+                <span>- ₱{pwdDetails.vatExempt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#f04438", marginBottom: 8 }}>
+                <span>Senior/PWD Discount (20%)</span>
+                <span>- ₱{pwdDetails.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </>
           )}
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 8 }}>
             <span style={{ fontSize: 18, fontWeight: 700 }}>Total Price</span>
-            <span style={{ fontSize: 28, fontWeight: 700, color: primary }}>₱{total.toLocaleString()}</span>
+            <span style={{ fontSize: 28, fontWeight: 700, color: primary }}>₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         </div>
         <button
@@ -953,9 +1205,26 @@ export default function ViewSalesProcessing() {
                     <input type="checkbox" checked={isPrintingReceipt} onChange={(e) => setIsPrintingReceipt(e.target.checked)} className="w-5 h-5 cursor-pointer accent-brand-500 rounded border-gray-300 focus:ring-brand-500" />
                   </div>
 
+                  {isSeniorPWD && (
+                    <div className="flex flex-col gap-2 border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Subtotal (VAT-Inclusive)</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-red-500">
+                        <span>VAT Exemption (12%)</span>
+                        <span>- ₱{pwdDetails.vatExempt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-red-500">
+                        <span>Senior/PWD Discount (20%)</span>
+                        <span>- ₱{pwdDetails.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-end border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
                     <span className="text-base font-bold text-gray-900 dark:text-white">Grand Total</span>
-                    <span className="text-2xl font-bold text-brand-500">₱{total.toLocaleString()}</span>
+                    <span className="text-2xl font-bold text-brand-500">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
@@ -991,8 +1260,12 @@ export default function ViewSalesProcessing() {
                     maxLength={50}
                     value={contactPerson} 
                     onChange={(e) => {
-                      setContactPerson(e.target.value);
+                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                      setContactPerson(cleaned);
                       if (errors.contactPerson) setErrors(prev => { const { contactPerson, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => {
+                      setContactPerson(toTitleCase(contactPerson));
                     }}
                     error={errors.contactPerson}
                   />
@@ -1044,8 +1317,12 @@ export default function ViewSalesProcessing() {
                     maxLength={100}
                     value={street} 
                     onChange={(e) => {
-                      setStreet(e.target.value);
+                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                      setStreet(cleaned);
                       if (errors.street) setErrors(prev => { const { street, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => {
+                      setStreet(toTitleCase(street));
                     }}
                     error={errors.street}
                   />
@@ -1058,8 +1335,12 @@ export default function ViewSalesProcessing() {
                     maxLength={50}
                     value={barangay} 
                     onChange={(e) => {
-                      setBarangay(e.target.value);
+                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                      setBarangay(cleaned);
                       if (errors.barangay) setErrors(prev => { const { barangay, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => {
+                      setBarangay(toTitleCase(barangay));
                     }}
                     error={errors.barangay}
                   />
@@ -1071,8 +1352,12 @@ export default function ViewSalesProcessing() {
                     maxLength={50}
                     value={city} 
                     onChange={(e) => {
-                      setCity(e.target.value);
+                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                      setCity(cleaned);
                       if (errors.city) setErrors(prev => { const { city, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => {
+                      setCity(toTitleCase(city));
                     }}
                     error={errors.city}
                   />
@@ -1085,8 +1370,12 @@ export default function ViewSalesProcessing() {
                     maxLength={50}
                     value={province} 
                     onChange={(e) => {
-                      setProvince(e.target.value);
+                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                      setProvince(cleaned);
                       if (errors.province) setErrors(prev => { const { province, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => {
+                      setProvince(toTitleCase(province));
                     }}
                     error={errors.province}
                   />
@@ -1134,12 +1423,24 @@ export default function ViewSalesProcessing() {
                 onClick={() => {
                   let isValid = true;
                   const newErrors: any = {};
-                  if (!contactPerson.trim()) { newErrors.contactPerson = "Required"; isValid = false; }
+                  const normContactPerson = toTitleCase(contactPerson);
+                  const normStreet = toTitleCase(street);
+                  const normBarangay = toTitleCase(barangay);
+                  const normCity = toTitleCase(city);
+                  const normProvince = toTitleCase(province);
+                  
+                  setContactPerson(normContactPerson);
+                  setStreet(normStreet);
+                  setBarangay(normBarangay);
+                  setCity(normCity);
+                  setProvince(normProvince);
+
+                  if (!normContactPerson.trim()) { newErrors.contactPerson = "Required"; isValid = false; }
                   if (!contactNumber.trim() || contactNumber.replace(/\D/g,"").length < 10) { newErrors.contactNumber = "Invalid Contact Number"; isValid = false; }
-                  if (!street.trim()) { newErrors.street = "Required"; isValid = false; }
-                  if (!barangay.trim()) { newErrors.barangay = "Required"; isValid = false; }
-                  if (!city.trim()) { newErrors.city = "Required"; isValid = false; }
-                  if (!province.trim()) { newErrors.province = "Required"; isValid = false; }
+                  if (!normStreet.trim()) { newErrors.street = "Required"; isValid = false; }
+                  if (!normBarangay.trim()) { newErrors.barangay = "Required"; isValid = false; }
+                  if (!normCity.trim()) { newErrors.city = "Required"; isValid = false; }
+                  if (!normProvince.trim()) { newErrors.province = "Required"; isValid = false; }
                   if (!zipCode.trim()) { newErrors.zipCode = "Required"; isValid = false; }
                   
                   if (!isValid) {

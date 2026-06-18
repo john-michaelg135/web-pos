@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { CloseLineIcon } from "@/icons/index";
 import { Order, STATUS_LABELS } from "@/components/module-pos/types";
 import { renderVariationBadges } from "./utils";
@@ -29,6 +30,41 @@ export function ViewOrderModal({
   if (!isOpen) return null;
 
   const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
+
+  const isPwdOrder = !!order.seniorPwdId;
+
+  const pricing = useMemo(() => {
+    if (!isPwdOrder) {
+      return {
+        subtotal: order.total,
+        vatExempt: 0,
+        discount: 0,
+        total: order.total
+      };
+    }
+
+    let originalSubtotal = 0;
+    let vatExemptTotal = 0;
+
+    order.items.forEach(item => {
+      const discountedPrice = item.price;
+      const originalPrice = Math.round((discountedPrice * 1.12 / 0.80) * 100) / 100;
+      const vatExemptPrice = Math.round((originalPrice / 1.12) * 100) / 100;
+      
+      const qty = item.quantity;
+      originalSubtotal += originalPrice * qty;
+      vatExemptTotal += (originalPrice - vatExemptPrice) * qty;
+    });
+
+    const discountTotal = originalSubtotal - vatExemptTotal - order.total;
+
+    return {
+      subtotal: originalSubtotal,
+      vatExempt: vatExemptTotal,
+      discount: discountTotal,
+      total: order.total
+    };
+  }, [order, isPwdOrder]);
 
   return (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -62,9 +98,36 @@ export function ViewOrderModal({
         <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
           {/* Info Section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div className="p-4 rounded-xl border" style={{ borderColor: border, background: `${border}10` }}>
-              <p className="text-[10px] font-bold uppercase mb-1 tracking-wider" style={{ color: muted }}>Customer Details</p>
+            <div className="p-4 rounded-xl border flex flex-col gap-1" style={{ borderColor: border, background: `${border}10` }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>Customer Details</p>
               <p className="text-sm font-bold" style={{ color: text }}>{order.customer}</p>
+              {isPwdOrder ? (
+                <>
+                  {order.seniorPwdStreet && (
+                    <p className="text-xs font-semibold" style={{ color: muted }}>
+                      Address: <span style={{ color: text }}>
+                        {`${order.seniorPwdStreet}, ${order.seniorPwdBarangay || ""}, ${order.seniorPwdCity || ""}, ${order.seniorPwdProvince || ""} ${order.seniorPwdZipCode || ""}`.replace(/,\s*,/g, ",").trim()}
+                      </span>
+                    </p>
+                  )}
+                  <p className="text-xs font-semibold" style={{ color: muted }}>
+                    PWD ID: <span style={{ color: text }}>{order.seniorPwdId}</span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  {order.deliveryAddress && (
+                    <p className="text-xs font-semibold" style={{ color: muted }}>
+                      Address: <span style={{ color: text }}>{order.deliveryAddress}</span>
+                    </p>
+                  )}
+                  {order.customVariationNotes && (
+                    <p className="text-xs font-semibold" style={{ color: muted }}>
+                      Notes: <span style={{ color: text }}>{order.customVariationNotes}</span>
+                    </p>
+                  )}
+                </>
+              )}
               <p className="text-xs font-semibold mt-1" style={{ color: muted }}>Status: <span style={{ color: text }}>{order.paymentStatus === 'paid' ? 'Paid' : 'Pending Payment'}</span></p>
             </div>
             <div className="p-4 rounded-xl border" style={{ borderColor: border, background: `${border}10` }}>
@@ -189,19 +252,27 @@ export function ViewOrderModal({
 
           {/* Summary Section */}
           <div className="mt-8 flex justify-start">
-            <div className="w-full sm:w-1/2 p-4 rounded-xl border" style={{ borderColor: border, background: `${border}10` }}>
-              <div className="flex justify-between items-center mb-2">
+            <div className="w-full sm:w-1/2 p-4 rounded-xl border flex flex-col gap-2" style={{ borderColor: border, background: `${border}10` }}>
+              <div className="flex justify-between items-center">
                 <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: muted }}>Subtotal</span>
-                <span className="text-sm font-bold" style={{ color: text }}>₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                <span className="text-sm font-bold" style={{ color: text }}>₱{pricing.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between items-center mb-3 pb-3 border-b" style={{ borderColor: border }}>
-                <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: muted }}>Discount</span>
-                <span className="text-sm font-bold" style={{ color: text }}>₱0.00</span>
-              </div>
-              <div className="flex justify-between items-center mt-1">
+              {isPwdOrder && (
+                <>
+                  <div className="flex justify-between items-center text-red-500">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">VAT Exemption (12%)</span>
+                    <span className="text-sm font-bold">- ₱{pricing.vatExempt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-red-500">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">Senior/PWD Discount (20%)</span>
+                    <span className="text-sm font-bold">- ₱{pricing.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </>
+              )}
+              <div className="border-t pt-2 flex justify-between items-center" style={{ borderColor: border }}>
                 <span className="text-sm font-bold uppercase tracking-wider" style={{ color: text }}>Grand Total</span>
                 <span className="text-2xl font-bold" style={{ color: primary }}>
-                  ₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  ₱{pricing.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -303,9 +374,27 @@ export function ViewOrderModal({
             </div>
             
             <div className="w-1/2 flex flex-col items-end">
-              <div className="w-full border-t border-black pt-3 flex justify-between items-center text-sm font-black mb-6">
-                <span>Grand Total</span>
-                <span className="text-xl">₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <div className="w-full border-t border-black pt-3 flex flex-col gap-1 text-sm mb-6">
+                <div className="flex justify-between">
+                  <span className="font-bold text-gray-500">Subtotal</span>
+                  <span>₱{pricing.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                {isPwdOrder && (
+                  <>
+                    <div className="flex justify-between text-red-600">
+                      <span>VAT Exemption (12%)</span>
+                      <span>- ₱{pricing.vatExempt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between text-red-600">
+                      <span>Senior/PWD Discount (20%)</span>
+                      <span>- ₱{pricing.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  </>
+                )}
+                <div className="border-t border-black pt-2 flex justify-between font-black text-base">
+                  <span>Grand Total</span>
+                  <span>₱{pricing.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
               </div>
 
               {isWebOrder && order.paymentUrl && (
