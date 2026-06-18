@@ -76,7 +76,7 @@ export default function ViewOrderManagement() {
       id: dto.orderId?.toString() || "0",
       type: (dto.orderType?.toLowerCase() as "walk-in" | "store" | "online" | "institutional") || "online",
       source: dto.orderSource,
-      customer: dto.customerId ? `Customer ${dto.customerId}` : "Customer",
+      customer: dto.contactPerson ? dto.contactPerson : (dto.customerId ? `Customer ${dto.customerId}` : "Customer"),
       items: dto.items && dto.items.length > 0
         ? dto.items.map((i) => ({
             name: i.productName || "Order Item",

@@ -47,6 +47,13 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Manual Receive Stock Dialog state
+  const [showManualDialog, setShowManualDialog] = useState(false);
+  const [manualVariationId, setManualVariationId] = useState("");
+  const [manualLocationId, setManualLocationId] = useState("");
+  const [manualQuantity, setManualQuantity] = useState("");
+  const [manualNotes, setManualNotes] = useState("");
+
   const { theme } = useTheme();
   const dark = theme === "dark";
   const border = dark ? "#2d3748" : "#e4e7ec";
@@ -101,6 +108,9 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
       }))
   );
 
+  // Non-commissary locations for the manual form
+  const receivableLocations = locations.filter((l) => l.locationId !== 999 && l.isActive !== false);
+
   const filteredTransfers = transfers.filter((t) =>
     t.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     t.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -129,6 +139,46 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
     });
   };
 
+  const handleManualSubmit = () => {
+    if (!manualVariationId || !manualLocationId || !manualQuantity) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+    const qty = Number(manualQuantity);
+    if (isNaN(qty) || qty <= 0 || qty > 100000) {
+      toast.error("Quantity must be between 1 and 100,000.");
+      return;
+    }
+    if (manualNotes && /[<>]/.test(manualNotes)) {
+      toast.error("Notes cannot contain HTML characters (<, >).");
+      return;
+    }
+
+    const matchedVar = allVariations.find((v) => v.variationId === manualVariationId);
+    if (!matchedVar) {
+      toast.error("Selected variation not found.");
+      return;
+    }
+
+    onSuccess({
+      variationId: matchedVar.variationId,
+      productName: matchedVar.productName,
+      variationName: matchedVar.variationName,
+      locationId: Number(manualLocationId),
+      quantity: qty,
+      reference: "Manual Entry",
+      notes: manualNotes.trim() || "Manual stock receiving",
+      transferId: 0,
+    });
+
+    // Reset form and close dialog
+    setShowManualDialog(false);
+    setManualVariationId("");
+    setManualLocationId("");
+    setManualQuantity("");
+    setManualNotes("");
+  };
+
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -138,31 +188,156 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
             Confirm stock arrivals sent from the commissary.
           </p>
         </div>
-        <button
-          onClick={loadData}
-          disabled={isLoading}
-          className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm disabled:opacity-50"
-        >
-          {isLoading ? (
-            <div style={{ width: 16, height: 16, marginRight: 8 }} className="border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-          ) : (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowManualDialog(true)}
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-xl text-white bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm shadow-brand-500/20"
+          >
             <svg
               style={{ width: 16, height: 16, marginRight: 8, display: "inline-block", verticalAlign: "middle" }}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
             </svg>
-          )}
-          Refresh
-        </button>
+            Add Receive Stock
+          </button>
+          <button
+            onClick={loadData}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm disabled:opacity-50"
+          >
+            {isLoading ? (
+              <div style={{ width: 16, height: 16, marginRight: 8 }} className="border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <svg
+                style={{ width: 16, height: 16, marginRight: 8, display: "inline-block", verticalAlign: "middle" }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+            )}
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {/* Manual Receive Stock Dialog */}
+      {showManualDialog && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
+            {/* Dialog Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Add Receive Stock</h2>
+              <button
+                onClick={() => setShowManualDialog(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Dialog Body */}
+            <div className="px-6 py-5 flex flex-col gap-5 overflow-y-auto">
+              {/* Product Variation Select */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Product Variation <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={manualVariationId}
+                  onChange={(e) => setManualVariationId(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit"
+                >
+                  <option value="">Select a product variation...</option>
+                  {allVariations.map((v) => (
+                    <option key={v.variationId} value={v.variationId}>
+                      {v.productName} — {v.variationName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Location Select */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Location <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={manualLocationId}
+                  onChange={(e) => setManualLocationId(e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit"
+                >
+                  <option value="">Select a location...</option>
+                  {receivableLocations.map((loc) => (
+                    <option key={loc.locationId} value={loc.locationId}>
+                      {loc.locationName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Quantity */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Quantity <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100000"
+                  value={manualQuantity}
+                  onChange={(e) => setManualQuantity(e.target.value)}
+                  placeholder="Enter quantity received"
+                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit"
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Notes
+                </label>
+                <textarea
+                  value={manualNotes}
+                  onChange={(e) => setManualNotes(e.target.value)}
+                  placeholder="Optional notes..."
+                  maxLength={500}
+                  rows={3}
+                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Dialog Footer */}
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+              <button
+                onClick={() => setShowManualDialog(false)}
+                className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleManualSubmit}
+                disabled={!manualVariationId || !manualLocationId || !manualQuantity}
+                className="px-5 py-2 text-sm font-bold rounded-xl text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm shadow-brand-500/20"
+              >
+                Receive Stock
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter and search */}
       <div className="relative w-full max-w-md">

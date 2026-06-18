@@ -81,9 +81,18 @@ export default function ViewSalesProcessing() {
     const fetchProducts = async () => {
       try {
         const locationIdVal = authUser.locationId || 1;
-        const { data } = await apiClient.apiPos.orderEntryProductGridList({ locationId: locationIdVal });
-        if (data) {
-          const mapped = data.map(p => ({
+        const apiGatewayUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/';
+        const basePosUrl = `${apiGatewayUrl.replace(/\/$/, '')}/api/pos`;
+        
+        // Fetch products directly with a cache-buster to ensure we always get the latest items
+        // Gateway: /api/pos → strips prefix → forwards to api-pos, so path needs /api-pos/ prefix
+        const response = await axios.get(`${basePosUrl}/api-pos/order-entry/product-grid?locationId=${locationIdVal}&_t=${Date.now()}`, {
+          withCredentials: true
+        });
+        
+        if (response.data) {
+          const data = response.data;
+          const mapped = data.map((p: any) => ({
             id: p.variationId?.toString() || "0",
             name: p.productName || "Unknown",
             variation: p.variationName || "Unknown",

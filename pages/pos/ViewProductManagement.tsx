@@ -246,6 +246,23 @@ export default function ViewProductManagement() {
             Manage products and variations · Admin only
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          {activeTab === "products" ? (
+            <button
+              onClick={openAddProduct}
+              className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            >
+              Add Product
+            </button>
+          ) : (
+            <button
+              onClick={openAddVariation}
+              className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            >
+              Add Variation
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stat cards */}
