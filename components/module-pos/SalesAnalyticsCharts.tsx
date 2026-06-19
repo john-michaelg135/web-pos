@@ -16,7 +16,6 @@ interface SalesAnalyticsChartsProps {
 
 export function SalesAnalyticsCharts({ dateFrom, dateTo }: SalesAnalyticsChartsProps) {
   const [timeframe, setTimeframe] = useState<"daily" | "weekly" | "monthly">("daily");
-  const [chartType, setChartType] = useState<"bar" | "line">("bar");
   const [activeData, setActiveData] = useState<AnalyticsData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -109,22 +108,7 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo }: SalesAnalyticsChartsP
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mb-6">
-        <button 
-          onClick={() => setChartType("bar")}
-          className={`flex items-center gap-2 text-xs font-bold ${chartType === 'bar' ? 'text-brand-600' : 'text-gray-400 hover:text-gray-600 transition-colors'}`}
-        >
-          <div className={`w-3 h-3 rounded-sm ${chartType === 'bar' ? 'bg-brand-500' : 'bg-gray-200 dark:bg-gray-700'}`}></div>
-          Bar Chart
-        </button>
-        <button 
-          onClick={() => setChartType("line")}
-          className={`flex items-center gap-2 text-xs font-bold ${chartType === 'line' ? 'text-brand-600' : 'text-gray-400 hover:text-gray-600 transition-colors'}`}
-        >
-          <div className={`w-3 h-3 rounded-full border-2 ${chartType === 'line' ? 'border-brand-500 bg-white dark:bg-gray-900' : 'border-gray-200 dark:border-gray-700'}`}></div>
-          Line Chart
-        </button>
-      </div>
+
 
       <div className="relative h-[300px] w-full mt-4">
         {isLoading ? (
@@ -149,49 +133,7 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo }: SalesAnalyticsChartsP
                 ))}
                 </div>
 
-                {/* SVG Line & Area Glow for Line Chart */}
-                <div className="absolute left-10 right-0 top-0 h-full pointer-events-none px-4">
-                {chartType === "line" && activeData.length > 0 && (
-                    <svg className="w-full h-full overflow-visible" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <defs>
-                        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                        </linearGradient>
-                    </defs>
-                    
-                    {/* Area Gradient Glow */}
-                    <path
-                        d={
-                        activeData.map((d, i) => {
-                            const height = (d.sales / (maxSales * 1.2)) * 100;
-                            const x = ((i + 0.5) / activeData.length) * 100;
-                            const y = 100 - height;
-                            return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-                        }).join(" ") +
-                        ` L ${((activeData.length - 1 + 0.5) / activeData.length) * 100} 100 L ${0.5 / activeData.length * 100} 100 Z`
-                        }
-                        fill="url(#chartGradient)"
-                    />
 
-                    {/* Connecting Line */}
-                    <path
-                        d={activeData.map((d, i) => {
-                        const height = (d.sales / (maxSales * 1.2)) * 100;
-                        const x = ((i + 0.5) / activeData.length) * 100;
-                        const y = 100 - height;
-                        return `${i === 0 ? "M" : "L"} ${x} ${y}`;
-                        }).join(" ")}
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="3"
-                        vectorEffect="non-scaling-stroke"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                    </svg>
-                )}
-                </div>
 
                 {/* Chart Content */}
                 <div className="absolute left-10 right-0 top-0 h-full flex items-end justify-around px-4">
@@ -208,19 +150,10 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo }: SalesAnalyticsChartsP
                         <div className="w-2 h-2 bg-gray-900 rotate-45 mx-auto -mt-1"></div>
                         </div>
 
-                        {chartType === "bar" ? (
                         <div 
                             className="w-4/5 bg-brand-500/80 hover:bg-brand-500 rounded-t-md transition-all duration-500 ease-out cursor-pointer shadow-sm shadow-brand-500/10"
                             style={{ height: `${height}%` }}
                         ></div>
-                        ) : (
-                        <div className="w-full h-full relative flex items-end justify-center">
-                            <div 
-                            className="absolute w-2.5 h-2.5 rounded-full bg-brand-500 border-2 border-white dark:border-gray-900 z-10 group-hover:scale-150 transition-transform cursor-pointer"
-                            style={{ bottom: `${height}%`, transform: 'translateY(50%)' }}
-                            ></div>
-                        </div>
-                        )}
                         
                         <span className="absolute top-full mt-3 text-[10px] font-bold text-gray-400 dark:text-gray-500 rotate-[30deg] origin-left whitespace-nowrap">
                         {timeframe === "daily" ? d.date.split('-').slice(1).join('/') : d.date}
