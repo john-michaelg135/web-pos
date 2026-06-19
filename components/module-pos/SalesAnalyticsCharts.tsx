@@ -170,28 +170,19 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo }: SalesAnalyticsChartsP
       <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Total Revenue</p>
-            <p className="text-xl font-black text-gray-900 dark:text-white mt-1">
+            <p className="text-2xl font-black text-gray-900 dark:text-white mt-2">
                 ₱{revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className={`text-[10px] text-success-600 font-bold mt-1 flex items-center gap-1`}>
-            All Time
             </p>
         </div>
         <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Average Order Value</p>
-            <p className="text-xl font-black text-gray-900 dark:text-white mt-1">
+            <p className="text-2xl font-black text-gray-900 dark:text-white mt-2">
                 ₱{averageOrderValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className={`text-[10px] text-success-600 font-bold mt-1 flex items-center gap-1`}>
-            All Time
             </p>
         </div>
         <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
             <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Orders Count</p>
-            <p className="text-xl font-black text-gray-900 dark:text-white mt-1">{orders.toLocaleString()}</p>
-            <p className={`text-[10px] text-success-600 font-bold mt-1 flex items-center gap-1`}>
-            All Time
-            </p>
+            <p className="text-2xl font-black text-gray-900 dark:text-white mt-2">{orders.toLocaleString()}</p>
         </div>
       </div>
     </div>
