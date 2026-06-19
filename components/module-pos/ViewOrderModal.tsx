@@ -19,6 +19,7 @@ interface ViewOrderModalProps {
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onRequestRefund?: () => void;
   onApplyRefund?: () => void;
+  onRejectRefund?: () => void;
 }
 
 export function ViewOrderModal({
@@ -33,6 +34,7 @@ export function ViewOrderModal({
   onStatusUpdate,
   onRequestRefund,
   onApplyRefund,
+  onRejectRefund,
 }: ViewOrderModalProps) {
   const { user } = useAuth();
   const handleStatusChange = async (status: OrderStatus) => {
@@ -268,7 +270,7 @@ export function ViewOrderModal({
           )}
 
           {/* Direct Status Changer (Admin / Order Manager / dev) */}
-          {isAuthorizedToEdit && (
+          {isAuthorizedToEdit && order.status !== "refund_requested" && (
             <div className="p-4 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: border, background: `${border}10` }}>
               <div className="flex flex-col gap-1 w-full sm:w-auto">
                 <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>Change Order Status</p>
@@ -445,6 +447,16 @@ export function ViewOrderModal({
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 active:scale-95 transition-all shadow-sm"
               >
                 Approve Refund
+              </button>
+            )}
+
+            {/* Reject Refund Button: visible to admin/manager when status is refund_requested */}
+            {order.status === "refund_requested" && onRejectRefund && (isDev || isOrderManager || isAdmin) && (
+              <button
+                onClick={onRejectRefund}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
+              >
+                Reject Refund
               </button>
             )}
           </div>

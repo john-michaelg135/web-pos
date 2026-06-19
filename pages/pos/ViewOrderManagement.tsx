@@ -6,6 +6,8 @@ import { Order, OrderStatus, STATUS_LABELS } from "@/components/module-pos/types
 import OrderCard from "@/components/module-pos/OrderCard";
 
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
+import RejectRefundDialog from "@/components/module-pos/RejectRefundDialog";
+import ApproveRefundDialog from "@/components/module-pos/ApproveRefundDialog";
 import OrderFilters from "@/components/module-pos/OrderFilters";
 import { OrderManagementResponseDto } from "../../components/module-pos/api/api";
 import { toast } from "sonner";
@@ -52,7 +54,7 @@ export default function ViewOrderManagement() {
   const [cashierLocationName, setCashierLocationName] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "completed" | "refunds" | "cancelled">("pending");
-  const [refundSubTab, setRefundSubTab] = useState<"requested" | "refunded">("requested");
+  const [refundSubTab, setRefundSubTab] = useState<"requested" | "refunded" | "rejected">("requested");
   const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("all");
   const [showFilters, setShowFilters] = useState(false);
 
@@ -69,6 +71,11 @@ export default function ViewOrderManagement() {
   const [remarks, setRemarks] = useState("");
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [refundReason, setRefundReason] = useState("");
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [orderToReject, setOrderToReject] = useState<Order | null>(null);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [orderToApprove, setOrderToApprove] = useState<Order | null>(null);
   const [showConfirmRefundModal, setShowConfirmRefundModal] = useState(false);
   const [orderToConfirmRefund, setOrderToConfirmRefund] = useState<Order | null>(null);
 
@@ -202,20 +209,26 @@ export default function ViewOrderManagement() {
 
 
 
-  const handleApproveRefund = async (order: Order) => {
-    if (!window.confirm(`Approve refund for Order #${order.id}? This will mark the order as Refunded and restore stocks.`)) return;
+  const handleApproveRefund = (order: Order) => {
+    setOrderToApprove(order);
+    setShowApproveDialog(true);
+  };
+
+  const handleApproveRefundSubmit = async () => {
+    if (!orderToApprove) return;
     try {
-      await apiClient.apiPos.orderManagementOrdersApproveRefundUpdate(Number(order.id), { approvedBy: 1 });
+      const managerId = Number(authUser?.id) || 1;
+      await apiClient.apiPos.orderManagementOrdersApproveRefundUpdate(Number(orderToApprove.id), { approvedBy: managerId });
       toast.success(
         <div className="flex flex-col gap-1 text-emerald-800 dark:text-emerald-200">
           <div className="font-bold">Refund approved!</div>
           <div className="text-[11px] flex items-center justify-between border-b pb-1 mb-1 border-emerald-500/20">
             <span className="text-gray-500 dark:text-gray-400">Amount deducted from sales:</span>
-            <span className="font-black text-red-500">- ₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span className="font-black text-red-500">- ₱{orderToApprove.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           <div className="text-[11px] text-gray-500 dark:text-gray-400">Restored inventory stocks:</div>
           <div className="text-[11px] flex flex-col gap-0.5 mt-1 border-t pt-1 border-emerald-500/20">
-            {order.items.map((item, idx) => (
+            {orderToApprove.items.map((item, idx) => (
               <div key={idx} className="flex justify-between gap-4">
                 <span>{item.name} ({item.variation})</span>
                 <span className="font-bold">+{item.quantity} qty</span>
@@ -230,6 +243,44 @@ export default function ViewOrderManagement() {
       console.error("Failed to approve refund:", err);
       toast.error("Failed to approve refund.");
     }
+    setShowApproveDialog(false);
+    setOrderToApprove(null);
+  };
+
+  const handleRejectRefund = (order: Order) => {
+    setOrderToReject(order);
+    setRejectReason("");
+    setShowRejectDialog(true);
+  };
+
+  const handleRejectRefundSubmit = async () => {
+    if (!orderToReject || !rejectReason.trim()) return;
+
+    if (rejectReason.trim().length > 500) {
+      toast.error("Reason must not exceed 500 characters.");
+      return;
+    }
+
+    if (/[<>]/.test(rejectReason)) {
+      toast.error("Reason cannot contain HTML characters (<, >).");
+      return;
+    }
+
+    try {
+      const managerId = Number(authUser?.id) || 1;
+      await apiClient.apiPos.orderManagementOrdersRejectRefundUpdate(Number(orderToReject.id), {
+        rejectedBy: managerId,
+        rejectionRemarks: rejectReason.trim()
+      });
+      toast.success(`Refund request for Order #${orderToReject.id} has been rejected.`);
+      fetchOrders();
+    } catch (err) {
+      console.error("Failed to reject refund:", err);
+      toast.error("Failed to reject refund.");
+    }
+    setShowRejectDialog(false);
+    setRejectReason("");
+    setOrderToReject(null);
   };
 
   const handleRequestRefundSubmit = async () => {
@@ -247,7 +298,7 @@ export default function ViewOrderManagement() {
 
     try {
       await apiClient.apiPos.orderManagementOrdersRequestRefundUpdate(Number(selectedOrder.id), { reason: refundReason });
-      toast.success("Refund requested successfully.");
+      toast.success(`Refund requested successfully for Order #${selectedOrder.id}.`);
       fetchOrders();
     } catch (err) {
       console.error("Failed to request refund:", err);
@@ -326,8 +377,15 @@ export default function ViewOrderManagement() {
   const activeOrders = filteredOrders.filter((o) => 
     o.status !== "pending" && o.status !== "awaiting_stock" && !["completed", "delivered", "rejected", "cancelled", "refund_requested", "refunded"].includes(o.status)
   );
+  const rejectedRefunds = filteredOrders.filter((o) => 
+    o.status === "completed" && 
+    (o.remarks?.toLowerCase().startsWith("refund rejected") || 
+     o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed"))
+  );
   const completedOrders = filteredOrders.filter((o) => 
-    ["completed", "delivered"].includes(o.status)
+    ["completed", "delivered"].includes(o.status) && 
+    !(o.remarks?.toLowerCase().startsWith("refund rejected") || 
+      o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed"))
   );
   const refundRequests = filteredOrders.filter((o) => o.status === "refund_requested");
   const refundedOrders = filteredOrders.filter((o) => o.status === "refunded");
@@ -458,7 +516,7 @@ export default function ViewOrderManagement() {
             onClick={() => setActiveTab("refunds")}
             style={{ flex: isMobile ? 1 : "initial", padding: isMobile ? "10px 0" : "10px 24px", borderRadius: 12, border: `1px solid ${activeTab === "refunds" ? "#ef4444" : border}`, fontSize: isMobile ? 9 : 11, fontWeight: 700, textTransform: "uppercase", cursor: "pointer", background: activeTab === "refunds" ? "rgba(239, 68, 68, 0.1)" : "transparent", color: activeTab === "refunds" ? "#ef4444" : muted, whiteSpace: "nowrap" }}
           >
-            Refunds ({refundRequests.length + refundedOrders.length})
+            Refunds ({refundRequests.length + refundedOrders.length + rejectedRefunds.length})
           </button>
           <button 
             onClick={() => setActiveTab("cancelled")}
@@ -479,12 +537,13 @@ export default function ViewOrderManagement() {
             <div className="flex items-center gap-3 no-print mb-2 w-full max-w-xs">
               <select
                 value={refundSubTab}
-                onChange={(e) => setRefundSubTab(e.target.value as "requested" | "refunded")}
+                onChange={(e) => setRefundSubTab(e.target.value as "requested" | "refunded" | "rejected")}
                 className="text-xs px-3.5 py-2.5 rounded-xl border outline-none font-bold transition-all w-full shadow-sm cursor-pointer"
                 style={{ background: cardBg, borderColor: border, color: text }}
               >
                 <option value="requested">Refund Requests ({refundRequests.length})</option>
                 <option value="refunded">Refunded ({refundedOrders.length})</option>
+                <option value="rejected">Rejected ({rejectedRefunds.length})</option>
               </select>
             </div>
           )}
@@ -494,7 +553,7 @@ export default function ViewOrderManagement() {
               activeTab === "pending" ? pendingApproval : 
               activeTab === "active" ? activeOrders : 
               activeTab === "completed" ? completedOrders : 
-              activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundedOrders) : 
+              activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : 
               cancelledOrders
             ).map((order) => (
               <OrderCard 
@@ -508,6 +567,7 @@ export default function ViewOrderManagement() {
                 inputBg={inputBg}
                 onRequestRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
                 onApplyRefund={() => handleApproveRefund(order)}
+                onRejectRefund={() => handleRejectRefund(order)}
                 onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
                 isMobile={isMobile}
               />
@@ -516,11 +576,11 @@ export default function ViewOrderManagement() {
               activeTab === "pending" ? pendingApproval : 
               activeTab === "active" ? activeOrders : 
               activeTab === "completed" ? completedOrders : 
-              activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundedOrders) : 
+              activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : 
               cancelledOrders
             ).length === 0 && (
               <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "48px 0", color: muted }}>
-                No {activeTab === "refunds" ? (refundSubTab === "requested" ? "refund request" : "refunded") : activeTab} orders found.
+                No {activeTab === "refunds" ? (refundSubTab === "requested" ? "refund request" : refundSubTab === "refunded" ? "refunded" : "rejected") : activeTab} orders found.
               </div>
             )}
           </div>
@@ -537,6 +597,38 @@ export default function ViewOrderManagement() {
         reason={refundReason}
         setReason={setRefundReason}
         onSubmit={handleRequestRefundSubmit}
+        primary={primary}
+        muted={muted}
+        border={border}
+        text={text}
+        cardBg={cardBg}
+        inputBg={inputBg}
+        isMobile={isMobile}
+      />
+
+      {/* Reject Refund Dialog */}
+      <RejectRefundDialog
+        isOpen={showRejectDialog}
+        onClose={() => setShowRejectDialog(false)}
+        order={orderToReject}
+        reason={rejectReason}
+        setReason={setRejectReason}
+        onSubmit={handleRejectRefundSubmit}
+        primary={primary}
+        muted={muted}
+        border={border}
+        text={text}
+        cardBg={cardBg}
+        inputBg={inputBg}
+        isMobile={isMobile}
+      />
+
+      {/* Approve Refund Dialog */}
+      <ApproveRefundDialog
+        isOpen={showApproveDialog}
+        onClose={() => setShowApproveDialog(false)}
+        order={orderToApprove}
+        onSubmit={handleApproveRefundSubmit}
         primary={primary}
         muted={muted}
         border={border}

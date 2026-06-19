@@ -19,6 +19,7 @@ interface OrderCardProps {
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onRequestRefund?: () => void;
   onApplyRefund?: () => void;
+  onRejectRefund?: () => void;
   isMobile?: boolean;
 }
 
@@ -33,6 +34,7 @@ export default function OrderCard({
   onStatusUpdate,
   onRequestRefund,
   onApplyRefund,
+  onRejectRefund,
   isMobile,
 }: OrderCardProps) {
   const { user } = useAuth();
@@ -379,6 +381,7 @@ export default function OrderCard({
         onStatusUpdate={onStatusUpdate}
         onRequestRefund={onRequestRefund}
         onApplyRefund={onApplyRefund}
+        onRejectRefund={onRejectRefund}
       />
     </div>
   );
