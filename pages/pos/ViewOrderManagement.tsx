@@ -172,18 +172,20 @@ export default function ViewOrderManagement() {
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
       const isWebOrder = o.type.toLowerCase() === "online" || o.source?.toLowerCase() === "e-commerce" || o.source?.toLowerCase() === "ecommerce";
+      const isRefundStatus = o.status === "refund_requested" || o.status === "refunded";
 
       // Cashier security lock: Can only see their own location's orders, and cannot see online/web orders at all
+      // EXCEPTION: E-commerce refund requests are allowed to reflect in the POS refunds tab
       if (authUser?.subRole === "Cashier") {
-        if (isWebOrder) {
+        if (isWebOrder && !isRefundStatus) {
           return false;
         }
-        if (cashierLocationName && o.location.toLowerCase() !== cashierLocationName.toLowerCase()) {
+        if (cashierLocationName && o.location.toLowerCase() !== cashierLocationName.toLowerCase() && !isRefundStatus) {
           return false;
         }
       }
 
-      if (channelTab === "pos" && isWebOrder) return false;
+      if (channelTab === "pos" && isWebOrder && !isRefundStatus) return false;
       if (channelTab === "web" && !isWebOrder) return false;
       if (searchQuery && !o.id.toLowerCase().includes(searchQuery.toLowerCase()) && !o.customer.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       if (filterType !== "All" && o.type.toLowerCase() !== filterType.toLowerCase()) return false;
