@@ -270,7 +270,7 @@ export function ViewOrderModal({
           )}
 
           {/* Direct Status Changer (Admin / Order Manager / dev) */}
-          {isAuthorizedToEdit && order.status !== "refund_requested" && (
+          {isAuthorizedToEdit && order.status !== "refund_requested" && order.status !== "refunded" && order.status !== "rejected" && order.status !== "cancelled" && (
             <div className="p-4 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: border, background: `${border}10` }}>
               <div className="flex flex-col gap-1 w-full sm:w-auto">
                 <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>Change Order Status</p>

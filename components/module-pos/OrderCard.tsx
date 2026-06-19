@@ -58,7 +58,7 @@ export default function OrderCard({
         borderRadius: 16,
         padding: isMobile ? 16 : 40,
         boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)",
-        opacity: isRejected ? 0.7 : 1,
+        opacity: 1,
         display: "flex",
         flexDirection: "column",
         height: "100%",

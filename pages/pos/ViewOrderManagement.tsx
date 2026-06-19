@@ -377,11 +377,13 @@ export default function ViewOrderManagement() {
   const activeOrders = filteredOrders.filter((o) => 
     o.status !== "pending" && o.status !== "awaiting_stock" && !["completed", "delivered", "rejected", "cancelled", "refund_requested", "refunded"].includes(o.status)
   );
-  const rejectedRefunds = filteredOrders.filter((o) => 
-    o.status === "completed" && 
-    (o.remarks?.toLowerCase().startsWith("refund rejected") || 
-     o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed"))
-  );
+  const rejectedRefunds = filteredOrders
+    .filter((o) => 
+      o.status === "completed" && 
+      (o.remarks?.toLowerCase().startsWith("refund rejected") || 
+       o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed"))
+    )
+    .map((o) => ({ ...o, status: "rejected" as const }));
   const completedOrders = filteredOrders.filter((o) => 
     ["completed", "delivered"].includes(o.status) && 
     !(o.remarks?.toLowerCase().startsWith("refund rejected") || 
