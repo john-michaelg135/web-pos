@@ -755,3 +755,8 @@ span.flatpickr-weekday,
 .search-input::placeholder {
   color: #667085;
 }
+
+/* Hide Edit Profile link in POS user dropdown */
+a[href="/profile"] {
+  display: none !important;
+}
