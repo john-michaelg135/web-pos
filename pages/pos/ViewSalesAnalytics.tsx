@@ -18,6 +18,7 @@ interface TopSellingVariation {
   name: string;
   sales: number;
   percent: number;
+  amount: number;
 }
 
 export function ViewSalesAnalytics() {
@@ -49,7 +50,8 @@ export function ViewSalesAnalytics() {
           .map(item => ({
             name: item.label || "Unknown",
             sales: Number(item.totalUnitsSold) || 0,
-            percent: 0
+            percent: 0,
+            amount: Number(item.totalRevenue) || 0
           }))
           .sort((a, b) => b.sales - a.sales)
           .slice(0, 10) // Top 10
@@ -63,9 +65,9 @@ export function ViewSalesAnalytics() {
         console.error("Failed to fetch top selling variations:", err);
         // Fallback for demo if API fails
         setTopSellingData([
-          { name: "Ube Halaya - 500g Jar", sales: 420, percent: 85 },
-          { name: "Ube Jam - 300g Jar", sales: 280, percent: 62 },
-          { name: "Ube Halaya - 300g Jar", sales: 150, percent: 45 },
+          { name: "Ube Halaya - 500g Jar", sales: 420, percent: 85, amount: 159180 },
+          { name: "Ube Jam - 300g Jar", sales: 280, percent: 62, amount: 78120 },
+          { name: "Ube Halaya - 300g Jar", sales: 150, percent: 45, amount: 41850 },
         ]);
       } finally {
         setIsLoading(false);
@@ -259,12 +261,14 @@ export function ViewSalesAnalytics() {
                       <th className="px-4 py-1.5 border border-gray-300 dark:border-gray-700 text-center font-normal hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer">A</th>
                       <th className="px-4 py-1.5 border border-gray-300 dark:border-gray-700 text-center font-normal hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer">B</th>
                       <th className="px-4 py-1.5 border border-gray-300 dark:border-gray-700 text-center font-normal hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer">C</th>
+                      <th className="px-4 py-1.5 border border-gray-300 dark:border-gray-700 text-center font-normal hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer">D</th>
                     </tr>
                     <tr className="bg-white dark:bg-gray-900">
                       <td className="px-3 py-2 border border-gray-300 dark:border-gray-700 text-center font-normal bg-gray-100 dark:bg-gray-800 text-gray-500">1</td>
                       <th className="px-4 py-2 border border-gray-300 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Name</th>
                       <th className="px-4 py-2 border border-gray-300 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Sales (units)</th>
                       <th className="px-4 py-2 border border-gray-300 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Percent</th>
+                      <th className="px-4 py-2 border border-gray-300 dark:border-gray-700 font-semibold text-gray-900 dark:text-white">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -274,6 +278,7 @@ export function ViewSalesAnalytics() {
                         <td className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 whitespace-nowrap">{item.name}</td>
                         <td className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-right">{item.sales}</td>
                         <td className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-right">{item.percent}%</td>
+                        <td className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200 text-right">₱{item.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -291,8 +296,8 @@ export function ViewSalesAnalytics() {
               </button>
               <button 
                 onClick={() => {
-                  let csvContent = "data:text/csv;charset=utf-8,Name,Sales (units),Percent\n" 
-                    + topSellingData.map(e => `"${e.name}",${e.sales},${e.percent}%`).join("\n");
+                  let csvContent = "data:text/csv;charset=utf-8,Name,Sales (units),Percent,Amount\n" 
+                    + topSellingData.map(e => `"${e.name}",${e.sales},${e.percent}%,${e.amount}`).join("\n");
                   const encodedUri = encodeURI(csvContent);
                   const link = document.createElement("a");
                   link.setAttribute("href", encodedUri);

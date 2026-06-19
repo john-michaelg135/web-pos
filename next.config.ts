@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  transpilePackages: ["@r3b2p/uilib"],
   /* config options here */
   turbopack: {
     rules: {
