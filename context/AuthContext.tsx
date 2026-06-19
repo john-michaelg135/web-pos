@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import apiAuth from "../lib/apiAuth";
 import api from "../lib/api";
 
 type User = {
@@ -42,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const validate = async (): Promise<User | null> => {
     try {
-      const res = await api.get("/api/erp-auth/validate");
+      const res = await apiAuth.get("/api/erp-auth/validate");
       const userData = res.data.user;
       if (!userData) return null;
 
@@ -72,14 +73,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refresh = async (): Promise<boolean> => {
     try {
-      await api.post("/api/erp-auth/refresh");
+      await apiAuth.post("/api/erp-auth/refresh");
       return true;
     } catch { return false; }
   };
 
   const logout = async (): Promise<void> => {
     try {
-      await api.post("/api/erp-auth/logout");
+      await apiAuth.post("/api/erp-auth/logout");
     } finally {
       setUser(null);
     }
