@@ -130,7 +130,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                         {stock.productName}
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                        <span className="inline-block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                           {stock.locationName}
                         </span>
                       </td>

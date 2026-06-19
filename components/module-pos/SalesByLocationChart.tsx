@@ -9,6 +9,7 @@ interface SalesByLocationChartProps {
 export function SalesByLocationChart({ dateFrom, dateTo }: SalesByLocationChartProps) {
   const [data, setData] = useState<{ label: string; value: number; color: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPercentage, setShowPercentage] = useState(true);
 
   // Colors for pie chart
   const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#14b8a6", "#8b5cf6", "#ef4444"];
@@ -51,7 +52,31 @@ export function SalesByLocationChart({ dateFrom, dateTo }: SalesByLocationChartP
 
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col h-full">
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Sales by Location</h3>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Sales by Location</h3>
+        <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setShowPercentage(true)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+              ${showPercentage
+                ? "bg-white dark:bg-gray-700 text-brand-500 shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              }`}
+          >
+            Percentage
+          </button>
+          <button
+            onClick={() => setShowPercentage(false)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+              ${!showPercentage
+                ? "bg-white dark:bg-gray-700 text-brand-500 shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              }`}
+          >
+            Amount
+          </button>
+        </div>
+      </div>
       
       {isLoading ? (
         <div className="flex-1 flex justify-center items-center p-8">
@@ -105,7 +130,10 @@ export function SalesByLocationChart({ dateFrom, dateTo }: SalesByLocationChartP
                   <span className="text-gray-600 dark:text-gray-300 truncate font-medium">{item.label}</span>
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white ml-2">
-                  {Math.round((item.value / total) * 100)}%
+                  {showPercentage 
+                    ? `${Math.round((item.value / total) * 100)}%`
+                    : `₱${item.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  }
                 </span>
               </div>
             ))}

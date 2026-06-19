@@ -91,7 +91,7 @@ export function ViewSalesAnalytics() {
 
   if (!isMounted) return null;
   return (
-    <div id="printable-report" className="w-full p-4 md:p-6 bg-gray-50 dark:bg-gray-950 flex flex-col gap-4 md:gap-6 animate-in fade-in duration-500">
+    <div id="printable-report" className="w-full p-4 md:p-6 bg-transparent flex flex-col gap-4 md:gap-6 animate-in fade-in duration-500">
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * {

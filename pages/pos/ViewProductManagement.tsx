@@ -237,7 +237,7 @@ export default function ViewProductManagement() {
   }
 
   return (
-    <div className="w-full h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-950 flex flex-col gap-4 md:gap-6 overflow-y-auto">
+    <div className="w-full h-screen p-4 md:p-6 bg-transparent flex flex-col gap-4 md:gap-6 overflow-y-auto">
       {/* Header */}
       <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

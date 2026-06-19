@@ -672,7 +672,7 @@ export default function ViewSalesProcessing() {
                       <DocsIcon viewBox="0 0 24 24" style={{ width: 16, height: 16, color: primary }} />
                     </div>
                     <div>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: primary, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>Institutional Mode</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: primary, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>Institutional Order</p>
                     </div>
                   </div>
                   <button
@@ -1021,7 +1021,7 @@ export default function ViewSalesProcessing() {
   if (!isMounted) return null;
 
   return (
-    <div className="w-full h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-950 flex flex-col gap-4 md:gap-6 overflow-y-auto animate-in fade-in duration-500" style={{ color: text }}>
+    <div className="w-full h-screen p-4 md:p-6 bg-transparent flex flex-col gap-4 md:gap-6 overflow-y-auto animate-in fade-in duration-500" style={{ color: text }}>
       <style>{`
         /* Custom thin scrollbar styling */
         .custom-scrollbar::-webkit-scrollbar {

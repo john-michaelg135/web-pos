@@ -430,7 +430,7 @@ export default function ViewOrderManagement() {
   if (!isMounted) return null;
 
   return (
-    <div className="w-full h-screen p-4 md:p-6 bg-gray-50 dark:bg-gray-950 flex flex-col gap-4 md:gap-6 overflow-y-auto" style={{ color: text }}>
+    <div className="w-full h-screen p-4 md:p-6 bg-transparent flex flex-col gap-4 md:gap-6 overflow-y-auto" style={{ color: text }}>
       {/* Header */}
       <div className="flex-shrink-0" style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 20 : 0 }}>
         <div>
