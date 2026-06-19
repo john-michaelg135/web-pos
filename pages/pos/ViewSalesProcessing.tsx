@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useAuth } from "@/context/AuthContext";
 import { AccessDenied } from "@/components/module-pos/AccessDenied";
-
+import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 
 const MinusIcon = ({ style }: { style?: React.CSSProperties }) => (
   <svg
@@ -138,6 +138,15 @@ export default function ViewSalesProcessing() {
 
   const user = { id: "U-001", name: "Ana Reyes", role: "manager", location: "Store", username: "manager" };
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [itemToRemove, setItemToRemove] = useState<{ id: string; name: string } | null>(null);
+
+  const confirmRemoveItem = () => {
+    if (itemToRemove) {
+      setCart((prev) => prev.filter((i) => i.id !== itemToRemove.id));
+      setItemToRemove(null);
+    }
+  };
+
   const [isInstitutional, setIsInstitutional] = useState(false);
   const [isPreOrder, setIsPreOrder] = useState(false);
   const [notes, setNotes] = useState("");
@@ -230,6 +239,14 @@ export default function ViewSalesProcessing() {
   };
 
   const updateQuantity = (id: string, delta: number) => {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+    const currentQty = typeof item.quantity === "number" ? item.quantity : 1;
+    if (currentQty === 1 && delta === -1) {
+      setItemToRemove({ id: item.id, name: item.name });
+      return;
+    }
+
     setCart((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -271,7 +288,10 @@ export default function ViewSalesProcessing() {
     }
   };
 
-  const removeFromCart = (id: string) => setCart((prev) => prev.filter((i) => i.id !== id));
+  const removeFromCart = (id: string) => {
+    const item = cart.find((i) => i.id === id);
+    if (item) setItemToRemove({ id: item.id, name: item.name });
+  };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * (Number(item.quantity) || 0), 0);
 
@@ -454,6 +474,16 @@ export default function ViewSalesProcessing() {
         customerDetails: isInstitutional ? { notes, street, barangay, city, province, zipCode, contactPerson, contactNumber } : null,
       };
 
+      const deductStocks = () => {
+        setProducts(prev => prev.map(p => {
+          const cartItem = cart.find(c => c.id === p.id);
+          if (cartItem) {
+            return { ...p, stock: Math.max(0, p.stock - (Number(cartItem.quantity) || 0)) };
+          }
+          return p;
+        }));
+      };
+
       let orderId = `ORD-${String(Math.floor(Math.random() * 9000) + 1000)}`;
       try {
         const items = cart.map(item => ({
@@ -498,6 +528,7 @@ export default function ViewSalesProcessing() {
 
             if (response && response.paymentUrl) {
                 const url = response.paymentUrl;
+                deductStocks();
                 setCart([]);
                 setNotes("");
                 setStreet("");
@@ -534,6 +565,7 @@ export default function ViewSalesProcessing() {
         console.log("Generating receipt for order:", orderId);
       }
       setLastOrder({ id: orderId, total });
+      deductStocks();
       setCart([]);
       setNotes("");
       setStreet("");
@@ -1117,6 +1149,14 @@ export default function ViewSalesProcessing() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmDialog
+        isOpen={!!itemToRemove}
+        onClose={() => setItemToRemove(null)}
+        onConfirm={confirmRemoveItem}
+        title="Remove Item"
+        message={`Are you sure you want to remove ${itemToRemove?.name || "this item"} from the cart?`}
+      />
 
       {/* Checkout Dialog */}
       {showCheckoutDialog && (
