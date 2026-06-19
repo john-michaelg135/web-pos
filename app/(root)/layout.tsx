@@ -90,23 +90,7 @@ function RootLayoutInner({ children }: { children: React.ReactNode }) {
   if (isLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   if (!user) return null;
 
-  const isUserAdmin = user?.role === "Admin" || user?.subRole === "Admin" || user?.username === "posuser";
-
-  const filteredNavItems = navItems.map(item => {
-    if (item.app === "point-of-sale" && isUserAdmin) {
-      const hasLocations = item.subItems?.some(s => s.path === "/admin/locations");
-      if (!hasLocations) {
-        return {
-          ...item,
-          subItems: [
-            ...(item.subItems || []),
-            { name: "Locations Management", path: "/admin/locations", app: "point-of-sale", baseUrl: process.env.NEXT_PUBLIC_POS_URL }
-          ]
-        };
-      }
-    }
-    return item;
-  });
+  const filteredNavItems = navItems;
 
   return (
     <AuthLayout
