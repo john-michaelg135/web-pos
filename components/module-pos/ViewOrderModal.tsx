@@ -6,6 +6,7 @@ import { Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types
 import { renderVariationBadges } from "./utils";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 interface ViewOrderModalProps {
   order: Order;
@@ -277,16 +278,15 @@ export function ViewOrderModal({
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 m-0">Directly transition this order to another valid delivery status.</p>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <select
+                <CustomSelect
                   value={tempStatus}
-                  onChange={(e) => setTempStatus(e.target.value as OrderStatus)}
-                  className="text-xs px-3 py-2 rounded-lg border outline-none font-bold transition-all w-full sm:w-auto"
-                  style={{ background: cardBg, borderColor: border, color: text }}
-                >
-                  {allowedStatuses.map((val) => (
-                    <option key={val} value={val}>{STATUS_LABELS[val]}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setTempStatus(val as OrderStatus)}
+                  className="w-full sm:w-auto"
+                  options={allowedStatuses.map((val) => ({
+                    value: val,
+                    label: STATUS_LABELS[val]
+                  }))}
+                />
                 <button
                   onClick={() => {
                     if (tempStatus === order.status) {

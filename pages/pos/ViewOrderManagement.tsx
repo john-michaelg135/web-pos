@@ -9,6 +9,7 @@ import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
 import RejectRefundDialog from "@/components/module-pos/RejectRefundDialog";
 import ApproveRefundDialog from "@/components/module-pos/ApproveRefundDialog";
 import OrderFilters from "@/components/module-pos/OrderFilters";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { OrderManagementResponseDto } from "../../components/module-pos/api/api";
 import { toast } from "sonner";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
@@ -537,16 +538,16 @@ export default function ViewOrderManagement() {
         <div className="flex flex-col gap-4 w-full">
           {activeTab === "refunds" && (
             <div className="flex items-center gap-3 no-print mb-2 w-full max-w-xs">
-              <select
+              <CustomSelect
                 value={refundSubTab}
-                onChange={(e) => setRefundSubTab(e.target.value as "requested" | "refunded" | "rejected")}
-                className="text-xs px-3.5 py-2.5 rounded-xl border outline-none font-bold transition-all w-full shadow-sm cursor-pointer"
-                style={{ background: cardBg, borderColor: border, color: text }}
-              >
-                <option value="requested">Refund Requests ({refundRequests.length})</option>
-                <option value="refunded">Refunded ({refundedOrders.length})</option>
-                <option value="rejected">Rejected ({rejectedRefunds.length})</option>
-              </select>
+                onChange={(val) => setRefundSubTab(val as "requested" | "refunded" | "rejected")}
+                className="w-full max-w-xs"
+                options={[
+                  { value: "requested", label: `Refund Requests (${refundRequests.length})` },
+                  { value: "refunded", label: `Refunded (${refundedOrders.length})` },
+                  { value: "rejected", label: `Rejected (${rejectedRefunds.length})` },
+                ]}
+              />
             </div>
           )}
 

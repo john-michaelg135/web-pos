@@ -11,6 +11,7 @@ import { apiClient } from "@/components/module-pos/api";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 import { useAuth } from "@/context/AuthContext";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { AccessDenied } from "@/components/module-pos/AccessDenied";
 
 import { useRouter } from "next/navigation";
@@ -286,17 +287,16 @@ export function ViewStockManagement() {
                 {/* Location Select Filter */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Location:</span>
-                  <select
+                  <CustomSelect
                     value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    onChange={(val) => setSelectedLocation(val)}
                     disabled={authUser?.subRole === "Cashier"}
-                    className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all cursor-pointer font-outfit disabled:opacity-60"
-                  >
-                    {authUser?.subRole !== "Cashier" && <option value="All">All Locations</option>}
-                    {locations.map(loc => (
-                      <option key={loc.locationId} value={loc.locationName}>{loc.locationName}</option>
-                    ))}
-                  </select>
+                    className="w-48"
+                    options={[
+                      ...(authUser?.subRole !== "Cashier" ? [{ value: "All", label: "All Locations" }] : []),
+                      ...locations.map(loc => ({ value: loc.locationName, label: loc.locationName }))
+                    ]}
+                  />
                 </div>
 
                 {/* View Mode Toggle */}

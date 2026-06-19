@@ -3,6 +3,7 @@
 import React from "react";
 import { STATUS_LABELS } from "@/components/module-pos/types";
 import { useAuth } from "@/context/AuthContext";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 interface OrderFiltersProps {
   show: boolean;
@@ -94,51 +95,46 @@ export default function OrderFilters({
       >
         <div>
           <label style={labelStyle}>Order Type</label>
-          <select
+          <CustomSelect
             style={inputStyle}
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-          >
-            <option value="all">All Types</option>
-            <option value="walk-in">Walk-in</option>
-            <option value="online">Online</option>
-            <option value="institutional">Institutional</option>
-          </select>
+            onChange={(val) => setFilterType(val)}
+            options={[
+              { value: "all", label: "All Types" },
+              { value: "walk-in", label: "Walk-in" },
+              { value: "online", label: "Online" },
+              { value: "institutional", label: "Institutional" },
+            ]}
+          />
         </div>
         <div>
           <label style={labelStyle}>Status</label>
-          <select
+          <CustomSelect
             style={inputStyle}
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-          >
-            <option value="all">All Statuses</option>
-            {Object.entries(STATUS_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>
-                {label}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setFilterStatus(val)}
+            options={[
+              { value: "all", label: "All Statuses" },
+              ...Object.entries(STATUS_LABELS).map(([val, label]) => ({ value: val, label: label as string }))
+            ]}
+          />
         </div>
         <div>
           <label style={labelStyle}>Location</label>
-          <select
-            style={{ ...inputStyle, opacity: isCashier ? 0.6 : 1, cursor: isCashier ? "not-allowed" : "pointer" }}
+          <CustomSelect
+            style={{ ...inputStyle, opacity: isCashier ? 0.6 : 1 }}
             value={filterLocation}
-            onChange={(e) => setFilterLocation(e.target.value)}
+            onChange={(val) => setFilterLocation(val)}
             disabled={isCashier}
-          >
-            {isCashier ? (
-              <option value={filterLocation}>{filterLocation}</option>
-            ) : (
-              <>
-                <option value="all">All Locations</option>
-                <option value="Store">Store</option>
-                <option value="Bazaar">Bazaar</option>
-                <option value="Online">Online</option>
-              </>
-            )}
-          </select>
+            options={isCashier ? [
+              { value: filterLocation, label: filterLocation }
+            ] : [
+              { value: "all", label: "All Locations" },
+              { value: "Store", label: "Store" },
+              { value: "Bazaar", label: "Bazaar" },
+              { value: "Online", label: "Online" },
+            ]}
+          />
         </div>
       </div>
 
@@ -160,15 +156,16 @@ export default function OrderFilters({
         </div>
         <div>
           <label style={labelStyle}>Order Category</label>
-          <select
+          <CustomSelect
             style={inputStyle}
             value={filterPreOrder}
-            onChange={(e) => setFilterPreOrder(e.target.value)}
-          >
-            <option value="all">All Categories</option>
-            <option value="regular">Regular Orders</option>
-            <option value="pre-order">Pre-orders Only</option>
-          </select>
+            onChange={(val) => setFilterPreOrder(val)}
+            options={[
+              { value: "all", label: "All Categories" },
+              { value: "regular", label: "Regular Orders" },
+              { value: "pre-order", label: "Pre-orders Only" },
+            ]}
+          />
         </div>
         <div style={{ display: "flex", alignItems: "flex-end" }}>
           <button

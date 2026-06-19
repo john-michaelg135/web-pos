@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { Product, ProductCategory } from "@/components/module-pos/types";
 import { PRODUCT_CATEGORIES } from "@/components/module-pos/types";
 import { CloseLineIcon } from "@/icons/index";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 interface ProductFormDialogProps {
   isOpen:   boolean;
@@ -157,19 +158,18 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                 Category <span className="text-error-500">*</span>
               </label>
-              <select
+              <CustomSelect
                 value={category}
-                onChange={(e) => setCategory(e.target.value as ProductCategory)}
-                onBlur={() => handleBlur("category")}
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-                  errors.category ? "border-error-500" : "border-gray-200 dark:border-gray-700"
-                }`}
-              >
-                <option value="">Select category</option>
-                {PRODUCT_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                onChange={(val) => {
+                  setCategory(val as ProductCategory);
+                  handleBlur("category");
+                }}
+                className={`w-full text-sm ${errors.category ? "border-error-500" : ""}`}
+                options={[
+                  { value: "", label: "Select category" },
+                  ...PRODUCT_CATEGORIES.map((c) => ({ value: c, label: c }))
+                ]}
+              />
               {errors.category && <p className="mt-1 text-xs text-error-500 font-medium">{errors.category}</p>}
             </div>
 

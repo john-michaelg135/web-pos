@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { Variation, Product } from "@/components/module-pos/types";
 import { CloseLineIcon } from "@/icons/index";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 interface VariationFormDialogProps {
   isOpen:   boolean;
@@ -201,21 +202,21 @@ export function VariationFormDialog({
                   })()}
                 </div>
               ) : (
-                <select
+                <CustomSelect
                   value={productId}
-                  onChange={(e) => setProductId(e.target.value)}
-                  onBlur={() => handleBlur("productId")}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-                    errors.productId ? "border-error-500" : "border-gray-200 dark:border-gray-700"
-                  }`}
-                >
-                  <option value="">Select a product</option>
-                  {products.filter(p => p.isActive).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.category})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => {
+                    setProductId(val);
+                    handleBlur("productId");
+                  }}
+                  className={`w-full text-sm ${errors.productId ? "border-error-500" : ""}`}
+                  options={[
+                    { value: "", label: "Select a product" },
+                    ...products.filter(p => p.isActive).map((p) => ({
+                      value: p.id,
+                      label: `${p.name} (${p.category})`
+                    }))
+                  ]}
+                />
               )}
               {errors.productId && <p className="mt-1 text-xs text-error-500 font-medium">{errors.productId}</p>}
             </div>
@@ -230,19 +231,20 @@ export function VariationFormDialog({
                   {packagingType}
                 </div>
               ) : (
-                <select
+                <CustomSelect
                   value={packagingType}
-                  onChange={(e) => setPackagingType(e.target.value)}
-                  onBlur={() => handleBlur("packagingType")}
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-                    errors.packagingType ? "border-error-500" : "border-gray-200 dark:border-gray-700"
-                  }`}
-                >
-                  <option value="">Select packaging type</option>
-                  <option value="Jar">Jar</option>
-                  <option value="Container">Container</option>
-                  <option value="Pouch">Pouch</option>
-                </select>
+                  onChange={(val) => {
+                    setPackagingType(val);
+                    handleBlur("packagingType");
+                  }}
+                  className={`w-full text-sm ${errors.packagingType ? "border-error-500" : ""}`}
+                  options={[
+                    { value: "", label: "Select packaging type" },
+                    { value: "Jar", label: "Jar" },
+                    { value: "Container", label: "Container" },
+                    { value: "Pouch", label: "Pouch" },
+                  ]}
+                />
               )}
               {errors.packagingType && <p className="mt-1 text-xs text-error-500 font-medium">{errors.packagingType}</p>}
             </div>
@@ -270,17 +272,18 @@ export function VariationFormDialog({
                       errors.size ? "border-error-500" : "border-gray-200 dark:border-gray-700"
                     }`}
                   />
-                  <select
+                  <CustomSelect
                     value={sizeUnit}
-                    onChange={(e) => setSizeUnit(e.target.value)}
-                    className="w-24 px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 border-gray-200 dark:border-gray-700"
-                  >
-                    <option value="g">g</option>
-                    <option value="kg">kg</option>
-                    <option value="ml">ml</option>
-                    <option value="L">L</option>
-                    <option value="oz">oz</option>
-                  </select>
+                    onChange={(val) => setSizeUnit(val)}
+                    className="w-24 text-sm"
+                    options={[
+                      { value: "g", label: "g" },
+                      { value: "kg", label: "kg" },
+                      { value: "ml", label: "ml" },
+                      { value: "L", label: "L" },
+                      { value: "oz", label: "oz" },
+                    ]}
+                  />
                 </div>
               )}
               {errors.size && <p className="mt-1 text-xs text-error-500 font-medium">{errors.size}</p>}

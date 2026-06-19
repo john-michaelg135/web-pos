@@ -6,6 +6,7 @@ import { ProductResponseDto } from "@/components/module-pos/api/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
 import { toast } from "sonner";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 const useTheme = () => {
   try {
@@ -254,18 +255,18 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Product Variation <span className="text-red-500">*</span>
                 </label>
-                <select
+                <CustomSelect
                   value={manualVariationId}
-                  onChange={(e) => setManualVariationId(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit"
-                >
-                  <option value="">Select a product variation...</option>
-                  {allVariations.map((v) => (
-                    <option key={v.variationId} value={v.variationId}>
-                      {v.productName} — {v.variationName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setManualVariationId(val)}
+                  className="w-full text-sm"
+                  options={[
+                    { value: "", label: "Select a product variation..." },
+                    ...allVariations.map((v) => ({
+                      value: v.variationId,
+                      label: `${v.productName} — ${v.variationName}`
+                    }))
+                  ]}
+                />
               </div>
 
               {/* Location Select */}
@@ -273,18 +274,18 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Location <span className="text-red-500">*</span>
                 </label>
-                <select
+                <CustomSelect
                   value={manualLocationId}
-                  onChange={(e) => setManualLocationId(e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit"
-                >
-                  <option value="">Select a location...</option>
-                  {receivableLocations.map((loc) => (
-                    <option key={loc.locationId} value={loc.locationId}>
-                      {loc.locationName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setManualLocationId(val)}
+                  className="w-full text-sm"
+                  options={[
+                    { value: "", label: "Select a location..." },
+                    ...receivableLocations.map((loc) => ({
+                      value: String(loc.locationId),
+                      label: loc.locationName
+                    }))
+                  ]}
+                />
               </div>
 
               {/* Quantity */}

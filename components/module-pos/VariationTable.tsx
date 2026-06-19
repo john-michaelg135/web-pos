@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Variation, Product } from "@/components/module-pos/types";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 interface VariationTableProps {
   variations: Variation[];
@@ -42,25 +43,25 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
           maxLength={25}
           className="w-full sm:max-w-[200px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
-        <select
+        <CustomSelect
           value={productFilter}
-          onChange={(e) => setProductFilter(e.target.value)}
-          className="px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-        >
-          <option value="all">All Products</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-        <select
+          onChange={(val) => setProductFilter(val)}
+          className="w-full sm:w-48"
+          options={[
+            { value: "all", label: "All Products" },
+            ...products.map((p) => ({ value: p.id, label: p.name }))
+          ]}
+        />
+        <CustomSelect
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-          className="px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-        >
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-          <option value="all">All Status</option>
-        </select>
+          onChange={(val) => setStatusFilter(val as "all" | "active" | "inactive")}
+          className="w-full sm:w-40"
+          options={[
+            { value: "active", label: "Active" },
+            { value: "inactive", label: "Inactive" },
+            { value: "all", label: "All Status" },
+          ]}
+        />
       </div>
 
       {/* Table */}
