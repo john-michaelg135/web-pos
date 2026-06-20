@@ -19,7 +19,7 @@ const navItems: NavItem[] = [
     subItems: [
       { name: "Sales Processing", path: "/sales-processing", app: "sales-processing", baseUrl: process.env.NEXT_PUBLIC_POS_URL },
       { name: "Order Management", path: "/order-management", app: "order-management", baseUrl: process.env.NEXT_PUBLIC_POS_URL },
-      { name: "Product Management", path: "/product-management", app: "product-management", baseUrl: process.env.NEXT_PUBLIC_POS_URL },
+      // { name: "Product Management", path: "/product-management", app: "product-management", baseUrl: process.env.NEXT_PUBLIC_POS_URL },
       { name: "Stock Management", path: "/stock-management", app: "stock-management", baseUrl: process.env.NEXT_PUBLIC_POS_URL },
       { name: "Sales Reports", path: "/manager/reports", app: "sales-reports", baseUrl: process.env.NEXT_PUBLIC_POS_URL },
     ],
