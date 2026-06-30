@@ -4,9 +4,10 @@ import { apiClient } from "@/components/module-pos/api";
 interface SalesByChannelChartProps {
   dateFrom?: string;
   dateTo?: string;
+  locationId?: number;
 }
 
-export function SalesByChannelChart({ dateFrom, dateTo }: SalesByChannelChartProps) {
+export function SalesByChannelChart({ dateFrom, dateTo, locationId }: SalesByChannelChartProps) {
   const [data, setData] = useState<{ label: string; value: number; color: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showPercentage, setShowPercentage] = useState(true);
@@ -21,6 +22,7 @@ export function SalesByChannelChart({ dateFrom, dateTo }: SalesByChannelChartPro
         const res = await apiClient.apiPos.analyticsSalesByChannelList({
           DateFrom: dateFrom || undefined,
           DateTo: dateTo || undefined,
+          LocationId: locationId,
         });
 
         const mappedData = res.data.map((d, i) => ({
@@ -41,7 +43,7 @@ export function SalesByChannelChart({ dateFrom, dateTo }: SalesByChannelChartPro
     };
 
     fetchData();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, locationId]);
 
   const total = data.reduce((sum, item) => sum + item.value, 0);
 

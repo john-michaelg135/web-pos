@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { CloseLineIcon } from "@/icons/index";
 import { Order } from "@/components/module-pos/types";
 
@@ -34,6 +35,27 @@ export default function RefundFormDialog({
   inputBg,
   isMobile,
 }: RefundFormDialogProps) {
+  const predefinedReasons = [
+    "Item arrived damaged",
+    "Wrong item received",
+    "Item not as described",
+    "Other"
+  ];
+  
+  const [selectedOption, setSelectedOption] = useState<string>("");
+
+  useEffect(() => {
+    if (isOpen) {
+      if (predefinedReasons.includes(reason)) {
+        setSelectedOption(reason);
+      } else if (reason.trim() !== "") {
+        setSelectedOption("Other");
+      } else {
+        setSelectedOption("");
+      }
+    }
+  }, [isOpen, reason]);
+
   if (!isOpen || !order) return null;
 
   const labelStyle: React.CSSProperties = {
@@ -104,40 +126,73 @@ export default function RefundFormDialog({
               </div>
             </div>
 
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                Reason for Return / Refund <span className="text-red-500">*</span>
+            <div className="sm:col-span-2 mt-2">
+              <label className="block text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">
+                Reason for Refund <span className="text-red-500">*</span>
               </label>
-              <textarea
-                placeholder="Please specify the reason for this refund request..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                maxLength={500}
-                rows={4}
-                className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-none border-gray-200 dark:border-gray-700"
-              />
+              
+              <div className="flex flex-col gap-3">
+                {predefinedReasons.map((option) => (
+                  <label 
+                    key={option} 
+                    className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
+                      selectedOption === option 
+                        ? 'border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-slate-800' 
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      name="refund-reason" 
+                      value={option}
+                      checked={selectedOption === option}
+                      onChange={(e) => {
+                        setSelectedOption(e.target.value);
+                        if (e.target.value !== "Other") {
+                          setReason(e.target.value);
+                        } else {
+                          setReason("");
+                        }
+                      }}
+                      className="w-4 h-4 text-slate-600 border-slate-300 focus:ring-slate-500 cursor-pointer"
+                    />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{option}</span>
+                  </label>
+                ))}
+              </div>
+
+              {selectedOption === "Other" && (
+                <textarea
+                  placeholder="Please specify the reason for this refund request..."
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  maxLength={500}
+                  rows={4}
+                  className="w-full mt-4 px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-none border-gray-200 dark:border-gray-700"
+                />
+              )}
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+        <div className="flex justify-start sm:justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-900 rounded-b-2xl">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onSubmit}
-            disabled={!reason.trim()}
-            className={`px-5 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-sm ${
-              reason.trim()
+            disabled={!reason.trim() || !selectedOption}
+            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors shadow-sm ${
+              reason.trim() && selectedOption
                 ? "bg-red-500 hover:bg-red-600 cursor-pointer"
                 : "bg-gray-300 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
             }`}
           >
-            Submit Request
+            Submit Refund Request
           </button>
         </div>
       </div>

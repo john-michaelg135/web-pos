@@ -64,8 +64,6 @@ export default function ViewOrderManagement() {
   const [filterType, setFilterType] = useState<string>("All");
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [filterLocation, setFilterLocation] = useState<string>("All");
-  const [filterDate, setFilterDate] = useState<string>("");
-  const [filterPreOrder, setFilterPreOrder] = useState<string>("All");
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
@@ -105,6 +103,8 @@ export default function ViewOrderManagement() {
       remarks: dto.rejectionRemarks || dto.customVariationNotes || "",
       paymentUrl: dto.payments?.find(p => p.gatewayReferenceNumber)?.gatewayReferenceNumber || null,
       deliveryAddress: dto.deliveryAddress || "",
+      amountTendered: (dto as any).amountTendered,
+      changeAmount: (dto as any).changeAmount,
       customVariationNotes: dto.customVariationNotes || "",
       seniorPwdId: (dto as any).seniorPwdId || "",
       seniorPwdName: (dto as any).seniorPwdName || "",
@@ -146,9 +146,9 @@ export default function ViewOrderManagement() {
   }, []);
 
   useEffect(() => {
-    if (authUser?.subRole === "Cashier" && authUser.locationId) {
-      setChannelTab("pos");
-      const fetchCashierLocation = async () => {
+    if ((authUser?.subRole === "Cashier" || authUser?.subRole === "OrderManager") && authUser.locationId) {
+      if (authUser?.subRole === "Cashier") setChannelTab("pos");
+      const fetchUserLocation = async () => {
         try {
           const { data } = await apiClient.apiPos.locationsList();
           const matched = data.find(l => Number(l.locationId) === Number(authUser.locationId));
@@ -160,20 +160,18 @@ export default function ViewOrderManagement() {
           console.error("Failed to fetch locations in order management:", err);
         }
       };
-      fetchCashierLocation();
+      fetchUserLocation();
     }
   }, [authUser]);
 
   const resetFilters = () => {
     setFilterType("All");
     setFilterStatus("All");
-    if (authUser?.subRole === "Cashier") {
+    if ((authUser?.subRole === "Cashier" || authUser?.subRole === "OrderManager") && authUser.locationId) {
       setFilterLocation(cashierLocationName || "Store");
     } else {
       setFilterLocation("All");
     }
-    setFilterDate("");
-    setFilterPreOrder("All");
     setSearchQuery("");
   };
 
@@ -182,10 +180,9 @@ export default function ViewOrderManagement() {
       const isWebOrder = o.type.toLowerCase() === "online" || o.source?.toLowerCase() === "e-commerce" || o.source?.toLowerCase() === "ecommerce";
       const isRefundStatus = o.status === "refund_requested" || o.status === "refunded";
 
-      // Cashier security lock: Can only see their own location's orders, and cannot see online/web orders at all
-      // EXCEPTION: E-commerce refund requests are allowed to reflect in the POS refunds tab
-      if (authUser?.subRole === "Cashier") {
-        if (isWebOrder && !isRefundStatus) {
+      // Cashier and OrderManager security lock: Can only see their own location's orders
+      if ((authUser?.subRole === "Cashier" || authUser?.subRole === "OrderManager") && authUser.locationId) {
+        if (authUser?.subRole === "Cashier" && isWebOrder && !isRefundStatus) {
           return false;
         }
         if (cashierLocationName && o.location.toLowerCase() !== cashierLocationName.toLowerCase() && !isRefundStatus) {
@@ -199,14 +196,9 @@ export default function ViewOrderManagement() {
       if (filterType !== "All" && o.type.toLowerCase() !== filterType.toLowerCase()) return false;
       if (filterStatus !== "All" && o.status.toLowerCase() !== filterStatus.toLowerCase()) return false;
       if (filterLocation !== "All" && o.location.toLowerCase() !== filterLocation.toLowerCase()) return false;
-      if (filterDate && o.date !== filterDate) return false;
-      if (filterPreOrder !== "All") {
-        if (filterPreOrder === "Yes" && !o.isPreOrder) return false;
-        if (filterPreOrder === "No" && o.isPreOrder) return false;
-      }
       return true;
     });
-  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, filterDate, filterPreOrder, authUser, cashierLocationName]);
+  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName]);
 
 
 
@@ -436,7 +428,13 @@ export default function ViewOrderManagement() {
       <div className="flex-shrink-0" style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 20 : 0 }}>
         <div>
           <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Order Management</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track and manage all orders across channels</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Track and manage all orders</p>
+            <span className="text-gray-400 font-bold">&middot;</span>
+            <div className="px-2.5 py-1 rounded-md bg-[#eef2ff] dark:bg-[#eef2ff]/10 text-[#465fff] dark:text-[#465fff] text-xs font-bold whitespace-nowrap">
+              {filterLocation === "All" ? "All Locations" : (filterLocation.toLowerCase().startsWith("store") ? filterLocation : `Store - ${filterLocation}`)}
+            </div>
+          </div>
         </div>
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: "center", gap: 12, width: isMobile ? "100%" : "auto" }}>
           <div style={{ position: "relative", width: "100%" }}>
@@ -460,13 +458,11 @@ export default function ViewOrderManagement() {
 
       <OrderFilters 
         show={showFilters}
+        onClose={() => setShowFilters(false)}
         filterType={filterType} setFilterType={setFilterType}
         filterStatus={filterStatus} setFilterStatus={setFilterStatus}
         filterLocation={filterLocation} setFilterLocation={setFilterLocation}
-        filterDate={filterDate} setFilterDate={setFilterDate}
-        filterPreOrder={filterPreOrder} setFilterPreOrder={setFilterPreOrder}
         resetFilters={resetFilters}
-        border={border} muted={muted} cardBg={cardBg} inputBg={inputBg} text={text} isMobile={isMobile}
       />
 
       {/* Channel Tabs */}

@@ -405,6 +405,22 @@ export function ViewOrderModal({
                   ₱{pricing.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
+              {order.amountTendered != null && (
+                <>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Amount Paid (Cash)</span>
+                    <span className="text-sm font-bold text-gray-600 dark:text-gray-400">
+                      ₱{order.amountTendered.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-dashed border-gray-300 dark:border-gray-600 mt-1 pt-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Change</span>
+                    <span className="text-sm font-bold text-gray-600 dark:text-gray-400">
+                      ₱{(order.changeAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

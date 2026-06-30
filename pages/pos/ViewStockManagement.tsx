@@ -22,6 +22,9 @@ export function ViewStockManagement() {
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history">("levels");
 
+  // Location Indicator State
+  const [locationName, setLocationName] = useState<string | null>(null);
+
   // Stock Levels State
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [locations, setLocations] = useState<any[]>([]);
@@ -99,6 +102,22 @@ export function ViewStockManagement() {
 
   useEffect(() => {
     setIsMounted(true);
+    fetchAdjustments();
+    fetchMovements();
+
+    if (authUser?.locationId) {
+      const fetchLocation = async () => {
+        try {
+          const { data } = await apiClient.apiPos.locationsList();
+          const matched = data.find(l => Number(l.locationId) === Number(authUser.locationId));
+          if (matched) setLocationName(matched.locationName || null);
+        } catch (err) {
+          console.error("Failed to fetch location name:", err);
+        }
+      };
+      fetchLocation();
+    }
+
     const fetchLocations = async () => {
       try {
         const { data } = await apiClient.apiPos.locationsList();
@@ -232,7 +251,13 @@ export function ViewStockManagement() {
       <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Stock Management</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Monitor stock levels, manage adjustments, and record new arrivals.</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Monitor stock levels, manage adjustments, and record new arrivals.</p>
+              <span className="text-gray-400 font-bold">&middot;</span>
+              <div className="px-2.5 py-1 rounded-md bg-[#eef2ff] dark:bg-[#eef2ff]/10 text-[#465fff] dark:text-[#465fff] text-xs font-bold whitespace-nowrap">
+                {locationName ? `Store - ${locationName}` : "All Locations"}
+              </div>
+            </div>
           </div>
         </div>
 

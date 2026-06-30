@@ -179,11 +179,13 @@ export default function ViewSalesProcessing() {
   }, []);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "gcash">("cash");
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
+  const [amountPaid, setAmountPaid] = useState("");
   const [lastOrder, setLastOrder] = useState<{ id: string; total: number } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // US-6 & US-7: Discounts & Vouchers
   const [isSeniorPWD, setIsSeniorPWD] = useState(false);
+  const [showPwdModal, setShowPwdModal] = useState(false);
   const [idNumber, setIdNumber] = useState("");
   const [pwdCustomerName, setPwdCustomerName] = useState("");
   const [pwdStreet, setPwdStreet] = useState("");
@@ -461,6 +463,15 @@ export default function ViewSalesProcessing() {
       toast.error("Error: There is no product item selected.");
       return;
     }
+
+    if (!isInstitutional) {
+      const parsedAmount = parseFloat(amountPaid) || 0;
+      if (amountPaid.trim() === "" || parsedAmount < total) {
+        toast.error("Error: Amount paid is not enough.");
+        return;
+      }
+    }
+
     try {
       const payload = {
         cart,
@@ -511,6 +522,8 @@ export default function ViewSalesProcessing() {
                 paymentMethod: paymentMethod === "cash" ? "Cash" : "GCash",
                 applyPwdDiscount: isSeniorPWD,
                 items: items,
+                amountTendered: !isInstitutional && paymentMethod === "cash" && amountPaid.trim() !== "" ? parseFloat(amountPaid) : null,
+                changeAmount: !isInstitutional && paymentMethod === "cash" && amountPaid.trim() !== "" ? Math.max(0, parseFloat(amountPaid) - total) : null,
                 seniorPwdId: isSeniorPWD ? idNumber : null,
                 seniorPwdName: isSeniorPWD ? pwdCustomerName : null,
                 seniorPwdStreet: isSeniorPWD ? pwdStreet : null,
@@ -805,7 +818,7 @@ export default function ViewSalesProcessing() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {/* Senior/PWD Checkbox Toggle */}
+            {/* Senior/PWD Discount Toggle */}
             <div
               style={{
                 width: "100%",
@@ -821,185 +834,37 @@ export default function ViewSalesProcessing() {
               }}
             >
               <span style={{ fontSize: 12, fontWeight: 700 }}>Senior/PWD</span>
-              <input type="checkbox" checked={isSeniorPWD} onChange={(e) => setIsSeniorPWD(e.target.checked)} style={{ width: 16, height: 16, cursor: "pointer" }} />
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {isSeniorPWD && (
+                  <button
+                    onClick={() => {
+                      setIsSeniorPWD(false);
+                      setIdNumber("");
+                      setPwdCustomerName("");
+                      setPwdStreet("");
+                      setPwdBarangay("");
+                      setPwdCity("");
+                      setPwdProvince("");
+                      setPwdZipCode("");
+                      setErrors(prev => {
+                        const { idNumber, pwdCustomerName, pwdStreet, pwdBarangay, pwdCity, pwdProvince, pwdZipCode, ...rest } = prev;
+                        return rest;
+                      });
+                    }}
+                    style={{ padding: "4px 8px", borderRadius: 8, border: "none", background: "transparent", color: "#f04438", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowPwdModal(true)}
+                  style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: isSeniorPWD ? `${primary}20` : primary, color: isSeniorPWD ? primary : "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                >
+                  {isSeniorPWD ? "Applied" : "Apply"}
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* ID Number input shown below if checked */}
-          {isSeniorPWD && (
-            <div style={{ padding: 12, borderRadius: 12, border: `1px solid ${border}`, background: cardBg, display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={labelStyle}>ID Number <span style={{ color: "#f04438" }}>*</span></label>
-              <input
-                style={{
-                  ...inputStyle,
-                  borderColor: errors.idNumber ? "#f04438" : inputBorder,
-                  boxShadow: errors.idNumber ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
-                }}
-                maxLength={20}
-                placeholder="13-7600-000-0000123"
-                value={idNumber} onChange={(e) => {
-                  const val = e.target.value;
-                  if (val.length < idNumber.length) {
-                    if (idNumber.endsWith("-") && !val.endsWith("-")) {
-                      const clean = val.replace(/\D/g, "");
-                      const digits = clean.slice(0, clean.length - 1);
-                      let formatted = "";
-                      if (digits.length > 0) formatted += digits.substring(0, 2);
-                      if (digits.length > 2) formatted += "-" + digits.substring(2, 6);
-                      if (digits.length > 6) formatted += "-" + digits.substring(6, 9);
-                      if (digits.length > 9) formatted += "-" + digits.substring(9, 16);
-                      setIdNumber(formatted);
-                    } else {
-                      setIdNumber(val);
-                    }
-                  } else {
-                    const digits = val.replace(/\D/g, "").slice(0, 16);
-                    let formatted = "";
-                    if (digits.length > 0) formatted += digits.substring(0, 2);
-                    if (digits.length > 2) formatted += "-" + digits.substring(2, 6);
-                    if (digits.length > 6) formatted += "-" + digits.substring(6, 9);
-                    if (digits.length > 9) formatted += "-" + digits.substring(9, 16);
-                    setIdNumber(formatted);
-                  }
-                  if (errors.idNumber) setErrors(prev => { const { idNumber, ...rest } = prev; return rest; });
-                }}
-              />
-              {errors.idNumber && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.idNumber}</span>}
-
-              {/* Customer Name */}
-              <label style={{ ...labelStyle, marginTop: 6 }}>Customer Name <span style={{ color: "#f04438" }}>*</span></label>
-              <input
-                style={{
-                  ...inputStyle,
-                  borderColor: errors.pwdCustomerName ? "#f04438" : inputBorder,
-                  boxShadow: errors.pwdCustomerName ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
-                }}
-                maxLength={50}
-                placeholder="Juan Dela Cruz"
-                value={pwdCustomerName}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                  setPwdCustomerName(cleaned);
-                  if (errors.pwdCustomerName) setErrors(prev => { const { pwdCustomerName, ...rest } = prev; return rest; });
-                }}
-                onBlur={() => {
-                  setPwdCustomerName(toTitleCase(pwdCustomerName));
-                }}
-              />
-              {errors.pwdCustomerName && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdCustomerName}</span>}
-
-              {/* Street */}
-              <label style={{ ...labelStyle, marginTop: 6 }}>Street <span style={{ color: "#f04438" }}>*</span></label>
-              <input
-                style={{
-                  ...inputStyle,
-                  borderColor: errors.pwdStreet ? "#f04438" : inputBorder,
-                  boxShadow: errors.pwdStreet ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
-                }}
-                maxLength={100}
-                placeholder="123 Maple St."
-                value={pwdStreet}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                  setPwdStreet(cleaned);
-                  if (errors.pwdStreet) setErrors(prev => { const { pwdStreet, ...rest } = prev; return rest; });
-                }}
-                onBlur={() => {
-                  setPwdStreet(toTitleCase(pwdStreet));
-                }}
-              />
-              {errors.pwdStreet && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdStreet}</span>}
-
-              {/* Barangay */}
-              <label style={{ ...labelStyle, marginTop: 6 }}>Barangay <span style={{ color: "#f04438" }}>*</span></label>
-              <input
-                style={{
-                  ...inputStyle,
-                  borderColor: errors.pwdBarangay ? "#f04438" : inputBorder,
-                  boxShadow: errors.pwdBarangay ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
-                }}
-                maxLength={50}
-                placeholder="Barangay 12"
-                value={pwdBarangay}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                  setPwdBarangay(cleaned);
-                  if (errors.pwdBarangay) setErrors(prev => { const { pwdBarangay, ...rest } = prev; return rest; });
-                }}
-                onBlur={() => {
-                  setPwdBarangay(toTitleCase(pwdBarangay));
-                }}
-              />
-              {errors.pwdBarangay && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdBarangay}</span>}
-
-              {/* City & Province */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 6 }}>
-                <div>
-                  <label style={labelStyle}>City <span style={{ color: "#f04438" }}>*</span></label>
-                  <input
-                    style={{
-                      ...inputStyle,
-                      borderColor: errors.pwdCity ? "#f04438" : inputBorder,
-                      boxShadow: errors.pwdCity ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
-                    }}
-                    maxLength={50}
-                    placeholder="City"
-                    value={pwdCity}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                      setPwdCity(cleaned);
-                      if (errors.pwdCity) setErrors(prev => { const { pwdCity, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => {
-                      setPwdCity(toTitleCase(pwdCity));
-                    }}
-                  />
-                  {errors.pwdCity && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdCity}</span>}
-                </div>
-                <div>
-                  <label style={labelStyle}>Province <span style={{ color: "#f04438" }}>*</span></label>
-                  <input
-                    style={{
-                      ...inputStyle,
-                      borderColor: errors.pwdProvince ? "#f04438" : inputBorder,
-                      boxShadow: errors.pwdProvince ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
-                    }}
-                    maxLength={50}
-                    placeholder="Province"
-                    value={pwdProvince}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                      setPwdProvince(cleaned);
-                      if (errors.pwdProvince) setErrors(prev => { const { pwdProvince, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => {
-                      setPwdProvince(toTitleCase(pwdProvince));
-                    }}
-                  />
-                  {errors.pwdProvince && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdProvince}</span>}
-                </div>
-              </div>
-
-              {/* Zip Code */}
-              <label style={{ ...labelStyle, marginTop: 6 }}>Zip Code <span style={{ color: "#f04438" }}>*</span></label>
-              <input
-                style={{
-                  ...inputStyle,
-                  borderColor: errors.pwdZipCode ? "#f04438" : inputBorder,
-                  boxShadow: errors.pwdZipCode ? (dark ? "0 0 0 3px rgba(240, 68, 56, 0.25)" : "0 0 0 3px #fee4e2") : "none"
-                }}
-                maxLength={4}
-                placeholder="1000"
-                value={pwdZipCode}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 4);
-                  setPwdZipCode(val);
-                  if (errors.pwdZipCode) setErrors(prev => { const { pwdZipCode, ...rest } = prev; return rest; });
-                }}
-              />
-              {errors.pwdZipCode && <span style={{ fontSize: 11, color: "#f04438", marginTop: 4, display: "block" }}>{errors.pwdZipCode}</span>}
-            </div>
-          )}
         </div>
 
         <div style={{ height: 1, background: border, margin: "8px 0" }} />
@@ -1247,6 +1112,44 @@ export default function ViewSalesProcessing() {
                     <span className="text-base font-bold text-gray-900 dark:text-white">Grand Total</span>
                     <span className="text-2xl font-bold text-brand-500">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
+
+                  {paymentMethod === "cash" && (
+                    <div className="flex flex-col gap-3 border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+                      <div className="flex justify-between items-start text-sm">
+                        <span className="font-semibold text-gray-700 dark:text-gray-300 mt-1.5">Amount Paid</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold ${amountPaid.trim() !== "" && (parseFloat(amountPaid) || 0) < total ? "text-red-500" : "text-gray-500"}`}>₱</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              className={`w-28 px-3 py-1.5 text-right font-semibold border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                                amountPaid.trim() !== "" && (parseFloat(amountPaid) || 0) < total
+                                  ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 focus:ring-red-500 focus:border-red-500"
+                                  : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-500 focus:border-brand-500"
+                              }`}
+                              placeholder="0.00"
+                              value={amountPaid}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^0-9.]/g, "");
+                                if ((val.match(/\./g) || []).length > 1) return;
+                                setAmountPaid(val);
+                              }}
+                            />
+                          </div>
+                          {amountPaid.trim() !== "" && (parseFloat(amountPaid) || 0) < total && (
+                            <span className="text-xs font-semibold text-red-500">Insufficient amount</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-end pt-1">
+                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Change</span>
+                        <span className="text-xl font-bold text-gray-900 dark:text-white">
+                          ₱{Math.max(0, (parseFloat(amountPaid) || 0) - total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1480,6 +1383,204 @@ export default function ViewSalesProcessing() {
           </div>
         </div>
       )}
+      {/* Senior/PWD Modal */}
+      {showPwdModal && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-2xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[96vh]">
+            <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                Senior/PWD Details
+              </h2>
+            </div>
+            <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <Label>ID Number <span className="text-red-500">*</span></Label>
+                  <Input
+                    maxLength={20}
+                    placeholder="13-7600-000-0000123"
+                    value={idNumber}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.length < idNumber.length) {
+                        if (idNumber.endsWith("-") && !val.endsWith("-")) {
+                          const clean = val.replace(/\D/g, "");
+                          const digits = clean.slice(0, clean.length - 1);
+                          let formatted = "";
+                          if (digits.length > 0) formatted += digits.substring(0, 2);
+                          if (digits.length > 2) formatted += "-" + digits.substring(2, 6);
+                          if (digits.length > 6) formatted += "-" + digits.substring(6, 9);
+                          if (digits.length > 9) formatted += "-" + digits.substring(9, 16);
+                          setIdNumber(formatted);
+                        } else {
+                          setIdNumber(val);
+                        }
+                      } else {
+                        const digits = val.replace(/\D/g, "").slice(0, 16);
+                        let formatted = "";
+                        if (digits.length > 0) formatted += digits.substring(0, 2);
+                        if (digits.length > 2) formatted += "-" + digits.substring(2, 6);
+                        if (digits.length > 6) formatted += "-" + digits.substring(6, 9);
+                        if (digits.length > 9) formatted += "-" + digits.substring(9, 16);
+                        setIdNumber(formatted);
+                      }
+                      if (errors.idNumber) setErrors(prev => { const { idNumber, ...rest } = prev; return rest; });
+                    }}
+                    error={errors.idNumber}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Label>Customer Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    maxLength={50}
+                    placeholder="Juan Dela Cruz"
+                    value={pwdCustomerName}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                      setPwdCustomerName(cleaned);
+                      if (errors.pwdCustomerName) setErrors(prev => { const { pwdCustomerName, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => setPwdCustomerName(toTitleCase(pwdCustomerName))}
+                    error={errors.pwdCustomerName}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Label>Street <span className="text-red-500">*</span></Label>
+                  <Input
+                    maxLength={100}
+                    placeholder="123 Maple St."
+                    value={pwdStreet}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                      setPwdStreet(cleaned);
+                      if (errors.pwdStreet) setErrors(prev => { const { pwdStreet, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => setPwdStreet(toTitleCase(pwdStreet))}
+                    error={errors.pwdStreet}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Label>Barangay <span className="text-red-500">*</span></Label>
+                  <Input
+                    maxLength={50}
+                    placeholder="Barangay 12"
+                    value={pwdBarangay}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                      setPwdBarangay(cleaned);
+                      if (errors.pwdBarangay) setErrors(prev => { const { pwdBarangay, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => setPwdBarangay(toTitleCase(pwdBarangay))}
+                    error={errors.pwdBarangay}
+                  />
+                </div>
+
+                <div>
+                  <Label>City <span className="text-red-500">*</span></Label>
+                  <Input
+                    maxLength={50}
+                    placeholder="City"
+                    value={pwdCity}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                      setPwdCity(cleaned);
+                      if (errors.pwdCity) setErrors(prev => { const { pwdCity, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => setPwdCity(toTitleCase(pwdCity))}
+                    error={errors.pwdCity}
+                  />
+                </div>
+
+                <div>
+                  <Label>Province <span className="text-red-500">*</span></Label>
+                  <Input
+                    maxLength={50}
+                    placeholder="Province"
+                    value={pwdProvince}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                      setPwdProvince(cleaned);
+                      if (errors.pwdProvince) setErrors(prev => { const { pwdProvince, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => setPwdProvince(toTitleCase(pwdProvince))}
+                    error={errors.pwdProvince}
+                  />
+                </div>
+
+                <div>
+                  <Label>Zip Code <span className="text-red-500">*</span></Label>
+                  <Input
+                    maxLength={4}
+                    placeholder="1000"
+                    value={pwdZipCode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                      setPwdZipCode(val);
+                      if (errors.pwdZipCode) setErrors(prev => { const { pwdZipCode, ...rest } = prev; return rest; });
+                    }}
+                    error={errors.pwdZipCode}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+              <Button
+                variant="outline"
+                onClick={() => setShowPwdModal(false)}
+              >
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  let isValid = true;
+                  const newErrors: any = {};
+                  
+                  const trimmedId = idNumber.trim();
+                  if (!trimmedId) { newErrors.idNumber = "Required"; isValid = false; }
+                  else if (!/^\d{2}-\d{4}-\d{3}-\d{7}$/.test(trimmedId)) { newErrors.idNumber = "Invalid format"; isValid = false; }
+                  
+                  const normPwdCustomerName = toTitleCase(pwdCustomerName);
+                  const normPwdStreet = toTitleCase(pwdStreet);
+                  const normPwdBarangay = toTitleCase(pwdBarangay);
+                  const normPwdCity = toTitleCase(pwdCity);
+                  const normPwdProvince = toTitleCase(pwdProvince);
+                  
+                  setPwdCustomerName(normPwdCustomerName);
+                  setPwdStreet(normPwdStreet);
+                  setPwdBarangay(normPwdBarangay);
+                  setPwdCity(normPwdCity);
+                  setPwdProvince(normPwdProvince);
+                  
+                  if (!normPwdCustomerName.trim()) { newErrors.pwdCustomerName = "Required"; isValid = false; }
+                  if (!normPwdStreet.trim()) { newErrors.pwdStreet = "Required"; isValid = false; }
+                  if (!normPwdBarangay.trim()) { newErrors.pwdBarangay = "Required"; isValid = false; }
+                  if (!normPwdCity.trim()) { newErrors.pwdCity = "Required"; isValid = false; }
+                  if (!normPwdProvince.trim()) { newErrors.pwdProvince = "Required"; isValid = false; }
+                  if (!pwdZipCode.trim()) { newErrors.pwdZipCode = "Required"; isValid = false; }
+                  else if (!/^\d{4}$/.test(pwdZipCode.trim())) { newErrors.pwdZipCode = "Must be 4 digits"; isValid = false; }
+                  
+                  if (!isValid) {
+                    setErrors(newErrors);
+                    toast.error("Please complete all required details.");
+                    return;
+                  }
+                  
+                  setIsSeniorPWD(true);
+                  setShowPwdModal(false);
+                }}
+              >
+                Proceed
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Success Toast */}
       {lastOrder && (
         <div style={{ position: "fixed", bottom: isMobile ? 20 : 40, right: isMobile ? 20 : 40, left: isMobile ? 20 : "auto", width: isMobile ? "auto" : 340, background: cardBg, border: `1px solid ${border}`, borderRadius: isMobile ? 16 : 24, padding: isMobile ? 16 : 20, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", display: "flex", gap: isMobile ? 16 : 20, zIndex: 100001, animation: "slideIn 0.5s ease-out" }}>

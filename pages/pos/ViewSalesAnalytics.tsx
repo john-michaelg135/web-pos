@@ -11,6 +11,7 @@ import { CloseLineIcon } from "@/icons/index";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useAuth } from "@/context/AuthContext";
 import { AccessDenied } from "@/components/module-pos/AccessDenied";
+import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 import { useRouter } from "next/navigation";
 
@@ -31,11 +32,39 @@ export function ViewSalesAnalytics() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
+  // Location Indicator State
+  const [locationName, setLocationName] = useState<string | null>(null);
+  const [filterLocation, setFilterLocation] = useState<number | undefined>(undefined);
+  const [locations, setLocations] = useState<{id: number, name: string}[]>([]);
+
   const getStartOfDay = (dateStr: string) => dateStr ? new Date(dateStr + "T00:00:00").toISOString() : undefined;
   const getEndOfDay = (dateStr: string) => dateStr ? new Date(dateStr + "T23:59:59").toISOString() : undefined;
 
   useEffect(() => {
     setIsMounted(true);
+
+    if (authUser?.locationId) {
+      const fetchLocation = async () => {
+        try {
+          const { data } = await apiClient.apiPos.locationsList();
+          const matched = data.find(l => Number(l.locationId) === Number(authUser.locationId));
+          if (matched) setLocationName(matched.locationName || null);
+        } catch (err) {
+          console.error("Failed to fetch location name:", err);
+        }
+      };
+      fetchLocation();
+    } else {
+      const fetchLocations = async () => {
+        try {
+          const { data } = await apiClient.apiPos.locationsList();
+          setLocations(data.map(l => ({ id: Number(l.locationId), name: l.locationName || "Store" })));
+        } catch (err) {
+          console.error("Failed to fetch locations:", err);
+        }
+      };
+      fetchLocations();
+    }
     
     const fetchTopSelling = async () => {
       try {
@@ -43,6 +72,7 @@ export function ViewSalesAnalytics() {
         const { data } = await apiClient.apiPos.analyticsSalesByVariationList({
           DateFrom: getStartOfDay(dateFrom),
           DateTo: getEndOfDay(dateTo),
+          LocationId: filterLocation,
         });
         const totalUnits = data.reduce((sum, item) => sum + (Number(item.totalUnitsSold) || 0), 0);
         
@@ -75,7 +105,7 @@ export function ViewSalesAnalytics() {
     };
     
     fetchTopSelling();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, filterLocation, authUser]);
 
   const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("sales-reports") || authUser.roles?.includes("Admin") || authUser.subRole === "Admin");
 
@@ -122,11 +152,34 @@ export function ViewSalesAnalytics() {
         <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Sales Analytics Report</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Comprehensive overview of sales performance and trends.</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Comprehensive overview of sales performance and trends.</p>
+              <span className="text-gray-400 font-bold">&middot;</span>
+              <div className="px-2.5 py-1 rounded-md bg-[#eef2ff] dark:bg-[#eef2ff]/10 text-[#465fff] dark:text-[#465fff] text-xs font-bold whitespace-nowrap flex items-center gap-2">
+                {authUser?.locationId 
+                  ? (locationName ? `Store - ${locationName}` : "All Locations")
+                  : (filterLocation 
+                      ? `Store - ${locations.find(l => l.id === filterLocation)?.name || "Unknown"}`
+                      : "All Locations")}
+              </div>
+              {!authUser?.locationId && (
+                <div className="w-48 ml-1">
+                  <CustomSelect
+                    value={filterLocation ? String(filterLocation) : "All"}
+                    onChange={(val) => setFilterLocation(val === "All" ? undefined : Number(val))}
+                    options={[
+                      { value: "All", label: "All Locations" },
+                      ...locations.map(l => ({ value: String(l.id), label: `Store - ${l.name}` }))
+                    ]}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-3 no-print flex-wrap">
             <div className="flex items-center gap-2 mr-2">
+
               <input 
                 type="date" 
                 value={dateFrom} 
@@ -143,6 +196,7 @@ export function ViewSalesAnalytics() {
                 className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 outline-none focus:border-brand-500 cursor-pointer w-full max-w-[130px]"
               />
             </div>
+
             <button 
               onClick={() => setIsCsvPreviewOpen(true)}
               className="px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold transition-all shadow-sm shadow-brand-500/20"
@@ -156,17 +210,21 @@ export function ViewSalesAnalytics() {
           <SalesAnalyticsCharts 
             dateFrom={getStartOfDay(dateFrom)} 
             dateTo={getEndOfDay(dateTo)} 
+            locationId={filterLocation}
           />
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <SalesByLocationChart 
-              dateFrom={getStartOfDay(dateFrom)} 
-              dateTo={getEndOfDay(dateTo)} 
-            />
+          <div className={`grid grid-cols-1 gap-8 ${!authUser?.locationId && !filterLocation ? "lg:grid-cols-2" : ""}`}>
             <SalesByChannelChart 
               dateFrom={getStartOfDay(dateFrom)} 
               dateTo={getEndOfDay(dateTo)} 
+              locationId={filterLocation}
             />
+            {!authUser?.locationId && !filterLocation && (
+              <SalesByLocationChart 
+                dateFrom={getStartOfDay(dateFrom)} 
+                dateTo={getEndOfDay(dateTo)} 
+              />
+            )}
           </div>
 
           {/* Top Selling Variations */}

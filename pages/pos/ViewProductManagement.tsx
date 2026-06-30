@@ -242,9 +242,13 @@ export default function ViewProductManagement() {
       <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Product Management</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Manage products and variations · Admin only
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Manage products and variations</p>
+            <span className="text-gray-400 font-bold">&middot;</span>
+            <div className="px-2.5 py-1 rounded-md bg-[#eef2ff] dark:bg-[#eef2ff]/10 text-[#465fff] dark:text-[#465fff] text-xs font-bold whitespace-nowrap">
+              Global Catalog
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {activeTab === "products" ? (

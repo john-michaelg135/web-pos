@@ -42,6 +42,8 @@ export type Order = {
   paymentUrl?: string | null;
   source?: string;
   deliveryAddress?: string;
+  amountTendered?: number;
+  changeAmount?: number;
   customVariationNotes?: string;
   seniorPwdId?: string;
   seniorPwdName?: string;

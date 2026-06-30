@@ -360,7 +360,7 @@ export default function OrderCard({
             onMouseOver={(e) => (e.currentTarget.style.background = `${primary}10`)}
             onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            Manage Order
+            {isCashier && ["refund_requested", "refunded"].includes(order.status) ? "Review Order" : "Manage Order"}
           </button>
           
 

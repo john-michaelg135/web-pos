@@ -12,9 +12,10 @@ interface AnalyticsData {
 interface SalesAnalyticsChartsProps {
   dateFrom?: string;
   dateTo?: string;
+  locationId?: number;
 }
 
-export function SalesAnalyticsCharts({ dateFrom, dateTo }: SalesAnalyticsChartsProps) {
+export function SalesAnalyticsCharts({ dateFrom, dateTo, locationId }: SalesAnalyticsChartsProps) {
   const [timeframe, setTimeframe] = useState<"daily" | "weekly" | "monthly">("daily");
   const [activeData, setActiveData] = useState<AnalyticsData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +36,7 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo }: SalesAnalyticsChartsP
           GroupBy: groupBy,
           DateFrom: dateFrom || undefined,
           DateTo: dateTo || undefined,
+          LocationId: locationId,
         });
         
         let totalRev = 0;
@@ -78,7 +80,7 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo }: SalesAnalyticsChartsP
     };
     
     fetchData();
-  }, [timeframe, dateFrom, dateTo]);
+  }, [timeframe, dateFrom, dateTo, locationId]);
 
   const maxSales = Math.max(...activeData.map(d => d.sales), 1000); // minimum max of 1000 to avoid division by zero
   const averageOrderValue = orders > 0 ? revenue / orders : 0;
