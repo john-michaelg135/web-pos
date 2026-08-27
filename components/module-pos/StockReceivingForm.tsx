@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { apiClient } from "@/components/module-pos/api";
 import { ProductResponseDto } from "@/components/module-pos/api/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
@@ -192,7 +193,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowManualDialog(true)}
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-xl text-white bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm shadow-brand-500/20"
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-xl text-white bg-foreground hover:bg-foreground/90 transition-colors shadow-sm"
           >
             <svg
               style={{ width: 16, height: 16, marginRight: 8, display: "inline-block", verticalAlign: "middle" }}
@@ -210,7 +211,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
             className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm disabled:opacity-50"
           >
             {isLoading ? (
-              <div style={{ width: 16, height: 16, marginRight: 8 }} className="border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+              <div style={{ width: 16, height: 16, marginRight: 8 }} className="border-2 border-foreground border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <svg
                 style={{ width: 16, height: 16, marginRight: 8, display: "inline-block", verticalAlign: "middle" }}
@@ -232,20 +233,43 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
       </div>
 
       {/* Manual Receive Stock Dialog */}
-      {showManualDialog && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-lg rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
+      {showManualDialog && createPortal(
+        <>
+          <div
+            onClick={() => setShowManualDialog(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 99998, backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 99999,
+              width: "100%",
+              maxWidth: 520,
+              maxHeight: "90vh",
+              backgroundColor: "#ffffff",
+              borderRadius: 12,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
             {/* Dialog Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Add Receive Stock</h2>
-              <button
-                onClick={() => setShowManualDialog(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>Add Receive Stock</h2>
+                <button
+                  onClick={() => setShowManualDialog(false)}
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Dialog Body */}
@@ -300,7 +324,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
                   value={manualQuantity}
                   onChange={(e) => setManualQuantity(e.target.value)}
                   placeholder="Enter quantity received"
-                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit"
+                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ring focus:border-foreground transition-all font-outfit"
                 />
               </div>
 
@@ -315,29 +339,30 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
                   placeholder="Optional notes..."
                   maxLength={500}
                   rows={3}
-                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit resize-none"
+                  className="w-full px-3 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ring focus:border-foreground transition-all font-outfit resize-none"
                 />
               </div>
             </div>
 
             {/* Dialog Footer */}
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+            <div style={{ padding: "12px 24px", borderTop: "1px solid #e4e4e7", display: "flex", justifyContent: "flex-end", gap: 8, backgroundColor: "#fafafa", borderRadius: "0 0 12px 12px", flexShrink: 0 }}>
               <button
                 onClick={() => setShowManualDialog(false)}
-                className="px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-foreground bg-background hover:bg-accent transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleManualSubmit}
                 disabled={!manualVariationId || !manualLocationId || !manualQuantity}
-                className="px-5 py-2 text-sm font-bold rounded-xl text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm shadow-brand-500/20"
+                className="px-5 py-2 text-sm font-bold rounded-lg text-white bg-foreground hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 Receive Stock
               </button>
             </div>
           </div>
-        </div>
+        </>,
+        document.body
       )}
 
       {/* Filter and search */}
@@ -363,7 +388,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           maxLength={25}
-          className="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all font-outfit"
+          className="w-full pl-10 pr-4 py-2.5 text-sm bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-ring focus:border-foreground transition-all font-outfit"
         />
       </div>
 
@@ -398,7 +423,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center gap-3">
-                      <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-8 h-8 border-4 border-foreground border-t-transparent rounded-full animate-spin"></div>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
                         Fetching pending deliveries from SCM...
                       </span>
@@ -470,7 +495,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
                           <button
                             onClick={() => handleConfirm(t)}
                             disabled={!matchedVar}
-                            className="px-4 py-2 text-xs font-bold text-white rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-brand-500/20 transition-all"
+                            className="px-4 py-2 text-xs font-bold text-white rounded-lg bg-foreground hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
                           >
                             Confirm Receipt
                           </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
 import { Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types";
 import { renderVariationBadges } from "./utils";
@@ -45,6 +46,11 @@ export function ViewOrderModal({
   };
 
   const [tempStatus, setTempStatus] = useState<OrderStatus>(order.status);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -102,9 +108,9 @@ export function ViewOrderModal({
     };
   }, [order, isPwdOrder]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div 
         className="w-full max-w-4xl mx-4 rounded-2xl shadow-xl border flex flex-col max-h-[90vh]"
@@ -460,7 +466,7 @@ export function ViewOrderModal({
             {order.status === "refund_requested" && onApplyRefund && (isDev || isOrderManager || isAdmin) && (
               <button
                 onClick={onApplyRefund}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-emerald-500 rounded-lg hover:bg-emerald-600 active:scale-95 transition-all shadow-sm"
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-foreground rounded-lg hover:bg-foreground/90 active:scale-95 transition-all shadow-sm"
               >
                 Approve Refund
               </button>
@@ -630,4 +636,6 @@ export function ViewOrderModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

@@ -1,57 +1,43 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import {
-  PlusIcon,
-  TrashBinIcon,
-  BoxCubeIcon,
-  DocsIcon,
-  CheckCircleIcon,
-  ChevronDownIcon,
-  CalenderIcon,
-  BoxIconLine,
-  DollarLineIcon,
-  CloseLineIcon,
-} from "@/icons/index";
+  Plus,
+  Minus,
+  Trash2,
+  Package,
+  FileText,
+  CheckCircle,
+  ChevronDown,
+  Calendar,
+  DollarSign,
+  X,
+} from "lucide-react";
 import { apiClient } from "../../components/module-pos/api";
-import { PosButton as Button } from "@/components/module-pos/PosButton";
-import { PosInput as Input } from "@/components/module-pos/PosInput";
-import { PosTextArea as TextArea } from "@/components/module-pos/PosTextArea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
-import Label from "@/components/form/Label";
 import { toast } from "sonner";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useAuth } from "@/context/AuthContext";
-import { AccessDenied } from "@/components/module-pos/AccessDenied";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
-
-const MinusIcon = ({ style }: { style?: React.CSSProperties }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    style={style}
-  >
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-  </svg>
-);
-import { useTheme as useRealTheme } from "@/context/ThemeContext";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
-
-const useTheme = () => {
-  try {
-    return useRealTheme();
-  } catch (e) {
-    return { theme: "light" as const, toggleTheme: () => { } };
-  }
-};
+import PwdFormModal from "@/components/module-pos/PwdFormModal";
+import { cn } from "@/lib/utils";
 
 type Product = {
   id: string;
@@ -90,15 +76,11 @@ export default function ViewSalesProcessing() {
     const fetchProducts = async () => {
       try {
         const locationIdVal = authUser.locationId || 1;
-        const apiGatewayUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/';
-        const basePosUrl = `${apiGatewayUrl.replace(/\/$/, '')}/api/pos`;
-        
-        // Fetch products directly with a cache-buster to ensure we always get the latest items
-        // Gateway: /api/pos → strips prefix → forwards to api-pos, so path needs /api-pos/ prefix
-        const response = await axios.get(`${basePosUrl}/api-pos/order-entry/product-grid?locationId=${locationIdVal}&_t=${Date.now()}`, {
+
+        const response = await axios.get(`/api-pos/order-entry/product-grid?locationId=${locationIdVal}&_t=${Date.now()}`, {
           withCredentials: true
         });
-        
+
         if (response.data) {
           const data = response.data;
           const mapped = data.map((p: any) => ({
@@ -136,7 +118,6 @@ export default function ViewSalesProcessing() {
     fetchLocationInfo();
   }, [authUser, authLoading]);
 
-  const user = { id: "U-001", name: "Ana Reyes", role: "manager", location: "Store", username: "manager" };
   const [cart, setCart] = useState<CartItem[]>([]);
   const [itemToRemove, setItemToRemove] = useState<{ id: string; name: string } | null>(null);
 
@@ -177,6 +158,7 @@ export default function ViewSalesProcessing() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "gcash">("cash");
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [amountPaid, setAmountPaid] = useState("");
@@ -197,30 +179,6 @@ export default function ViewSalesProcessing() {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [showMobileCart, setShowMobileCart] = useState(false);
-
-  // Design Tokens
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  const cardBg = dark ? "#212d40" : "#ffffff";
-  const border = dark ? "#2d3748" : "#e4e7ec";
-  const text = dark ? "#f0f4f8" : "#101828";
-  const muted = dark ? "#8899aa" : "#667085";
-  const inputBg = dark ? "#1a2231" : "#ffffff";
-  const inputBorder = dark ? "#2d3748" : "#d0d5dd";
-  const inputText = dark ? "#f0f4f8" : "#101828";
-  const primary = "#465fff";
-
-  const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "11px 14px", fontSize: 14,
-    borderRadius: 8, border: `1px solid ${inputBorder}`,
-    background: inputBg, color: inputText,
-    outline: "none", boxSizing: "border-box", fontFamily: "inherit",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    display: "block", fontSize: 13, fontWeight: 500,
-    color: dark ? "#a0aec0" : "#344054", marginBottom: 7,
-  };
 
   const addToCart = (product: Product) => {
     if (product.stock === 0) {
@@ -314,7 +272,7 @@ export default function ViewSalesProcessing() {
       const basePrice = item.price;
       const vatExemptPrice = Math.round((basePrice / 1.12) * 100) / 100;
       const discountedPrice = Math.round((vatExemptPrice * 0.80) * 100) / 100;
-      
+
       const itemVatExempt = (basePrice - vatExemptPrice) * qty;
       const itemDiscount = (vatExemptPrice * 0.20) * qty;
       const itemFinal = discountedPrice * qty;
@@ -336,7 +294,6 @@ export default function ViewSalesProcessing() {
   const total = isSeniorPWD ? pwdDetails.total : subtotal;
 
   const validate = () => {
-    // Normalize empty or zero quantities to 1
     let hasInvalidQty = false;
     const sanitizedCart = cart.map((item) => {
       if ((item.quantity as any) === "" || item.quantity === 0 || isNaN(Number(item.quantity))) {
@@ -432,7 +389,6 @@ export default function ViewSalesProcessing() {
     return Object.keys(newErrors).length === 0;
   };
 
-
   const handleCheckout = () => {
     if (cart.length === 0 || total <= 0) {
       toast.error("Error: There is no product item selected.");
@@ -498,77 +454,76 @@ export default function ViewSalesProcessing() {
       let orderId = `ORD-${String(Math.floor(Math.random() * 9000) + 1000)}`;
       try {
         const items = cart.map(item => ({
-            variationId: Number(item.id),
-            quantity: Number(item.quantity) || 1
+          variationId: Number(item.id),
+          quantity: Number(item.quantity) || 1
         }));
 
         const locationIdVal = authUser?.locationId || 1;
         if (isInstitutional) {
-            const { data: response } = await apiClient.apiPos.orderEntryOrdersInstitutionalCreate({
-                locationId: locationIdVal,
-                deliveryAddress: `${street}, ${barangay}, ${city}, ${province} ${zipCode}`,
-                contactPerson: contactPerson,
-                customVariationNotes: notes,
-                paymentMethod: "COD",
-                submittedBy: 1,
-                items: items
-            });
-            if (response && response.orderNumber) orderId = response.orderNumber;
+          const { data: response } = await apiClient.apiPos.orderEntryOrdersInstitutionalCreate({
+            locationId: locationIdVal,
+            deliveryAddress: `${street}, ${barangay}, ${city}, ${province} ${zipCode}`,
+            contactPerson: contactPerson,
+            customVariationNotes: notes,
+            paymentMethod: "COD",
+            submittedBy: 1,
+            items: items
+          });
+          if (response && response.orderNumber) orderId = response.orderNumber;
         } else {
-            const { data: response } = await (apiClient.apiPos.orderEntryOrdersCreate as any)({
-                orderType: "Store",
-                locationId: locationIdVal,
-                submittedBy: 1,
-                paymentMethod: paymentMethod === "cash" ? "Cash" : "GCash",
-                applyPwdDiscount: isSeniorPWD,
-                items: items,
-                amountTendered: !isInstitutional && paymentMethod === "cash" && amountPaid.trim() !== "" ? parseFloat(amountPaid) : null,
-                changeAmount: !isInstitutional && paymentMethod === "cash" && amountPaid.trim() !== "" ? Math.max(0, parseFloat(amountPaid) - total) : null,
-                seniorPwdId: isSeniorPWD ? idNumber : null,
-                seniorPwdName: isSeniorPWD ? pwdCustomerName : null,
-                seniorPwdStreet: isSeniorPWD ? pwdStreet : null,
-                seniorPwdBarangay: isSeniorPWD ? pwdBarangay : null,
-                seniorPwdCity: isSeniorPWD ? pwdCity : null,
-                seniorPwdProvince: isSeniorPWD ? pwdProvince : null,
-                seniorPwdZipCode: isSeniorPWD ? pwdZipCode : null
-            });
-            if (response && response.orderNumber) orderId = response.orderNumber;
-            
-            // If it's preorder, set it as preorder
-            if (isPreOrder && response) {
-                await apiClient.apiPos.orderEntryOrdersPreorderUpdate(Number(response.orderId), { isPreorder: true });
-            }
+          const { data: response } = await (apiClient.apiPos.orderEntryOrdersCreate as any)({
+            orderType: "Store",
+            locationId: locationIdVal,
+            submittedBy: 1,
+            paymentMethod: paymentMethod === "cash" ? "Cash" : "GCash",
+            applyPwdDiscount: isSeniorPWD,
+            items: items,
+            amountTendered: !isInstitutional && paymentMethod === "cash" && amountPaid.trim() !== "" ? parseFloat(amountPaid) : null,
+            changeAmount: !isInstitutional && paymentMethod === "cash" && amountPaid.trim() !== "" ? Math.max(0, parseFloat(amountPaid) - total) : null,
+            seniorPwdId: isSeniorPWD ? idNumber : null,
+            seniorPwdName: isSeniorPWD ? pwdCustomerName : null,
+            seniorPwdStreet: isSeniorPWD ? pwdStreet : null,
+            seniorPwdBarangay: isSeniorPWD ? pwdBarangay : null,
+            seniorPwdCity: isSeniorPWD ? pwdCity : null,
+            seniorPwdProvince: isSeniorPWD ? pwdProvince : null,
+            seniorPwdZipCode: isSeniorPWD ? pwdZipCode : null
+          });
+          if (response && response.orderNumber) orderId = response.orderNumber;
 
-            if (response && response.paymentUrl) {
-                const url = response.paymentUrl;
-                deductStocks();
-                setCart([]);
-                setNotes("");
-                setStreet("");
-                setBarangay("");
-                setCity("");
-                setProvince("");
-                setZipCode("");
-                setContactPerson("");
-                setContactNumber("");
-                setIsInstitutional(false);
-                setIsPreOrder(false);
-                setIsSeniorPWD(false);
-                setIdNumber("");
-                setPwdCustomerName("");
-                setPwdStreet("");
-                setPwdBarangay("");
-                setPwdCity("");
-                setPwdProvince("");
-                setPwdZipCode("");
-                setShowCheckoutDialog(false);
+          if (isPreOrder && response) {
+            await apiClient.apiPos.orderEntryOrdersPreorderUpdate(Number(response.orderId), { isPreorder: true });
+          }
 
-                toast.success("Order submitted! Redirecting to Xendit payment gateway...");
-                setTimeout(() => {
-                    window.location.href = url;
-                }, 1000);
-                return;
-            }
+          if (response && response.paymentUrl) {
+            const url = response.paymentUrl;
+            deductStocks();
+            setCart([]);
+            setNotes("");
+            setStreet("");
+            setBarangay("");
+            setCity("");
+            setProvince("");
+            setZipCode("");
+            setContactPerson("");
+            setContactNumber("");
+            setIsInstitutional(false);
+            setIsPreOrder(false);
+            setIsSeniorPWD(false);
+            setIdNumber("");
+            setPwdCustomerName("");
+            setPwdStreet("");
+            setPwdBarangay("");
+            setPwdCity("");
+            setPwdProvince("");
+            setPwdZipCode("");
+            setShowCheckoutDialog(false);
+
+            toast.success("Order submitted! Redirecting to Xendit payment gateway...");
+            setTimeout(() => {
+              window.location.href = url;
+            }, 1000);
+            return;
+          }
         }
       } catch (err) {
         console.error("Checkout failed, continuing offline mode for demo:", err);
@@ -608,73 +563,47 @@ export default function ViewSalesProcessing() {
   const categories = Array.from(new Set(products.map(p => p.category)));
 
   const renderCart = (
-    <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: isMobile ? 0 : 16, borderTopLeftRadius: isMobile ? 16 : 16, borderTopRightRadius: isMobile ? 16 : 16, overflow: "hidden", display: "flex", flexDirection: "column", height: isMobile ? "100%" : "auto" }}>
-      <div style={{ padding: isMobile ? "12px 16px" : "14px 16px", borderBottom: `1px solid ${border}`, display: "flex", justifyContent: "space-between", alignItems: "center", background: dark ? cardBg : "#f8fafc", flexShrink: 0 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Cart</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <Card className={cn("shadow-none border-border overflow-hidden flex flex-col", isMobile ? "h-full rounded-none rounded-t-2xl" : "rounded-2xl")}>
+      {/* Cart Header */}
+      <CardHeader className={cn("flex flex-row items-center justify-between border-b border-border bg-muted/50 px-4 py-3", isMobile && "px-4 py-3")}>
+        <h2 className="text-title-lg font-bold text-foreground">Cart</h2>
+        <div className="flex items-center gap-3">
           {isMobile && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowMobileCart(false)}
-              style={{ width: 40, height: 40, borderRadius: 12, background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              className="h-10 w-10 rounded-xl"
             >
-              <CloseLineIcon viewBox="0 0 17 16" style={{ width: 16, height: 16, color: muted }} />
-            </button>
+              <X className="h-4 w-4 text-muted-foreground" />
+            </Button>
           )}
 
-          {/* Active Mode Dropdown Trigger */}
-          <div ref={orderTypeDropdownRef} style={{ position: "relative" }}>
-            <button
+          {/* Order Type Dropdown */}
+          <div ref={orderTypeDropdownRef} className="relative">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setShowOrderTypeDropdown(!showOrderTypeDropdown)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "8px 12px",
-                borderRadius: 10,
-                background: dark ? "#1a2231" : "#ffffff",
-                border: `1px solid ${border}`,
-                color: text,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
+              className="gap-1.5 rounded-lg text-xs font-semibold"
             >
               {isPreOrder ? "Pre-order" : isInstitutional ? "Institutional" : "Walk-in"}
-              <ChevronDownIcon viewBox="0 0 20 20" style={{ width: 14, height: 14, color: muted }} />
-            </button>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
             {showOrderTypeDropdown && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: 0,
-                  marginTop: 6,
-                  background: cardBg,
-                  border: `1px solid ${border}`,
-                  borderRadius: 12,
-                  boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
-                  zIndex: 1000,
-                  minWidth: 150,
-                  overflow: "hidden",
-                }}
-              >
+              <div className="absolute top-full right-0 mt-1.5 bg-card border border-border rounded-xl shadow-lg z-[1000] min-w-[150px] overflow-hidden">
                 <button
                   onClick={() => {
                     setIsInstitutional(false);
                     setIsPreOrder(false);
                     setShowOrderTypeDropdown(false);
                   }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    textAlign: "left",
-                    background: (!isInstitutional && !isPreOrder) ? (dark ? "#2d3748" : "#f1f5f9") : "transparent",
-                    color: (!isInstitutional && !isPreOrder) ? primary : text,
-                    border: "none",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
+                  className={cn(
+                    "w-full px-3.5 py-2.5 text-left text-xs font-semibold border-none cursor-pointer",
+                    !isInstitutional && !isPreOrder
+                      ? "bg-muted text-primary"
+                      : "bg-transparent text-foreground hover:bg-muted/50"
+                  )}
                 >
                   Walk-in
                 </button>
@@ -684,72 +613,62 @@ export default function ViewSalesProcessing() {
                     setIsPreOrder(false);
                     setShowOrderTypeDropdown(false);
                   }}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    textAlign: "left",
-                    background: isInstitutional ? (dark ? "#2d3748" : "#f1f5f9") : "transparent",
-                    color: isInstitutional ? primary : text,
-                    border: "none",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
+                  className={cn(
+                    "w-full px-3.5 py-2.5 text-left text-xs font-semibold border-none cursor-pointer",
+                    isInstitutional
+                      ? "bg-muted text-primary"
+                      : "bg-transparent text-foreground hover:bg-muted/50"
+                  )}
                 >
                   Institutional
                 </button>
-
               </div>
             )}
           </div>
         </div>
-      </div>
+      </CardHeader>
 
-      <div style={{ flex: isMobile ? 1 : "none", overflowY: isMobile ? "auto" : "visible", display: "flex", flexDirection: "column", paddingRight: 4 }}>
+      <div className={cn("flex flex-col", isMobile ? "flex-1 overflow-y-auto" : "")}>
         {/* Order Mode Info Panel */}
         {(isPreOrder || isInstitutional) && (
-          <div style={{ padding: isMobile ? 12 : 16, borderBottom: `1px solid ${border}66`, background: dark ? `${inputBg}55` : "#f8fafc55" }}>
+          <div className={cn("border-b border-border/40 bg-muted/30", isMobile ? "p-3" : "p-4")}>
             {isInstitutional && (
-              <div style={{ padding: 12, background: `${primary}10`, border: `1px solid ${primary}20`, borderRadius: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: dark ? inputBg : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <DocsIcon viewBox="0 0 24 24" style={{ width: 16, height: 16, color: primary }} />
+              <div className="p-3 bg-primary/5 border border-primary/10 rounded-2xl flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-primary" />
                     </div>
-                    <div>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: primary, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>Institutional Order</p>
-                    </div>
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Institutional Order</p>
                   </div>
                   <button
                     onClick={() => setShowInstitutionalModal(true)}
-                    style={{ background: "transparent", border: "none", color: primary, fontSize: 12, fontWeight: 700, cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                    className="bg-transparent border-none text-primary text-xs font-bold cursor-pointer underline p-0"
                   >
                     {contactPerson ? "Edit Details" : "Add Details"}
                   </button>
                 </div>
                 {contactPerson ? (
-                  <div style={{ fontSize: 12, color: text, display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-                    <p style={{ margin: 0 }}><strong>Contact Name:</strong> {contactPerson}</p>
-                    {contactNumber && <p style={{ margin: 0 }}><strong>Contact Number:</strong> {contactNumber}</p>}
-                    <p style={{ margin: 0 }}><strong>Address:</strong> {street}, {city}, {province} {zipCode}</p>
-                    {notes && <p style={{ margin: 0 }}><strong>Notes:</strong> {notes}</p>}
+                  <div className="text-xs text-foreground flex flex-col gap-1 mt-1">
+                    <p className="m-0"><strong>Contact Name:</strong> {contactPerson}</p>
+                    {contactNumber && <p className="m-0"><strong>Contact Number:</strong> {contactNumber}</p>}
+                    <p className="m-0"><strong>Address:</strong> {street}, {city}, {province} {zipCode}</p>
+                    {notes && <p className="m-0"><strong>Notes:</strong> {notes}</p>}
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
-                    <p style={{ fontSize: 12, color: muted, margin: 0 }}>No details added yet.</p>
-                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 m-0">No details added yet.</p>
                 )}
               </div>
             )}
 
             {isPreOrder && (
-              <div style={{ padding: 12, background: `${primary}10`, border: `1px solid ${primary}20`, borderRadius: 16, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: dark ? inputBg : "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
-                  <CalenderIcon viewBox="0 0 24 24" style={{ width: 20, height: 20, color: primary }} />
+              <div className="p-3 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center shadow-sm">
+                  <Calendar className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: primary, textTransform: "uppercase", letterSpacing: "0.1em", margin: 0 }}>Pre-order Mode</p>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: muted, margin: "2px 0 0" }}>Upfront Payment Required</p>
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest m-0">Pre-order Mode</p>
+                  <p className="text-xs font-bold text-muted-foreground mt-0.5 m-0">Upfront Payment Required</p>
                 </div>
               </div>
             )}
@@ -757,30 +676,37 @@ export default function ViewSalesProcessing() {
         )}
 
         {/* Cart Items */}
-        <div style={{ padding: isMobile ? 12 : 16 }}>
+        <div className={cn(isMobile ? "p-3" : "p-4")}>
           {cart.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "24px 0" }}>
-              <div style={{ width: 80, height: 80, borderRadius: 24, background: dark ? `${primary}10` : "#f8fafc", border: `1px solid ${border}44`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                <BoxCubeIcon viewBox="0 0 24 24" style={{ width: 32, height: 32, color: `${muted}33` }} />
+            <div className="text-center py-6">
+              <div className="w-20 h-20 rounded-3xl bg-muted/50 border border-border/30 flex items-center justify-center mx-auto mb-4">
+                <Package className="h-8 w-8 text-muted-foreground/20" />
               </div>
-              <h3 style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: `${text}44` }}>Cart is empty</h3>
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-foreground/25">Cart is empty</h3>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="flex flex-col gap-4">
               {cart.map((item) => (
-                <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 16, background: inputBg, border: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>
+                <div key={item.id} className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-input border border-border flex items-center justify-center text-2xl shrink-0">
                     {item.category === "Ube Halaya" ? "🍠" : "🫙"}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{item.name}</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2 }}>
-                      {renderVariationBadges(item.variation, muted, border, inputBg, false)}
-                      <p style={{ fontSize: 11, color: muted, fontWeight: 700, margin: 0 }}>₱{item.price}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold m-0 text-foreground">{item.name}</p>
+                    <div className="flex flex-col gap-0.5 mt-0.5">
+                      {renderVariationBadges(item.variation, "hsl(var(--muted-foreground))", "hsl(var(--border))", "hsl(var(--input))", false)}
+                      <p className="text-[11px] text-muted-foreground font-bold m-0">₱{item.price}</p>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <button onClick={() => updateQuantity(item.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, border: "none", background: dark ? cardBg : "#f1f5f9", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><MinusIcon style={{ width: 14, height: 14 }} /></button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-7 w-7 rounded-lg"
+                      onClick={() => updateQuantity(item.id, -1)}
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </Button>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -788,23 +714,24 @@ export default function ViewSalesProcessing() {
                       value={item.quantity}
                       onChange={(e) => handleQuantityChange(item.id, e.target.value, item.stock)}
                       onBlur={() => handleQuantityBlur(item.id, item.quantity, item.stock)}
-                      style={{
-                        width: 36,
-                        height: 28,
-                        borderRadius: 8,
-                        border: `1px solid ${border}`,
-                        background: dark ? inputBg : "#ffffff",
-                        color: text,
-                        fontSize: 13,
-                        fontWeight: 700,
-                        textAlign: "center",
-                        outline: "none",
-                        boxSizing: "border-box",
-                        padding: 0,
-                      }}
+                      className="w-9 h-7 rounded-lg border border-border bg-background text-foreground text-xs font-bold text-center outline-none"
                     />
-                    <button onClick={() => updateQuantity(item.id, 1)} style={{ width: 28, height: 28, borderRadius: 8, border: "none", background: dark ? cardBg : "#f1f5f9", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><PlusIcon viewBox="0 0 12 12" style={{ width: 14, height: 14 }} /></button>
-                    <button onClick={() => removeFromCart(item.id)} style={{ width: 28, height: 28, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#f04438", display: "flex", alignItems: "center", justifyContent: "center" }}><TrashBinIcon viewBox="0 0 20 20" style={{ width: 14, height: 14 }} /></button>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-7 w-7 rounded-lg"
+                      onClick={() => updateQuantity(item.id, 1)}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => removeFromCart(item.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -813,92 +740,79 @@ export default function ViewSalesProcessing() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div style={{ padding: isMobile ? 12 : 16, background: dark ? `${inputBg}88` : "#f8fafc88", borderTop: `1px solid ${border}`, display: "flex", flexDirection: "column", gap: 16, flexShrink: 0 }}>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            {/* Senior/PWD Discount Toggle */}
-            <div
-              style={{
-                width: "100%",
-                padding: "0 12px",
-                borderRadius: 12,
-                border: `1px solid ${border}`,
-                background: cardBg,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                height: 44,
-                boxSizing: "border-box"
-              }}
+      {/* Cart Footer */}
+      <div className={cn("border-t border-border bg-muted/30 flex flex-col gap-4 shrink-0", isMobile ? "p-3" : "p-4")}>
+        {/* Senior/PWD Toggle */}
+        <div className="flex items-center justify-between px-3 h-11 rounded-xl border border-border bg-card">
+          <span className="text-xs font-bold text-foreground">Senior/PWD</span>
+          <div className="flex items-center gap-2">
+            {isSeniorPWD && (
+              <button
+                onClick={() => {
+                  setIsSeniorPWD(false);
+                  setIdNumber("");
+                  setPwdCustomerName("");
+                  setPwdStreet("");
+                  setPwdBarangay("");
+                  setPwdCity("");
+                  setPwdProvince("");
+                  setPwdZipCode("");
+                  setErrors(prev => {
+                    const { idNumber, pwdCustomerName, pwdStreet, pwdBarangay, pwdCity, pwdProvince, pwdZipCode, ...rest } = prev;
+                    return rest;
+                  });
+                }}
+                className="px-2 py-1 rounded-lg border-none bg-transparent text-destructive text-xs font-bold cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+            <Button
+              size="sm"
+              variant={isSeniorPWD ? "outline" : "default"}
+              className={cn("text-xs font-bold rounded-lg h-7 px-3", isSeniorPWD && "text-primary border-primary/20 bg-primary/10 hover:bg-primary/20")}
+              onClick={() => setShowPwdModal(true)}
             >
-              <span style={{ fontSize: 12, fontWeight: 700 }}>Senior/PWD</span>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {isSeniorPWD && (
-                  <button
-                    onClick={() => {
-                      setIsSeniorPWD(false);
-                      setIdNumber("");
-                      setPwdCustomerName("");
-                      setPwdStreet("");
-                      setPwdBarangay("");
-                      setPwdCity("");
-                      setPwdProvince("");
-                      setPwdZipCode("");
-                      setErrors(prev => {
-                        const { idNumber, pwdCustomerName, pwdStreet, pwdBarangay, pwdCity, pwdProvince, pwdZipCode, ...rest } = prev;
-                        return rest;
-                      });
-                    }}
-                    style={{ padding: "4px 8px", borderRadius: 8, border: "none", background: "transparent", color: "#f04438", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                  >
-                    Clear
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowPwdModal(true)}
-                  style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: isSeniorPWD ? `${primary}20` : primary, color: isSeniorPWD ? primary : "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                >
-                  {isSeniorPWD ? "Applied" : "Apply"}
-                </button>
-              </div>
-            </div>
+              {isSeniorPWD ? "Applied" : "Apply"}
+            </Button>
           </div>
         </div>
 
-        <div style={{ height: 1, background: border, margin: "8px 0" }} />
+        <Separator className="my-2" />
 
+        {/* Totals */}
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", color: `${muted}99`, marginBottom: 8 }}>
+          <div className="flex justify-between text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mb-2">
             <span>Subtotal</span>
-            <span style={{ color: text }}>₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span className="text-foreground">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           {isSeniorPWD && (
             <>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#f04438", marginBottom: 8 }}>
+              <div className="flex justify-between text-[11px] font-bold uppercase text-destructive mb-2">
                 <span>VAT Exemption (12%)</span>
                 <span>- ₱{pwdDetails.vatExempt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#f04438", marginBottom: 8 }}>
+              <div className="flex justify-between text-[11px] font-bold uppercase text-destructive mb-2">
                 <span>Senior/PWD Discount (20%)</span>
                 <span>- ₱{pwdDetails.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </>
           )}
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 8 }}>
-            <span style={{ fontSize: 18, fontWeight: 700 }}>Total Price</span>
-            <span style={{ fontSize: 28, fontWeight: 700, color: primary }}>₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <div className="flex justify-between items-end mt-2">
+            <span className="text-lg font-bold text-foreground">Total Price</span>
+            <span className="text-2xl font-bold text-primary">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         </div>
-        <button
+
+        <Button
           disabled={cart.length === 0}
           onClick={handleCheckout}
-          style={{ width: "100%", height: 56, borderRadius: 16, background: primary, color: "#fff", border: "none", fontSize: 15, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", cursor: "pointer", opacity: cart.length === 0 ? 0.3 : 1 }}
-        >Complete Sale</button>
+          className="w-full h-14 rounded-2xl text-[15px] font-bold uppercase tracking-[0.1em]"
+        >
+          Complete Sale
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 
   const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("sales-processing") || authUser.roles?.includes("Admin") || authUser.subRole === "Admin");
@@ -918,68 +832,47 @@ export default function ViewSalesProcessing() {
   if (!isMounted) return null;
 
   return (
-    <div className="w-full h-screen p-4 md:p-6 bg-transparent flex flex-col gap-4 md:gap-6 overflow-y-auto animate-in fade-in duration-500" style={{ color: text }}>
-      <style>{`
-        /* Custom thin scrollbar styling */
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: ${dark ? "#4a5568" : "#cbd5e1"};
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: ${dark ? "#718096" : "#94a3b8"};
-        }
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: ${dark ? "#4a5568 transparent" : "#cbd5e1 transparent"};
-        }
-      `}</style>
+    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex-shrink-0">
-        <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Sales Processing</h1>
-        <div className="mt-1 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+      <div className="shrink-0">
+        <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Processing</h1>
+        <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
           <span>Process walk-in and institutional orders</span>
           <span>·</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, background: `${primary}15`, color: primary, padding: "2px 8px", borderRadius: 6, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+          <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
             {locationType && locationName ? `${locationType} - ${locationName}` : "Store"}
-          </div>
+          </Badge>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0" style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 420px", gap: isMobile ? 16 : 24, paddingBottom: isMobile ? 120 : 0 }}>
+      <div className={cn("flex-1 min-h-0 grid gap-6", isMobile ? "grid-cols-1 pb-28" : "grid-cols-[1fr_420px]")}>
         {/* Product Catalog */}
-        <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: isMobile ? 12 : 16, overflow: "hidden" }}>
-          <div style={{ padding: isMobile ? "12px 14px" : "16px 20px", borderBottom: `1px solid ${border}` }}>
-            <h2 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 700 }}>Product Catalog</h2>
-          </div>
-          <div style={{ padding: isMobile ? 12 : 20 }}>
+        <Card className="shadow-none border-border overflow-hidden rounded-2xl">
+          <CardHeader className={cn("border-b border-border", isMobile ? "px-3.5 py-3" : "px-5 py-4")}>
+            <h2 className={cn("font-bold", isMobile ? "text-lg" : "text-xl")}>Product Catalog</h2>
+          </CardHeader>
+          <CardContent className={cn(isMobile ? "p-3" : "p-5")}>
             {categories.map((category) => (
-              <div key={category} style={{ marginBottom: isMobile ? 20 : 28 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: isMobile ? 12 : 16 }}>
-                  <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.2em", color: `${muted}99` }}>{category}</h3>
-                  <div style={{ height: 1, flex: 1, background: `linear-gradient(90deg, ${border}, transparent)` }} />
+              <div key={category} className={cn(isMobile ? "mb-5" : "mb-7")}>
+                <div className={cn("flex items-center gap-4", isMobile ? "mb-3" : "mb-4")}>
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{category}</h3>
+                  <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(330px, 1fr))", gap: isMobile ? 12 : 20 }}>
+                <div className={cn("grid gap-5", isMobile ? "grid-cols-1 gap-3" : "grid-cols-[repeat(auto-fill,minmax(330px,1fr))]")}>
                   {products
                     .filter((p) => p.category === category)
                     .map((product) => (
-                      <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} primary={primary} muted={muted} text={text} border={border} cardBg={cardBg} inputBg={inputBg} dark={dark} isMobile={isMobile} />
+                      <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} isMobile={isMobile} />
                     ))}
                 </div>
               </div>
             ))}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Desktop Shopping Cart */}
         {!isMobile && (
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <div className="flex flex-col">
             {renderCart}
           </div>
         )}
@@ -989,27 +882,27 @@ export default function ViewSalesProcessing() {
       {isMobile && !showMobileCart && (
         <div
           onClick={() => setShowMobileCart(true)}
-          style={{ position: "fixed", bottom: 24, left: 24, right: 24, background: primary, color: "#fff", padding: "16px 24px", borderRadius: 20, display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)", zIndex: 40, cursor: "pointer" }}
+          className="fixed bottom-6 left-6 right-6 bg-primary text-primary-foreground px-6 py-4 rounded-[20px] flex justify-between items-center shadow-2xl z-40 cursor-pointer"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ position: "relative", marginRight: 8 }}>
-              <BoxCubeIcon style={{ width: 24, height: 24 }} viewBox="0 0 24 24" />
+          <div className="flex items-center gap-4">
+            <div className="relative mr-2">
+              <Package className="h-6 w-6" />
               {cart.length > 0 && (
-                <div style={{ position: "absolute", top: -8, right: -12, background: "#f04438", color: "#fff", fontSize: 10, fontWeight: 700, width: 18, height: 18, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${primary}` }}>
+                <div className="absolute -top-2 -right-3 bg-destructive text-destructive-foreground text-[10px] font-bold w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-primary">
                   {cart.reduce((s, i) => s + (Number(i.quantity) || 0), 0)}
                 </div>
               )}
             </div>
-            <span style={{ fontWeight: 700, fontSize: 15 }}>View Cart</span>
+            <span className="font-bold text-[15px]">View Cart</span>
           </div>
-          <span style={{ fontSize: 18, fontWeight: 700 }}>₱{total.toLocaleString()}</span>
+          <span className="text-lg font-bold">₱{total.toLocaleString()}</span>
         </div>
       )}
 
       {/* Mobile Cart Modal */}
       {isMobile && showMobileCart && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", zIndex: 9999, display: "flex", alignItems: "flex-end", animation: "slideIn 0.3s ease-out" }}>
-          <div style={{ width: "100%", height: "85vh", display: "flex", flexDirection: "column" }}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-end animate-in fade-in duration-300">
+          <div className="w-full h-[85vh] flex flex-col">
             {renderCart}
           </div>
         </div>
@@ -1024,34 +917,55 @@ export default function ViewSalesProcessing() {
       />
 
       {/* Checkout Dialog */}
-      {showCheckoutDialog && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
+      {showCheckoutDialog && typeof document !== "undefined" && createPortal(
+        <>
+          <div
+            onClick={() => setShowCheckoutDialog(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 99998, backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 99999,
+              width: "100%",
+              maxWidth: 860,
+              maxHeight: "90vh",
+              backgroundColor: "#ffffff",
+              borderRadius: 12,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
                 {isPreOrder ? "Complete Pre-order" : "Confirm Sale"}
               </h2>
             </div>
 
             {/* Body */}
-            <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
+            <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto flex-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Items Summary
                   </h3>
-                  <div className="flex flex-col gap-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                  <div className="flex flex-col gap-3 max-h-60 overflow-y-auto pr-1">
                     {cart.map((item) => (
                       <div key={item.id} className="flex justify-between items-center text-sm">
                         <div className="flex-1 min-w-0 pr-4">
-                          <p className="font-bold m-0 text-gray-900 dark:text-white">{item.name}</p>
+                          <p className="font-bold m-0 text-foreground">{item.name}</p>
                           <div className="flex flex-col gap-1 mt-1">
-                            {renderVariationBadges(item.variation, dark ? "#8899aa" : "#667085", dark ? "#2d3748" : "#e4e7ec", dark ? "#1a2231" : "#ffffff", false)}
-                            <p className="text-xs text-gray-500 font-bold uppercase m-0">Qty: {item.quantity}</p>
+                            {renderVariationBadges(item.variation, "hsl(var(--muted-foreground))", "hsl(var(--border))", "hsl(var(--input))", false)}
+                            <p className="text-xs text-muted-foreground font-bold uppercase m-0">Qty: {item.quantity}</p>
                           </div>
                         </div>
-                        <span className="font-bold text-gray-900 dark:text-white shrink-0">₱{(item.price * (Number(item.quantity) || 0)).toLocaleString()}</span>
+                        <span className="font-bold text-foreground shrink-0">₱{(item.price * (Number(item.quantity) || 0)).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
@@ -1059,9 +973,9 @@ export default function ViewSalesProcessing() {
 
                 <div className="flex flex-col gap-4">
                   {isInstitutional && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm">
-                      <p className="text-xs font-bold text-brand-500 uppercase tracking-widest mb-2">Delivery & Contact Details</p>
-                      <div className="flex flex-col gap-1 text-gray-700 dark:text-gray-300">
+                    <div className="p-4 bg-muted border border-border rounded-xl text-sm">
+                      <p className="text-xs font-bold text-primary uppercase tracking-widest mb-2">Delivery & Contact Details</p>
+                      <div className="flex flex-col gap-1 text-foreground/80">
                         <p className="m-0"><strong>Name / Org:</strong> {contactPerson}</p>
                         {contactNumber && <p className="m-0"><strong>Contact Number:</strong> {contactNumber}</p>}
                         <p className="m-0"><strong>Address:</strong> {street}, {barangay}, {city}, {province} {zipCode}</p>
@@ -1074,12 +988,28 @@ export default function ViewSalesProcessing() {
                     <div>
                       <Label>Payment Method</Label>
                       <div className="grid grid-cols-2 gap-3 mt-2">
-                        <button onClick={() => setPaymentMethod("cash")} className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors ${paymentMethod === "cash" ? "border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400" : "border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600"}`}>
-                          <DollarLineIcon viewBox="0 0 25 24" className="w-5 h-5" />
+                        <button
+                          onClick={() => setPaymentMethod("cash")}
+                          className={cn(
+                            "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
+                            paymentMethod === "cash"
+                              ? "border-foreground bg-foreground/5 text-foreground"
+                              : "border-border text-muted-foreground hover:border-muted-foreground/30"
+                          )}
+                        >
+                          <DollarSign className="h-5 w-5" />
                           <span className="text-xs font-bold uppercase">Cash</span>
                         </button>
-                        <button onClick={() => setPaymentMethod("gcash")} className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors ${paymentMethod === "gcash" ? "border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400" : "border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300 dark:hover:border-gray-600"}`}>
-                          <BoxIconLine viewBox="0 0 24 24" className="w-5 h-5" />
+                        <button
+                          onClick={() => setPaymentMethod("gcash")}
+                          className={cn(
+                            "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
+                            paymentMethod === "gcash"
+                              ? "border-foreground bg-foreground/5 text-foreground"
+                              : "border-border text-muted-foreground hover:border-muted-foreground/30"
+                          )}
+                        >
+                          <Package className="h-5 w-5" />
                           <span className="text-xs font-bold uppercase">E-Wallet / Card / QR PH</span>
                         </button>
                       </div>
@@ -1087,47 +1017,53 @@ export default function ViewSalesProcessing() {
                   )}
 
                   <div className="flex items-center justify-between px-2 mt-2">
-                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">Print Receipt</span>
-                    <input type="checkbox" checked={isPrintingReceipt} onChange={(e) => setIsPrintingReceipt(e.target.checked)} className="w-5 h-5 cursor-pointer accent-brand-500 rounded border-gray-300 focus:ring-brand-500" />
+                    <span className="text-sm font-bold text-foreground/80">Print Receipt</span>
+                    <input
+                      type="checkbox"
+                      checked={isPrintingReceipt}
+                      onChange={(e) => setIsPrintingReceipt(e.target.checked)}
+                      className="w-5 h-5 cursor-pointer accent-foreground rounded border-border"
+                    />
                   </div>
 
                   {isSeniorPWD && (
-                    <div className="flex flex-col gap-2 border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+                    <div className="flex flex-col gap-2 border-t border-border pt-4 mt-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Subtotal (VAT-Inclusive)</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="text-muted-foreground">Subtotal (VAT-Inclusive)</span>
+                        <span className="font-semibold text-foreground">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
-                      <div className="flex justify-between text-sm text-red-500">
+                      <div className="flex justify-between text-sm text-destructive">
                         <span>VAT Exemption (12%)</span>
                         <span>- ₱{pwdDetails.vatExempt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
-                      <div className="flex justify-between text-sm text-red-500">
+                      <div className="flex justify-between text-sm text-destructive">
                         <span>Senior/PWD Discount (20%)</span>
                         <span>- ₱{pwdDetails.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     </div>
                   )}
 
-                  <div className="flex justify-between items-end border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
-                    <span className="text-base font-bold text-gray-900 dark:text-white">Grand Total</span>
-                    <span className="text-2xl font-bold text-brand-500">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <div className="flex justify-between items-end border-t border-border pt-4 mt-2">
+                    <span className="text-base font-bold text-foreground">Grand Total</span>
+                    <span className="text-2xl font-bold text-foreground">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
 
                   {paymentMethod === "cash" && (
-                    <div className="flex flex-col gap-3 border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+                    <div className="flex flex-col gap-3 border-t border-border pt-4 mt-2">
                       <div className="flex justify-between items-start text-sm">
-                        <span className="font-semibold text-gray-700 dark:text-gray-300 mt-1.5">Amount Paid</span>
+                        <span className="font-semibold text-foreground/80 mt-1.5">Amount Paid</span>
                         <div className="flex flex-col items-end gap-1">
                           <div className="flex items-center gap-2">
-                            <span className={`font-bold ${amountPaid.trim() !== "" && (parseFloat(amountPaid) || 0) < total ? "text-red-500" : "text-gray-500"}`}>₱</span>
+                            <span className={cn("font-bold", amountPaid.trim() !== "" && (parseFloat(amountPaid) || 0) < total ? "text-destructive" : "text-muted-foreground")}>₱</span>
                             <input
                               type="text"
                               inputMode="decimal"
-                              className={`w-28 px-3 py-1.5 text-right font-semibold border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                              className={cn(
+                                "w-28 px-3 py-1.5 text-right font-semibold border rounded-lg focus:outline-none focus:ring-2 transition-colors",
                                 amountPaid.trim() !== "" && (parseFloat(amountPaid) || 0) < total
-                                  ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 focus:ring-red-500 focus:border-red-500"
-                                  : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-500 focus:border-brand-500"
-                              }`}
+                                  ? "border-destructive bg-destructive/5 text-destructive focus:ring-destructive"
+                                  : "border-border bg-background text-foreground focus:ring-ring focus:border-ring"
+                              )}
                               placeholder="0.00"
                               value={amountPaid}
                               onChange={(e) => {
@@ -1138,13 +1074,13 @@ export default function ViewSalesProcessing() {
                             />
                           </div>
                           {amountPaid.trim() !== "" && (parseFloat(amountPaid) || 0) < total && (
-                            <span className="text-xs font-semibold text-red-500">Insufficient amount</span>
+                            <span className="text-xs font-semibold text-destructive">Insufficient amount</span>
                           )}
                         </div>
                       </div>
                       <div className="flex justify-between items-end pt-1">
-                        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Change</span>
-                        <span className="text-xl font-bold text-gray-900 dark:text-white">
+                        <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Change</span>
+                        <span className="text-xl font-bold text-foreground">
                           ₱{Math.max(0, (parseFloat(amountPaid) || 0) - total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -1155,446 +1091,291 @@ export default function ViewSalesProcessing() {
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+            <div
+              style={{
+                padding: "12px 24px",
+                borderTop: "1px solid #e4e4e7",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                backgroundColor: "#fafafa",
+                borderRadius: "0 0 12px 12px",
+                flexShrink: 0,
+              }}
+            >
               <Button variant="outline" onClick={() => setShowCheckoutDialog(false)}>Cancel</Button>
-              <Button variant="primary" onClick={confirmSale}>{isPreOrder ? "Process" : "Confirm"}</Button>
+              <Button onClick={confirmSale}>{isPreOrder ? "Process" : "Confirm"}</Button>
             </div>
           </div>
-        </div>
+        </>,
+        document.body
       )}
+
       {/* Institutional Details Modal */}
-      {showInstitutionalModal && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[96vh]">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                Institutional Details
-              </h2>
-            </div>
+      <Dialog open={showInstitutionalModal} onOpenChange={setShowInstitutionalModal}>
+        <DialogContent className="max-w-4xl max-h-[96vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-5 py-3 sm:px-6 sm:py-4 border-b border-border sticky top-0 bg-background z-10">
+            <DialogTitle className="text-base sm:text-lg font-bold">
+              Institutional Details
+            </DialogTitle>
+          </DialogHeader>
 
-            {/* Body */}
-            <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Name / Organization <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="text"
-                    placeholder="Name / Organization"
-                    maxLength={50}
-                    value={contactPerson} 
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                      setContactPerson(cleaned);
-                      if (errors.contactPerson) setErrors(prev => { const { contactPerson, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => {
-                      setContactPerson(toTitleCase(contactPerson));
-                    }}
-                    error={errors.contactPerson}
-                  />
-                </div>
+          <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Name / Organization <span className="text-destructive">*</span></Label>
+                <Input
+                  type="text"
+                  placeholder="Name / Organization"
+                  maxLength={50}
+                  value={contactPerson}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                    setContactPerson(cleaned);
+                    if (errors.contactPerson) setErrors(prev => { const { contactPerson, ...rest } = prev; return rest; });
+                  }}
+                  onBlur={() => {
+                    setContactPerson(toTitleCase(contactPerson));
+                  }}
+                  className={cn(errors.contactPerson && "border-destructive")}
+                />
+                {errors.contactPerson && <p className="text-xs text-destructive mt-1">{errors.contactPerson}</p>}
+              </div>
 
-                <div>
-                  <Label>Contact Number <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="text"
-                    placeholder="(+63) 912 345 6789"
-                    maxLength={18}
-                    value={contactNumber} 
-                    onChange={(e) => {
-                      let val = e.target.value;
-                      if (!val) {
+              <div>
+                <Label>Contact Number <span className="text-destructive">*</span></Label>
+                <Input
+                  type="text"
+                  placeholder="(+63) 912 345 6789"
+                  maxLength={18}
+                  value={contactNumber}
+                  onChange={(e) => {
+                    let val = e.target.value;
+                    if (!val) {
+                      setContactNumber("");
+                    } else {
+                      let digits = val.replace(/\D/g, "");
+                      if (digits.startsWith("63")) {
+                        digits = digits.substring(2);
+                      } else if (digits.startsWith("0")) {
+                        digits = digits.substring(1);
+                      }
+
+                      if (digits.length > 0) {
+                        let formatted = "(+63) ";
+                        formatted += digits.substring(0, 3);
+                        if (digits.length > 3) {
+                          formatted += " " + digits.substring(3, 6);
+                        }
+                        if (digits.length > 6) {
+                          formatted += " " + digits.substring(6, 10);
+                        }
+                        setContactNumber(formatted);
+                      } else {
                         setContactNumber("");
-                      } else {
-                        let digits = val.replace(/\D/g, "");
-                        if (digits.startsWith("63")) {
-                          digits = digits.substring(2);
-                        } else if (digits.startsWith("0")) {
-                          digits = digits.substring(1);
-                        }
-                        
-                        if (digits.length > 0) {
-                          let formatted = "(+63) ";
-                          formatted += digits.substring(0, 3);
-                          if (digits.length > 3) {
-                            formatted += " " + digits.substring(3, 6);
-                          }
-                          if (digits.length > 6) {
-                            formatted += " " + digits.substring(6, 10);
-                          }
-                          setContactNumber(formatted);
-                        } else {
-                          setContactNumber("");
-                        }
                       }
-                      if (errors.contactNumber) setErrors(prev => { const { contactNumber, ...rest } = prev; return rest; });
-                    }}
-                    error={errors.contactNumber}
-                  />
-                </div>
+                    }
+                    if (errors.contactNumber) setErrors(prev => { const { contactNumber, ...rest } = prev; return rest; });
+                  }}
+                  className={cn(errors.contactNumber && "border-destructive")}
+                />
+                {errors.contactNumber && <p className="text-xs text-destructive mt-1">{errors.contactNumber}</p>}
+              </div>
 
-                <div className="sm:col-span-2">
-                  <Label>Street <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="Street"
-                    maxLength={100}
-                    value={street} 
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                      setStreet(cleaned);
-                      if (errors.street) setErrors(prev => { const { street, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => {
-                      setStreet(toTitleCase(street));
-                    }}
-                    error={errors.street}
-                  />
-                </div>
+              <div className="sm:col-span-2">
+                <Label>Street <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="Street"
+                  maxLength={100}
+                  value={street}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                    setStreet(cleaned);
+                    if (errors.street) setErrors(prev => { const { street, ...rest } = prev; return rest; });
+                  }}
+                  onBlur={() => {
+                    setStreet(toTitleCase(street));
+                  }}
+                  className={cn(errors.street && "border-destructive")}
+                />
+                {errors.street && <p className="text-xs text-destructive mt-1">{errors.street}</p>}
+              </div>
 
-                <div>
-                  <Label>Barangay <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="Barangay"
-                    maxLength={50}
-                    value={barangay} 
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                      setBarangay(cleaned);
-                      if (errors.barangay) setErrors(prev => { const { barangay, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => {
-                      setBarangay(toTitleCase(barangay));
-                    }}
-                    error={errors.barangay}
-                  />
-                </div>
-                <div>
-                  <Label>City <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="City"
-                    maxLength={50}
-                    value={city} 
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                      setCity(cleaned);
-                      if (errors.city) setErrors(prev => { const { city, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => {
-                      setCity(toTitleCase(city));
-                    }}
-                    error={errors.city}
-                  />
-                </div>
+              <div>
+                <Label>Barangay <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="Barangay"
+                  maxLength={50}
+                  value={barangay}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                    setBarangay(cleaned);
+                    if (errors.barangay) setErrors(prev => { const { barangay, ...rest } = prev; return rest; });
+                  }}
+                  onBlur={() => {
+                    setBarangay(toTitleCase(barangay));
+                  }}
+                  className={cn(errors.barangay && "border-destructive")}
+                />
+                {errors.barangay && <p className="text-xs text-destructive mt-1">{errors.barangay}</p>}
+              </div>
+              <div>
+                <Label>City <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="City"
+                  maxLength={50}
+                  value={city}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                    setCity(cleaned);
+                    if (errors.city) setErrors(prev => { const { city, ...rest } = prev; return rest; });
+                  }}
+                  onBlur={() => {
+                    setCity(toTitleCase(city));
+                  }}
+                  className={cn(errors.city && "border-destructive")}
+                />
+                {errors.city && <p className="text-xs text-destructive mt-1">{errors.city}</p>}
+              </div>
 
-                <div>
-                  <Label>Province <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="Province"
-                    maxLength={50}
-                    value={province} 
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                      setProvince(cleaned);
-                      if (errors.province) setErrors(prev => { const { province, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => {
-                      setProvince(toTitleCase(province));
-                    }}
-                    error={errors.province}
-                  />
-                </div>
-                <div>
-                  <Label>Zip Code <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="text"
-                    placeholder="Zip"
-                    maxLength={4}
-                    value={zipCode} 
-                    onChange={(e) => {
-                      const cleanVal = e.target.value.replace(/\D/g, "").slice(0, 4);
-                      setZipCode(cleanVal);
-                      if (errors.zipCode) setErrors(prev => { const { zipCode, ...rest } = prev; return rest; });
-                    }}
-                    error={errors.zipCode}
-                  />
-                </div>
+              <div>
+                <Label>Province <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="Province"
+                  maxLength={50}
+                  value={province}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
+                    setProvince(cleaned);
+                    if (errors.province) setErrors(prev => { const { province, ...rest } = prev; return rest; });
+                  }}
+                  onBlur={() => {
+                    setProvince(toTitleCase(province));
+                  }}
+                  className={cn(errors.province && "border-destructive")}
+                />
+                {errors.province && <p className="text-xs text-destructive mt-1">{errors.province}</p>}
+              </div>
+              <div>
+                <Label>Zip Code <span className="text-destructive">*</span></Label>
+                <Input
+                  type="text"
+                  placeholder="Zip"
+                  maxLength={4}
+                  value={zipCode}
+                  onChange={(e) => {
+                    const cleanVal = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setZipCode(cleanVal);
+                    if (errors.zipCode) setErrors(prev => { const { zipCode, ...rest } = prev; return rest; });
+                  }}
+                  className={cn(errors.zipCode && "border-destructive")}
+                />
+                {errors.zipCode && <p className="text-xs text-destructive mt-1">{errors.zipCode}</p>}
+              </div>
 
-                <div className="sm:col-span-2">
-                  <Label>Notes / Customization</Label>
-                  <TextArea
-                    placeholder="Optional notes..."
-                    maxLength={500}
-                    value={notes} 
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={4}
-                    style={{ resize: "none" }}
-                  />
-                </div>
+              <div className="sm:col-span-2">
+                <Label>Notes / Customization</Label>
+                <Textarea
+                  placeholder="Optional notes..."
+                  maxLength={500}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
-              <Button
-                variant="outline"
-                onClick={() => setShowInstitutionalModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  let isValid = true;
-                  const newErrors: any = {};
-                  const normContactPerson = toTitleCase(contactPerson);
-                  const normStreet = toTitleCase(street);
-                  const normBarangay = toTitleCase(barangay);
-                  const normCity = toTitleCase(city);
-                  const normProvince = toTitleCase(province);
-                  
-                  setContactPerson(normContactPerson);
-                  setStreet(normStreet);
-                  setBarangay(normBarangay);
-                  setCity(normCity);
-                  setProvince(normProvince);
-
-                  if (!normContactPerson.trim()) { newErrors.contactPerson = "Required"; isValid = false; }
-                  if (!contactNumber.trim() || contactNumber.replace(/\D/g,"").length < 10) { newErrors.contactNumber = "Invalid Contact Number"; isValid = false; }
-                  if (!normStreet.trim()) { newErrors.street = "Required"; isValid = false; }
-                  if (!normBarangay.trim()) { newErrors.barangay = "Required"; isValid = false; }
-                  if (!normCity.trim()) { newErrors.city = "Required"; isValid = false; }
-                  if (!normProvince.trim()) { newErrors.province = "Required"; isValid = false; }
-                  if (!zipCode.trim()) { newErrors.zipCode = "Required"; isValid = false; }
-                  
-                  if (!isValid) {
-                    setErrors(newErrors);
-                    toast.error("Please complete all required details.");
-                    return;
-                  }
-                  
-                  setShowInstitutionalModal(false);
-                  setShowCheckoutDialog(true);
-                }}
-              >
-                Save Details
-              </Button>
-            </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter className="px-5 py-3 sm:px-6 sm:py-4 border-t border-border bg-muted/50">
+            <Button
+              variant="outline"
+              onClick={() => setShowInstitutionalModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                let isValid = true;
+                const newErrors: any = {};
+                const normContactPerson = toTitleCase(contactPerson);
+                const normStreet = toTitleCase(street);
+                const normBarangay = toTitleCase(barangay);
+                const normCity = toTitleCase(city);
+                const normProvince = toTitleCase(province);
+
+                setContactPerson(normContactPerson);
+                setStreet(normStreet);
+                setBarangay(normBarangay);
+                setCity(normCity);
+                setProvince(normProvince);
+
+                if (!normContactPerson.trim()) { newErrors.contactPerson = "Required"; isValid = false; }
+                if (!contactNumber.trim() || contactNumber.replace(/\D/g, "").length < 10) { newErrors.contactNumber = "Invalid Contact Number"; isValid = false; }
+                if (!normStreet.trim()) { newErrors.street = "Required"; isValid = false; }
+                if (!normBarangay.trim()) { newErrors.barangay = "Required"; isValid = false; }
+                if (!normCity.trim()) { newErrors.city = "Required"; isValid = false; }
+                if (!normProvince.trim()) { newErrors.province = "Required"; isValid = false; }
+                if (!zipCode.trim()) { newErrors.zipCode = "Required"; isValid = false; }
+
+                if (!isValid) {
+                  setErrors(newErrors);
+                  toast.error("Please complete all required details.");
+                  return;
+                }
+
+                setShowInstitutionalModal(false);
+                setShowCheckoutDialog(true);
+              }}
+            >
+              Save Details
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Senior/PWD Modal */}
-      {showPwdModal && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-2xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[96vh]">
-            <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
-              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-                Senior/PWD Details
-              </h2>
-            </div>
-            <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <Label>ID Number <span className="text-red-500">*</span></Label>
-                  <Input
-                    maxLength={20}
-                    placeholder="13-7600-000-0000123"
-                    value={idNumber}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val.length < idNumber.length) {
-                        if (idNumber.endsWith("-") && !val.endsWith("-")) {
-                          const clean = val.replace(/\D/g, "");
-                          const digits = clean.slice(0, clean.length - 1);
-                          let formatted = "";
-                          if (digits.length > 0) formatted += digits.substring(0, 2);
-                          if (digits.length > 2) formatted += "-" + digits.substring(2, 6);
-                          if (digits.length > 6) formatted += "-" + digits.substring(6, 9);
-                          if (digits.length > 9) formatted += "-" + digits.substring(9, 16);
-                          setIdNumber(formatted);
-                        } else {
-                          setIdNumber(val);
-                        }
-                      } else {
-                        const digits = val.replace(/\D/g, "").slice(0, 16);
-                        let formatted = "";
-                        if (digits.length > 0) formatted += digits.substring(0, 2);
-                        if (digits.length > 2) formatted += "-" + digits.substring(2, 6);
-                        if (digits.length > 6) formatted += "-" + digits.substring(6, 9);
-                        if (digits.length > 9) formatted += "-" + digits.substring(9, 16);
-                        setIdNumber(formatted);
-                      }
-                      if (errors.idNumber) setErrors(prev => { const { idNumber, ...rest } = prev; return rest; });
-                    }}
-                    error={errors.idNumber}
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <Label>Customer Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    maxLength={50}
-                    placeholder="Juan Dela Cruz"
-                    value={pwdCustomerName}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                      setPwdCustomerName(cleaned);
-                      if (errors.pwdCustomerName) setErrors(prev => { const { pwdCustomerName, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => setPwdCustomerName(toTitleCase(pwdCustomerName))}
-                    error={errors.pwdCustomerName}
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <Label>Street <span className="text-red-500">*</span></Label>
-                  <Input
-                    maxLength={100}
-                    placeholder="123 Maple St."
-                    value={pwdStreet}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                      setPwdStreet(cleaned);
-                      if (errors.pwdStreet) setErrors(prev => { const { pwdStreet, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => setPwdStreet(toTitleCase(pwdStreet))}
-                    error={errors.pwdStreet}
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <Label>Barangay <span className="text-red-500">*</span></Label>
-                  <Input
-                    maxLength={50}
-                    placeholder="Barangay 12"
-                    value={pwdBarangay}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                      setPwdBarangay(cleaned);
-                      if (errors.pwdBarangay) setErrors(prev => { const { pwdBarangay, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => setPwdBarangay(toTitleCase(pwdBarangay))}
-                    error={errors.pwdBarangay}
-                  />
-                </div>
-
-                <div>
-                  <Label>City <span className="text-red-500">*</span></Label>
-                  <Input
-                    maxLength={50}
-                    placeholder="City"
-                    value={pwdCity}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                      setPwdCity(cleaned);
-                      if (errors.pwdCity) setErrors(prev => { const { pwdCity, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => setPwdCity(toTitleCase(pwdCity))}
-                    error={errors.pwdCity}
-                  />
-                </div>
-
-                <div>
-                  <Label>Province <span className="text-red-500">*</span></Label>
-                  <Input
-                    maxLength={50}
-                    placeholder="Province"
-                    value={pwdProvince}
-                    onChange={(e) => {
-                      const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                      setPwdProvince(cleaned);
-                      if (errors.pwdProvince) setErrors(prev => { const { pwdProvince, ...rest } = prev; return rest; });
-                    }}
-                    onBlur={() => setPwdProvince(toTitleCase(pwdProvince))}
-                    error={errors.pwdProvince}
-                  />
-                </div>
-
-                <div>
-                  <Label>Zip Code <span className="text-red-500">*</span></Label>
-                  <Input
-                    maxLength={4}
-                    placeholder="1000"
-                    value={pwdZipCode}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 4);
-                      setPwdZipCode(val);
-                      if (errors.pwdZipCode) setErrors(prev => { const { pwdZipCode, ...rest } = prev; return rest; });
-                    }}
-                    error={errors.pwdZipCode}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
-              <Button
-                variant="outline"
-                onClick={() => setShowPwdModal(false)}
-              >
-                Close
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  let isValid = true;
-                  const newErrors: any = {};
-                  
-                  const trimmedId = idNumber.trim();
-                  if (!trimmedId) { newErrors.idNumber = "Required"; isValid = false; }
-                  else if (!/^\d{2}-\d{4}-\d{3}-\d{7}$/.test(trimmedId)) { newErrors.idNumber = "Invalid format"; isValid = false; }
-                  
-                  const normPwdCustomerName = toTitleCase(pwdCustomerName);
-                  const normPwdStreet = toTitleCase(pwdStreet);
-                  const normPwdBarangay = toTitleCase(pwdBarangay);
-                  const normPwdCity = toTitleCase(pwdCity);
-                  const normPwdProvince = toTitleCase(pwdProvince);
-                  
-                  setPwdCustomerName(normPwdCustomerName);
-                  setPwdStreet(normPwdStreet);
-                  setPwdBarangay(normPwdBarangay);
-                  setPwdCity(normPwdCity);
-                  setPwdProvince(normPwdProvince);
-                  
-                  if (!normPwdCustomerName.trim()) { newErrors.pwdCustomerName = "Required"; isValid = false; }
-                  if (!normPwdStreet.trim()) { newErrors.pwdStreet = "Required"; isValid = false; }
-                  if (!normPwdBarangay.trim()) { newErrors.pwdBarangay = "Required"; isValid = false; }
-                  if (!normPwdCity.trim()) { newErrors.pwdCity = "Required"; isValid = false; }
-                  if (!normPwdProvince.trim()) { newErrors.pwdProvince = "Required"; isValid = false; }
-                  if (!pwdZipCode.trim()) { newErrors.pwdZipCode = "Required"; isValid = false; }
-                  else if (!/^\d{4}$/.test(pwdZipCode.trim())) { newErrors.pwdZipCode = "Must be 4 digits"; isValid = false; }
-                  
-                  if (!isValid) {
-                    setErrors(newErrors);
-                    toast.error("Please complete all required details.");
-                    return;
-                  }
-                  
-                  setIsSeniorPWD(true);
-                  setShowPwdModal(false);
-                }}
-              >
-                Proceed
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PwdFormModal
+        show={showPwdModal}
+        onClose={() => setShowPwdModal(false)}
+        onProceed={() => { setIsSeniorPWD(true); setShowPwdModal(false); }}
+        idNumber={idNumber}
+        setIdNumber={setIdNumber}
+        pwdCustomerName={pwdCustomerName}
+        setPwdCustomerName={setPwdCustomerName}
+        pwdStreet={pwdStreet}
+        setPwdStreet={setPwdStreet}
+        pwdBarangay={pwdBarangay}
+        setPwdBarangay={setPwdBarangay}
+        pwdCity={pwdCity}
+        setPwdCity={setPwdCity}
+        pwdProvince={pwdProvince}
+        setPwdProvince={setPwdProvince}
+        pwdZipCode={pwdZipCode}
+        setPwdZipCode={setPwdZipCode}
+        errors={errors}
+        setErrors={setErrors}
+      />
 
       {/* Success Toast */}
       {lastOrder && (
-        <div style={{ position: "fixed", bottom: isMobile ? 20 : 40, right: isMobile ? 20 : 40, left: isMobile ? 20 : "auto", width: isMobile ? "auto" : 340, background: cardBg, border: `1px solid ${border}`, borderRadius: isMobile ? 16 : 24, padding: isMobile ? 16 : 20, boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", display: "flex", gap: isMobile ? 16 : 20, zIndex: 100001, animation: "slideIn 0.5s ease-out" }}>
-          <div style={{ width: 56, height: 56, borderRadius: 22, background: dark ? "#064e3b" : "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${dark ? "#065f46" : "#dcfce7"}` }}>
-            <CheckCircleIcon viewBox="0 0 24 24" style={{ width: 32, height: 32, color: "#22c55e" }} />
+        <div className={cn(
+          "fixed z-[100001] bg-card border border-border rounded-3xl p-5 shadow-2xl flex gap-5 animate-in slide-in-from-bottom-4 duration-500",
+          isMobile ? "bottom-5 left-5 right-5" : "bottom-10 right-10 w-[340px]"
+        )}>
+          <div className="w-14 h-14 rounded-[22px] bg-green-50 dark:bg-green-950 flex items-center justify-center border border-green-200 dark:border-green-900 shrink-0">
+            <CheckCircle className="h-8 w-8 text-green-500" />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{lastOrder.id} Completed</p>
-              <CloseLineIcon viewBox="0 0 17 16" style={{ width: 16, height: 16, color: muted, cursor: "pointer" }} onClick={() => setLastOrder(null)} />
+          <div className="flex-1">
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-[15px] font-bold m-0 text-foreground">{lastOrder.id} Completed</p>
+              <button onClick={() => setLastOrder(null)} className="bg-transparent border-none cursor-pointer p-0">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
-            <p style={{ fontSize: 11, fontWeight: 700, color: muted, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 16px" }}>Total ₱{lastOrder.total.toLocaleString()}.00</p>
-            <div style={{ height: 6, background: "#f1f5f9", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ height: "100%", background: "#22c55e", width: "100%" }} />
+            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.1em] m-0 mb-4">Total ₱{lastOrder.total.toLocaleString()}.00</p>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 w-full rounded-full" />
             </div>
           </div>
         </div>
@@ -1603,57 +1384,55 @@ export default function ViewSalesProcessing() {
   );
 }
 
-function ProductCard({ product, onAdd, primary, muted, text, border, cardBg, inputBg, dark, isMobile }: { product: Product; onAdd: () => void; primary: string; muted: string; text: string; border: string; cardBg: string; inputBg: string; dark: boolean; isMobile: boolean }) {
+function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: () => void; isMobile: boolean }) {
   const isOutOfStock = product.stock <= 0;
   const isLow = product.stock > 0 && product.stock <= 15;
   return (
     <div
       onClick={isOutOfStock ? undefined : onAdd}
-      style={{ 
-        display: "flex", 
-        alignItems: "center", 
-        gap: isMobile ? 10 : 14, 
-        padding: isMobile ? 10 : 14, 
-        borderRadius: isMobile ? 10 : 12, 
-        background: isOutOfStock ? (dark ? "#1a2231" : "#f2f4f7") : cardBg, 
-        border: `1px solid ${border}`, 
-        cursor: isOutOfStock ? "not-allowed" : "pointer",
-        opacity: isOutOfStock ? 0.6 : 1
-      }}
-      onMouseEnter={(e) => { 
-        if (isOutOfStock) return;
-        e.currentTarget.style.boxShadow = dark ? `0 20px 25px -5px ${primary}33` : "0 20px 25px -5px rgba(0,0,0,0.1)"; 
-        e.currentTarget.style.borderColor = `${primary}44`; 
-      }}
-      onMouseLeave={(e) => { 
-        if (isOutOfStock) return;
-        e.currentTarget.style.boxShadow = "none"; 
-        e.currentTarget.style.borderColor = border; 
-      }}
+      className={cn(
+        "flex items-center gap-3.5 border border-border rounded-xl transition-all",
+        isMobile ? "p-2.5" : "p-3.5",
+        isOutOfStock
+          ? "bg-muted/50 opacity-60 cursor-not-allowed"
+          : "bg-card cursor-pointer hover:shadow-lg hover:border-primary/30"
+      )}
     >
-      <div style={{ width: isMobile ? 44 : 56, height: isMobile ? 44 : 56, borderRadius: isMobile ? 10 : 12, background: inputBg, border: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: isMobile ? 20 : 26 }}>
+      <div className={cn(
+        "rounded-xl bg-input border border-border flex items-center justify-center shrink-0",
+        isMobile ? "w-11 h-11 text-xl" : "w-14 h-14 text-[26px]"
+      )}>
         {product.category === "Ube Halaya" ? "🍠" : "🫙"}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <h3 style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, margin: 0, color: isOutOfStock ? muted : text, lineHeight: 1.2 }}>{product.name}</h3>
-          <div style={{ 
-            padding: "4px 10px", 
-            borderRadius: 8, 
-            fontSize: isOutOfStock ? 10 : 11, 
-            fontWeight: 700, 
-            background: isOutOfStock ? "#667085" : (isLow ? "#f04438" : inputBg), 
-            color: (isOutOfStock || isLow) ? "#fff" : muted, 
-            border: `1px solid ${isOutOfStock ? "#667085" : (isLow ? "#f04438" : border)}`,
-            whiteSpace: "nowrap"
-          }}>
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-center gap-2">
+          <h3 className={cn(
+            "font-bold m-0 leading-tight",
+            isMobile ? "text-sm" : "text-base",
+            isOutOfStock ? "text-muted-foreground" : "text-foreground"
+          )}>
+            {product.name}
+          </h3>
+          <Badge
+            variant={isOutOfStock ? "destructive" : isLow ? "destructive" : "secondary"}
+            className={cn(
+              "shrink-0 text-[10px] font-bold uppercase whitespace-nowrap",
+              !isOutOfStock && !isLow && "text-muted-foreground"
+            )}
+          >
             {isOutOfStock ? "OUT OF STOCK" : `Remaining Stocks: ${product.stock}`}
-          </div>
+          </Badge>
         </div>
-        <div style={{ marginTop: 4, marginBottom: 6, opacity: isOutOfStock ? 0.7 : 1 }}>
-          {renderVariationBadges(product.variation, muted, border, inputBg, false)}
+        <div className={cn("mt-1 mb-1.5", isOutOfStock && "opacity-70")}>
+          {renderVariationBadges(product.variation, "hsl(var(--muted-foreground))", "hsl(var(--border))", "hsl(var(--input))", false)}
         </div>
-        <p style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: isOutOfStock ? muted : primary, margin: 0 }}>₱{product.price}</p>
+        <p className={cn(
+          "font-bold m-0",
+          isMobile ? "text-base" : "text-lg",
+          isOutOfStock ? "text-muted-foreground" : "text-primary"
+        )}>
+          ₱{product.price}
+        </p>
       </div>
     </div>
   );

@@ -192,29 +192,35 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
           ) : (
             filteredStocks.map((stock) => {
               const isLowStock = stock.quantity <= stock.lowStockThreshold;
+              const stockPercent = Math.min((stock.quantity / (stock.lowStockThreshold * 2)) * 100, 100);
 
               return (
                 <div
                   key={stock.stockId}
-                  className={`relative bg-white dark:bg-gray-900 border ${
-                    isLowStock ? "border-error-200 dark:border-error-800" : "border-gray-200 dark:border-gray-700"
-                  } rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-sm transition-all duration-300 flex flex-col`}
+                  className={`relative group rounded-xl border bg-card transition-all duration-300 flex flex-col overflow-hidden ${
+                    isLowStock 
+                      ? "border-destructive/20 shadow-[0_2px_0_0_rgba(239,68,68,0.15)]" 
+                      : "border-border shadow-[0_2px_0_0_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] hover:-translate-y-0.5"
+                  }`}
                 >
-                  {isLowStock && (
-                    <div className="absolute top-4 right-4 animate-pulse">
-                      <span className="flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-error-500"></span>
-                      </span>
-                    </div>
-                  )}
+                  {/* Top accent bar */}
+                  <div className={`h-1 w-full ${isLowStock ? "bg-destructive/60" : "bg-primary/10"}`} />
 
-                  <div className="flex flex-col h-full">
-                    <div className="mb-3 sm:mb-4">
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                        {stock.locationName}
-                      </span>
-                      <h4 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mt-1 leading-tight uppercase">
+                  <div className="p-4 sm:p-5 flex flex-col h-full">
+                    {/* Header */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {stock.locationName}
+                        </span>
+                        {isLowStock && (
+                          <span className="flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-2.5 w-2.5 rounded-full bg-destructive/60"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-sm sm:text-base font-bold text-foreground leading-tight">
                         {stock.productName}
                       </h4>
                       <div className="mt-2">
@@ -222,47 +228,59 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                       </div>
                     </div>
 
-                    <div className="mt-auto flex items-end justify-between">
-                      <div>
-                        <span className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">
-                          {stock.quantity}
-                        </span>
-                        <span className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 ml-1.5">
-                          units
-                        </span>
+                    {/* Quantity + Status */}
+                    <div className="mt-auto">
+                      <div className="flex items-end justify-between mb-4">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">
+                            {stock.quantity}
+                          </span>
+                          <span className="text-xs text-muted-foreground font-medium">
+                            units
+                          </span>
+                        </div>
+
+                        {isLowStock ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                              <path d="M12 9v4" />
+                              <path d="M12 17h.01" />
+                            </svg>
+                            LOW STOCK
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center text-[10px] font-bold px-2 py-1 rounded-md bg-primary/5 text-foreground border border-border">
+                            IN STOCK
+                          </span>
+                        )}
                       </div>
 
-                      {isLowStock ? (
-                        <div className="bg-error-50 dark:bg-error-500/10 text-error-600 dark:text-error-400 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-error-100 dark:border-error-900/50 flex items-center gap-1.5">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-                            <path d="M12 9v4" />
-                            <path d="M12 17h.01" />
-                          </svg>
-                          LOW STOCK
+                      {/* Progress bar */}
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            Threshold: {stock.lowStockThreshold}
+                          </span>
+                          <span className="text-[10px] font-semibold text-muted-foreground">
+                            {Math.round(stockPercent)}%
+                          </span>
                         </div>
-                      ) : (
-                        <div className="bg-success-50 dark:bg-success-500/10 text-success-600 dark:text-success-400 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-success-100 dark:border-success-900/50">
-                          IN STOCK
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-3">
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="text-gray-400 dark:text-gray-500">Threshold: {stock.lowStockThreshold} units</span>
-                        <div className="w-24 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${isLowStock ? "bg-error-500" : "bg-success-500"}`}
-                            style={{ width: `${Math.min((stock.quantity / (stock.lowStockThreshold * 2)) * 100, 100)}%` }}
-                          ></div>
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isLowStock ? "bg-destructive" : "bg-foreground"
+                            }`}
+                            style={{ width: `${stockPercent}%` }}
+                          />
                         </div>
                       </div>
-                      
+
+                      {/* Action */}
                       {stock.locationId === 999 || stock.locationName === "Commissary" ? (
                         <button
                           disabled
-                          className="w-full py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-bold rounded-lg cursor-not-allowed border border-gray-200 dark:border-gray-700"
+                          className="w-full py-2.5 text-xs font-semibold rounded-lg cursor-not-allowed bg-muted text-muted-foreground border border-border"
                         >
                           Read-only (SCMS)
                         </button>
@@ -274,10 +292,10 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                               onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold });
                             }
                           }}
-                          className={`w-full py-2 text-white text-xs font-bold rounded-lg transition-all shadow-sm ${
+                          className={`w-full py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                             isLowStock 
-                              ? "bg-error-500 hover:bg-error-600 shadow-error-500/20" 
-                              : "bg-brand-500 hover:bg-brand-600 shadow-brand-500/20"
+                              ? "bg-destructive text-white hover:bg-destructive/90 shadow-sm" 
+                              : "bg-foreground text-background hover:bg-foreground/90 shadow-sm"
                           }`}
                         >
                           Adjust Stock

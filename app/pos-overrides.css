@@ -1,0 +1,170 @@
+/* POS Module UI Overrides — Maps old inline-style patterns to br-trellis design tokens */
+
+/* ── Global page container overrides ── */
+[class*="ViewSalesProcessing"],
+[class*="ViewOrderManagement"],
+[class*="ViewStockManagement"],
+[class*="ViewProductManagement"],
+[class*="ViewSalesAnalytics"] {
+  font-family: var(--font-sans) !important;
+}
+
+/* ── Card-like containers — apply Card styling ── */
+.pos-card,
+div[style*="borderRadius"][style*="border:"] {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--card) !important;
+  box-shadow: none !important;
+}
+
+/* ── Buttons — apply shadcn primary button styling ── */
+button[style*="background"][style*="cursor: pointer"] {
+  border-radius: var(--radius-md) !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  transition: all 0.2s ease !important;
+}
+
+/* ── Input fields ── */
+input[style*="border"][style*="padding"],
+textarea[style*="border"][style*="padding"] {
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--input) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  font-size: 0.875rem !important;
+  padding: 0.5rem 0.75rem !important;
+  outline: none !important;
+  transition: border-color 0.2s !important;
+}
+
+input[style*="border"]:focus,
+textarea[style*="border"]:focus {
+  border-color: var(--ring) !important;
+  box-shadow: 0 0 0 2px oklch(0.708 0 0 / 0.15) !important;
+}
+
+/* ── Select dropdowns ── */
+select[style*="border"] {
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--input) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  font-size: 0.875rem !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* ── Table overrides ── */
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+}
+
+table th {
+  background: var(--muted) !important;
+  color: var(--muted-foreground) !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.625rem 0.75rem !important;
+  text-align: left !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+table td {
+  padding: 0.625rem 0.75rem !important;
+  border-bottom: 1px solid var(--border) !important;
+  font-size: 0.875rem !important;
+  color: var(--foreground) !important;
+  vertical-align: middle !important;
+}
+
+table tr:hover td {
+  background: var(--accent) !important;
+}
+
+/* ── Badge-like elements ── */
+span[style*="borderRadius"][style*="padding"][style*="fontSize"] {
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  font-size: 0.75rem !important;
+  padding: 0.125rem 0.625rem !important;
+}
+
+/* ── Modal/Dialog overlays ── */
+div[style*="position: fixed"][style*="z-index"][style*="background"] {
+  backdrop-filter: blur(4px) !important;
+}
+
+/* ── Scrollbar styling for POS module ── */
+.pos-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.pos-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pos-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+/* ── Grid/Card items (product grid, stock grid) ── */
+div[style*="display: grid"] > div[style*="borderRadius"][style*="border"] {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--card) !important;
+  transition: all 0.2s ease !important;
+}
+
+div[style*="display: grid"] > div[style*="borderRadius"][style*="border"]:hover {
+  border-color: var(--ring) !important;
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.06) !important;
+}
+
+/* ── Tab navigation overrides ── */
+div[style*="display: flex"][style*="borderBottom"] > button,
+div[style*="display: flex"][style*="border-bottom"] > button {
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+  transition: all 0.2s !important;
+}
+
+/* ── Loading spinners ── */
+@keyframes pos-spin {
+  to { transform: rotate(360deg); }
+}
+
+.pos-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: pos-spin 0.6s linear infinite;
+}
+
+/* ── Empty state styling ── */
+.pos-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--muted-foreground);
+  gap: 0.5rem;
+}
+
+/* ── Status colors mapped to design tokens ── */
+.status-pending { background: var(--badge-warning) !important; color: var(--badge-warning-foreground) !important; }
+.status-active { background: var(--badge-info) !important; color: var(--badge-info-foreground) !important; }
+.status-completed { background: var(--badge-success) !important; color: var(--badge-success-foreground) !important; }
+.status-cancelled { background: var(--badge-destructive) !important; color: var(--badge-destructive-foreground) !important; }
+.status-refunded { background: var(--badge-purple) !important; color: var(--badge-purple-foreground) !important; }

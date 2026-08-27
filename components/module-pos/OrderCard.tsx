@@ -95,10 +95,10 @@ export default function OrderCard({
                   borderRadius: 6,
                   background:
                     order.type === "online"
-                      ? "#3b82f6"
+                      ? "#18181b"
                       : order.type === "institutional"
-                      ? "#6366f1"
-                      : "#10b981",
+                      ? "#3f3f46"
+                      : "#27272a",
                   color: "#fff",
                 }}
               >
@@ -112,9 +112,9 @@ export default function OrderCard({
                     textTransform: "uppercase",
                     padding: "4px 8px",
                     borderRadius: 6,
-                    background: "#f5f3ff",
-                    color: "#7c3aed",
-                    border: "1px solid #ddd6fe",
+                    background: "#f4f4f5",
+                    color: "#3f3f46",
+                    border: "1px solid #e4e4e7",
                   }}
                 >
                   Pre-order
@@ -145,27 +145,27 @@ export default function OrderCard({
             padding: "8px 20px",
             borderRadius: 16,
             background: isPending
-              ? "#fffbeb"
+              ? "#fafafa"
               : isRejected
               ? "#fef2f2"
               : isCompleted
-              ? "#ecfdf5"
-              : `${primary}05`,
+              ? "#f4f4f5"
+              : `${primary}08`,
             border: `1px solid ${
               isPending
-                ? "#fef3c7"
+                ? "#e4e4e7"
                 : isRejected
                 ? "#fee2e2"
                 : isCompleted
-                ? "#d1fae5"
-                : `${primary}10`
+                ? "#e4e4e7"
+                : `${primary}15`
             }`,
             color: isPending
-              ? "#d97706"
+              ? "#71717a"
               : isRejected
               ? "#dc2626"
               : isCompleted
-              ? "#059669"
+              ? "#18181b"
               : primary,
             fontSize: 11,
             fontWeight: 700,

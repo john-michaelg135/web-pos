@@ -100,7 +100,7 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo, locationId }: SalesAnal
               onClick={() => setTimeframe(t)}
               className={`px-3 py-1.5 text-xs font-bold rounded-lg capitalize transition-all ${
                 timeframe === t 
-                  ? "bg-white dark:bg-gray-700 text-brand-600 dark:text-white shadow-sm" 
+                  ? "bg-white dark:bg-gray-700 text-foreground dark:text-white shadow-sm" 
                   : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}
             >
@@ -115,7 +115,7 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo, locationId }: SalesAnal
       <div className="relative h-[300px] w-full mt-4">
         {isLoading ? (
             <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-8 h-8 border-4 border-foreground border-t-transparent rounded-full animate-spin"></div>
             </div>
         ) : (
             <>
@@ -153,7 +153,7 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo, locationId }: SalesAnal
                         </div>
 
                         <div 
-                            className="w-4/5 bg-brand-500/80 hover:bg-brand-500 rounded-t-md transition-all duration-500 ease-out cursor-pointer shadow-sm shadow-brand-500/10"
+                            className="w-4/5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white rounded-t-md transition-all duration-500 ease-out cursor-pointer shadow-sm"
                             style={{ height: `${height}%` }}
                         ></div>
                         

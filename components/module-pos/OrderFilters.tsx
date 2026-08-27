@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import { STATUS_LABELS } from "@/components/module-pos/types";
 import { useAuth } from "@/context/AuthContext";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
-import { CloseLineIcon } from "@/icons/index";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 interface OrderFiltersProps {
   show: boolean;
@@ -35,6 +38,11 @@ export default function OrderFilters({
   const [localType, setLocalType] = useState(filterType);
   const [localStatus, setLocalStatus] = useState(filterStatus);
   const [localLocation, setLocalLocation] = useState(filterLocation);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (show) {
@@ -44,30 +52,7 @@ export default function OrderFilters({
     }
   }, [show, filterType, filterStatus, filterLocation]);
 
-  if (!show) return null;
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: 10,
-    fontWeight: 700,
-    color: "#667085",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: "0.1em",
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "11px 14px",
-    fontSize: 14,
-    borderRadius: 12,
-    border: "1px solid #e4e7ec",
-    background: "#ffffff",
-    color: "#101828",
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-  };
+  if (!show || !mounted) return null;
 
   const handleApply = () => {
     setFilterType(localType);
@@ -81,102 +66,135 @@ export default function OrderFilters({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex justify-center items-center p-4 sm:p-6 bg-black/40 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-800">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Filters</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Refine your order management view</p>
-          </div>
-          <button 
-            onClick={onClose}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
-          >
-            <CloseLineIcon style={{ width: 20, height: 20 }} />
-          </button>
-        </div>
-
-        <div className="p-6 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <div className="col-span-1 md:col-span-2">
-              <label style={labelStyle} className="dark:text-gray-400">Location</label>
-              <CustomSelect
-                style={{ ...inputStyle, opacity: hasLocationLock ? 0.6 : 1, cursor: hasLocationLock ? "not-allowed" : "pointer" }}
-                className="dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                value={localLocation}
-                disabled={hasLocationLock}
-                onChange={(val) => {
-                  if (!hasLocationLock) setLocalLocation(val);
-                }}
-                options={hasLocationLock ? [
-                  { value: localLocation, label: localLocation === "All" ? "All Locations" : (localLocation.startsWith("Store") ? localLocation : `Store - ${localLocation}`) }
-                ] : [
-                  { value: "All", label: "All Locations" },
-                  { value: "Antipolo Store Branch", label: "Antipolo Store Branch" },
-                  { value: "Commissary 999", label: "Commissary 999" },
-                ]}
-              />
-            </div>
-
+  const modal = (
+    <>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 99998,
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
+        }}
+      />
+      {/* Dialog */}
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 99999,
+          width: "100%",
+          maxWidth: 480,
+          backgroundColor: "#ffffff",
+          borderRadius: 12,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          overflow: "visible",
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid #e5e7eb", borderRadius: "12px 12px 0 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
-              <label style={labelStyle} className="dark:text-gray-400">Order Channel</label>
-              <CustomSelect
-                style={inputStyle}
-                className="dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                value={localType}
-                onChange={(val) => setLocalType(val)}
-                options={[
-                  { value: "All", label: "All Channels" },
-                  { value: "Walk-in", label: "Walk-in" },
-                  { value: "Store", label: "Store Pick-up" },
-                  { value: "Online", label: "Online Delivery" },
-                  { value: "Institutional", label: "Institutional" },
-                ]}
-              />
+              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#111827" }}>
+                Filters
+              </h2>
+              <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
+                Refine your order management view
+              </p>
             </div>
-
-            <div>
-              <label style={labelStyle} className="dark:text-gray-400">Status</label>
-              <CustomSelect
-                style={inputStyle}
-                className="dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                value={localStatus}
-                onChange={(val) => setLocalStatus(val)}
-                options={[
-                  { value: "All", label: "All Statuses" },
-                  ...Object.entries(STATUS_LABELS).map(([val, label]) => ({ value: val, label: label as string }))
-                ]}
-              />
-            </div>
-
+            <button
+              onClick={onClose}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 4,
+                borderRadius: 4,
+                color: "#6b7280",
+              }}
+            >
+              <X style={{ width: 20, height: 20 }} />
+            </button>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 px-6 py-5 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-          <button
-            onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
+        {/* Body */}
+        <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Location */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <Label>Location</Label>
+            <CustomSelect
+              value={localLocation}
+              onChange={(val) => { if (!hasLocationLock) setLocalLocation(val); }}
+              disabled={hasLocationLock}
+              options={hasLocationLock ? [
+                { value: localLocation, label: localLocation === "All" ? "All Locations" : localLocation }
+              ] : [
+                { value: "All", label: "All Locations" },
+                { value: "Antipolo Store Branch", label: "Antipolo Store Branch" },
+                { value: "Commissary 999", label: "Commissary 999" },
+              ]}
+            />
+          </div>
+
+          {/* Order Channel */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <Label>Order Channel</Label>
+            <CustomSelect
+              value={localType}
+              onChange={setLocalType}
+              options={[
+                { value: "All", label: "All Channels" },
+                { value: "Walk-in", label: "Walk-in" },
+                { value: "Store", label: "Store Pick-up" },
+                { value: "Online", label: "Online Delivery" },
+                { value: "Institutional", label: "Institutional" },
+              ]}
+            />
+          </div>
+
+          {/* Status */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <Label>Status</Label>
+            <CustomSelect
+              value={localStatus}
+              onChange={setLocalStatus}
+              options={[
+                { value: "All", label: "All Statuses" },
+                ...Object.entries(STATUS_LABELS).map(([val, label]) => ({ value: val, label }))
+              ]}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: "16px 24px",
+            borderTop: "1px solid #e5e7eb",
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 8,
+            backgroundColor: "#f9fafb",
+            borderRadius: "0 0 12px 12px",
+          }}
+        >
+          <Button variant="outline" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            onClick={handleReset}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 dark:text-red-400 transition-colors"
-          >
+          </Button>
+          <Button variant="destructive" onClick={handleReset}>
             Reset Filters
-          </button>
-          <button
-            onClick={handleApply}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm"
-          >
+          </Button>
+          <Button onClick={handleApply}>
             Apply Filters
-          </button>
+          </Button>
         </div>
-
       </div>
-    </div>
+    </>
   );
+
+  return createPortal(modal, document.body);
 }

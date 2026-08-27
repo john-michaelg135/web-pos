@@ -12,7 +12,7 @@ export function SalesByLocationChart({ dateFrom, dateTo }: SalesByLocationChartP
   const [showPercentage, setShowPercentage] = useState(true);
 
   // Colors for pie chart
-  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#14b8a6", "#8b5cf6", "#ef4444"];
+  const colors = ["#1e3a5f", "#065f46", "#713f12", "#4c1d95", "#831843", "#115e59", "#3b0764", "#7c2d12"];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,7 +59,7 @@ export function SalesByLocationChart({ dateFrom, dateTo }: SalesByLocationChartP
             onClick={() => setShowPercentage(true)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
               ${showPercentage
-                ? "bg-white dark:bg-gray-700 text-brand-500 shadow-sm"
+                ? "bg-white dark:bg-gray-700 text-foreground shadow-sm"
                 : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}
           >
@@ -69,7 +69,7 @@ export function SalesByLocationChart({ dateFrom, dateTo }: SalesByLocationChartP
             onClick={() => setShowPercentage(false)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
               ${!showPercentage
-                ? "bg-white dark:bg-gray-700 text-brand-500 shadow-sm"
+                ? "bg-white dark:bg-gray-700 text-foreground shadow-sm"
                 : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               }`}
           >

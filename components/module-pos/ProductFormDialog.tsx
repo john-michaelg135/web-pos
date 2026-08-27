@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Product, ProductCategory } from "@/components/module-pos/types";
 import { PRODUCT_CATEGORIES } from "@/components/module-pos/types";
 import { CloseLineIcon } from "@/icons/index";
@@ -112,13 +113,34 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
 
   const isEdit = !!initial;
 
-  return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh] overflow-y-auto">
+  const modalContent = (
+    <>
+      <div
+        onClick={handleCancel}
+        style={{ position: "fixed", inset: 0, zIndex: 99998, backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 99999,
+          width: "100%",
+          maxWidth: 600,
+          maxHeight: "90vh",
+          backgroundColor: "#ffffff",
+          borderRadius: 12,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
-          <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+        <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
             {isEdit ? "Edit Product" : "Add Product"}
           </h2>
         </div>
@@ -129,7 +151,7 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
             {/* Name */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                Product Name <span className="text-error-500">*</span>
+                Product Name <span className="text-destructive">*</span>
               </label>
               <input
                 value={name}
@@ -138,16 +160,16 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
                 maxLength={NAME_MAX}
                 disabled={isEdit}
                 placeholder="e.g. Ube Halaya Smooth"
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-                  errors.name ? "border-error-500" : "border-gray-200 dark:border-gray-700"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ring ${
+                  errors.name ? "border-destructive" : "border-gray-200 dark:border-gray-700"
                 } ${isEdit ? "opacity-60 cursor-not-allowed bg-gray-50 dark:bg-gray-900" : ""}`}
               />
               <div className="flex justify-between mt-1">
                 {errors.name
-                  ? <p className="text-xs text-error-500 font-medium">{errors.name}</p>
+                  ? <p className="text-xs text-destructive font-medium">{errors.name}</p>
                   : <span />
                 }
-                <span className={`text-xs ${name.trim().length > NAME_MAX ? "text-error-500" : "text-gray-400"}`}>
+                <span className={`text-xs ${name.trim().length > NAME_MAX ? "text-destructive" : "text-gray-400"}`}>
                   {name.trim().length}/{NAME_MAX}
                 </span>
               </div>
@@ -156,7 +178,7 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
             {/* Category */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                Category <span className="text-error-500">*</span>
+                Category <span className="text-destructive">*</span>
               </label>
               <CustomSelect
                 value={category}
@@ -164,13 +186,13 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
                   setCategory(val as ProductCategory);
                   handleBlur("category");
                 }}
-                className={`w-full text-sm ${errors.category ? "border-error-500" : ""}`}
+                className={`w-full text-sm ${errors.category ? "border-destructive" : ""}`}
                 options={[
                   { value: "", label: "Select category" },
                   ...PRODUCT_CATEGORIES.map((c) => ({ value: c, label: c }))
                 ]}
               />
-              {errors.category && <p className="mt-1 text-xs text-error-500 font-medium">{errors.category}</p>}
+              {errors.category && <p className="mt-1 text-xs text-destructive font-medium">{errors.category}</p>}
             </div>
 
             {/* Description */}
@@ -185,16 +207,16 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
                 rows={3}
                 maxLength={DESC_MAX}
                 placeholder="Brief product description…"
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-none ${
-                  errors.description ? "border-error-500" : "border-gray-200 dark:border-gray-700"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ring resize-none ${
+                  errors.description ? "border-destructive" : "border-gray-200 dark:border-gray-700"
                 }`}
               />
               <div className="flex justify-between mt-1">
                 {errors.description
-                  ? <p className="text-xs text-error-500 font-medium">{errors.description}</p>
+                  ? <p className="text-xs text-destructive font-medium">{errors.description}</p>
                   : <span />
                 }
-                <span className={`text-xs ${description.trim().length > DESC_MAX ? "text-error-500" : "text-gray-400"}`}>
+                <span className={`text-xs ${description.trim().length > DESC_MAX ? "text-destructive" : "text-gray-400"}`}>
                   {description.trim().length}/{DESC_MAX}
                 </span>
               </div>
@@ -207,7 +229,7 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
                 type="button"
                 onClick={() => setIsActive(!isActive)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  isActive ? "bg-success-500" : "bg-gray-300 dark:bg-gray-600"
+                  isActive ? "bg-foreground" : "bg-gray-300 dark:bg-gray-600"
                 }`}
               >
                 <span
@@ -221,16 +243,16 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+        <div style={{ padding: "12px 24px", borderTop: "1px solid #e4e4e7", display: "flex", justifyContent: "flex-end", gap: 8, backgroundColor: "#fafafa", borderRadius: "0 0 12px 12px", flexShrink: 0 }}>
           <button
             onClick={handleCancel}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent border border-border transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm"
+            className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-foreground hover:bg-foreground/90 transition-colors shadow-sm"
           >
             {isEdit ? "Update Product" : "Add Product"}
           </button>
@@ -238,21 +260,21 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
       </div>
 
       {confirmAction && (
-        <div className="fixed inset-0 z-[110000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-md rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 p-6 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+        <div style={{ position: "fixed", inset: 0, zIndex: 100000, backgroundColor: "rgba(0, 0, 0, 0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ backgroundColor: "#ffffff", borderRadius: 12, padding: 24, maxWidth: 400, width: "100%", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", display: "flex", flexDirection: "column", gap: 16 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
               {confirmAction === "add" ? "Confirm Add Product" : "Discard Changes"}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p style={{ fontSize: 14, color: "#71717a", margin: 0 }}>
               {confirmAction === "add"
                 ? "Are you sure you want to add this product?"
                 : "Are you sure you want to cancel? Any unsaved changes will be lost."}
             </p>
-            <div className="flex justify-end gap-3 mt-2">
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
               <button
                 type="button"
                 onClick={() => setConfirmAction(null)}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-foreground border border-border hover:bg-accent transition-colors"
               >
                 Cancel
               </button>
@@ -272,10 +294,10 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
                   }
                   setConfirmAction(null);
                 }}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors ${
+                className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors ${
                   confirmAction === "add"
-                    ? "bg-brand-500 hover:bg-brand-600 shadow-lg shadow-brand-500/20"
-                    : "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20"
+                    ? "bg-foreground hover:bg-foreground/90"
+                    : "bg-destructive hover:bg-destructive/90"
                 }`}
               >
                 Confirm
@@ -284,6 +306,8 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
           </div>
         </div>
       )}
-    </div>
+    </>
   );
+
+  return createPortal(modalContent, document.body);
 }

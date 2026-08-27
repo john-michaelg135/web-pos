@@ -1,10 +1,8 @@
 import { Api } from './api';
 
-const apiGatewayUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/';
-const basePosUrl = `${apiGatewayUrl.replace(/\/$/, '')}/api/pos`;
+const basePosUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const apiClient = new Api({
   baseURL: basePosUrl,
   withCredentials: true,
 });
-

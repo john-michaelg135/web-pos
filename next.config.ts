@@ -4,13 +4,11 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/api/erp-auth/:path*",
-        destination: "http://localhost:5007/api/erp-auth/:path*",
+        source: "/api-pos/:path*",
+        destination: "http://localhost:5005/api-pos/:path*",
       },
     ];
   },
-  transpilePackages: ["@r3b2p/uilib"],
-  /* config options here */
   turbopack: {
     rules: {
       "*.svg": {

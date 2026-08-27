@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { ChevronDown } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
-import { ChevronDownIcon } from "@/icons/index";
 
 export interface CustomSelectOption {
   value: string;
@@ -37,7 +37,20 @@ export function CustomSelect({
   const muted = dark ? "#8899aa" : "#667085";
 
   const [isOpen, setIsOpen] = useState(false);
+  const [openAbove, setOpenAbove] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const calculatePosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const dropdownHeight = Math.min(options.length * 40 + 8, 250);
+
+    // Open above if not enough space below but enough above
+    setOpenAbove(spaceBelow < dropdownHeight && spaceAbove > dropdownHeight);
+  }, [options.length]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -51,14 +64,23 @@ export function CustomSelect({
     };
   }, []);
 
+  const handleToggle = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      calculatePosition();
+    }
+    setIsOpen(!isOpen);
+  };
+
   const selectedOption = options.find((opt) => opt.value === value);
 
   return (
     <div ref={dropdownRef} style={{ position: "relative", ...style }} className={className}>
       <button
+        ref={buttonRef}
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={handleToggle}
         style={{
           display: "flex",
           alignItems: "center",
@@ -79,20 +101,30 @@ export function CustomSelect({
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDownIcon style={{ width: 14, height: 14, color: muted, flexShrink: 0 }} />
+        <ChevronDown
+          style={{
+            width: 16,
+            height: 16,
+            color: muted,
+            flexShrink: 0,
+            transition: "transform 0.2s",
+            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        />
       </button>
 
       {isOpen && !disabled && (
         <div
           style={{
             position: "absolute",
-            top: "100%",
             left: 0,
-            marginTop: 6,
+            ...(openAbove
+              ? { bottom: "100%", marginBottom: 6 }
+              : { top: "100%", marginTop: 6 }),
             background: cardBg,
             border: `1px solid ${border}`,
             borderRadius: 12,
-            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
+            boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)",
             zIndex: 100000,
             minWidth: "100%",
             overflow: "hidden",
@@ -112,21 +144,23 @@ export function CustomSelect({
                   setIsOpen(false);
                 }}
                 style={{
-                  display: "block",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                   width: "100%",
                   padding: "10px 14px",
                   textAlign: "left",
-                  background: isSelected ? (dark ? "#2d3748" : "#f1f5f9") : "transparent",
-                  color: isSelected ? primary : text,
+                  background: isSelected ? (dark ? "#2d3748" : "#f4f4f5") : "transparent",
+                  color: text,
                   border: "none",
                   fontSize: 13,
-                  fontWeight: 600,
+                  fontWeight: isSelected ? 700 : 500,
                   cursor: "pointer",
-                  transition: "background 0.2s",
+                  transition: "background 0.15s",
                 }}
                 onMouseEnter={(e) => {
                   if (!isSelected) {
-                    e.currentTarget.style.background = dark ? "#2d3748" : "#f1f5f9";
+                    e.currentTarget.style.background = dark ? "#2d3748" : "#f4f4f5";
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -135,7 +169,20 @@ export function CustomSelect({
                   }
                 }}
               >
-                {opt.label}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ flexShrink: 0, opacity: isSelected ? 1 : 0 }}
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span>{opt.label}</span>
               </button>
             );
           })}

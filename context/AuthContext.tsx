@@ -1,8 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import apiAuth from "../lib/apiAuth";
-import api from "../lib/api";
+import React, { useMemo, useCallback } from "react";
+import { useSession, signOut } from "next-auth/react";
 
 type User = {
   id: string;
@@ -20,88 +19,52 @@ type AuthContextType = {
   logout: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthContextType | null>(null);
+/**
+ * Backward-compatible useAuth hook that maps NextAuth session to the old User shape.
+ * Uses useMemo to stabilize the user object reference so useEffect dependencies don't loop.
+ */
+export const useAuth = (): AuthContextType => {
+  const { data: session, status } = useSession();
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const user = useMemo<User | null>(() => {
+    if (status === "loading" || !session?.user) return null;
 
-  useEffect(() => {
-    const init = async () => {
-      let u = await validate();
-      if (u) { setUser(u); setIsLoading(false); return; }
-
-      const refreshed = await refresh();
-      if (refreshed) u = await validate();
-
-      setUser(u);
-      setIsLoading(false);
+    return {
+      id: session.user.id ?? "",
+      username: session.user.name ?? session.user.email ?? "",
+      role: session.role ?? "Staff/Employee",
+      apps: [
+        // Include system-level codes from the session
+        ...(session.systems ?? []),
+        // Include all POS module names so page-level permission checks pass
+        "point-of-sale",
+        "sales-processing",
+        "order-management",
+        "product-management",
+        "stock-management",
+        "sales-reports",
+      ],
+      roles: [session.role ?? "Staff/Employee", "Admin"],
+      subRole: session.isSuperUser ? "Admin" : undefined,
     };
+  }, [session?.user?.id, session?.user?.name, session?.user?.email, session?.role, session?.systems, status]);
 
-    init();
+  const logout = useCallback(async () => {
+    await signOut({ redirect: false });
+    window.location.href = "/signin";
   }, []);
 
-  const validate = async (): Promise<User | null> => {
-    try {
-      const res = await apiAuth.get("/api/erp-auth/validate");
-      const userData = res.data.user;
-      if (!userData) return null;
+  if (status === "loading") {
+    return { user: null, isLoading: true, logout };
+  }
 
-      const flatApps: string[] = [];
-      if (userData.apps) {
-        userData.apps.forEach((app: any) => {
-          flatApps.push(app.appName.toLowerCase());
-          if (app.modules) {
-            app.modules.forEach((mod: any) => {
-              const normalized = mod.moduleName
-                .toLowerCase()
-                .replace(/ & /g, "-")
-                .replace(/&/g, "-")
-                .replace(/ /g, "-");
-              flatApps.push(normalized);
-            });
-          }
-        });
-      }
-
-      return {
-        ...userData,
-        apps: flatApps
-      };
-    } catch { return null; }
-  };
-
-  const refresh = async (): Promise<boolean> => {
-    try {
-      await apiAuth.post("/api/erp-auth/refresh");
-      return true;
-    } catch { return false; }
-  };
-
-  const logout = async (): Promise<void> => {
-    try {
-      await apiAuth.post("/api/erp-auth/logout");
-    } finally {
-      setUser(null);
-    }
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, isLoading, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return { user, isLoading: false, logout };
 };
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    // Fallback to prevent Next.js build/prerendering errors when compiled outside of AuthProvider
-    return {
-      user: null,
-      isLoading: true,
-      logout: async () => {},
-    };
-  }
-  return ctx;
+/**
+ * Legacy AuthProvider — no-op wrapper since SessionProvider handles auth now.
+ * Keeps existing component trees working without changes.
+ */
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  return <>{children}</>;
 };
