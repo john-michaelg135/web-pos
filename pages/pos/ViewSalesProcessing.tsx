@@ -179,6 +179,7 @@ export default function ViewSalesProcessing() {
 
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [catalogView, setCatalogView] = useState<"grid" | "list">("grid");
 
   const addToCart = (product: Product) => {
     if (product.stock === 0) {
@@ -848,25 +849,88 @@ export default function ViewSalesProcessing() {
       <div className={cn("flex-1 min-h-0 grid gap-6", isMobile ? "grid-cols-1 pb-28" : "grid-cols-[1fr_420px]")}>
         {/* Product Catalog */}
         <Card className="shadow-none border-border overflow-hidden rounded-2xl">
-          <CardHeader className={cn("border-b border-border", isMobile ? "px-3.5 py-3" : "px-5 py-4")}>
+          <CardHeader className={cn("border-b border-border flex flex-row items-center justify-between", isMobile ? "px-3.5 py-3" : "px-5 py-4")}>
             <h2 className={cn("font-bold", isMobile ? "text-lg" : "text-xl")}>Product Catalog</h2>
+            <div className="flex items-center bg-muted rounded-lg p-1">
+              <button
+                onClick={() => setCatalogView("grid")}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  catalogView === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setCatalogView("list")}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  catalogView === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </button>
+            </div>
           </CardHeader>
           <CardContent className={cn(isMobile ? "p-3" : "p-5")}>
-            {categories.map((category) => (
-              <div key={category} className={cn(isMobile ? "mb-5" : "mb-7")}>
-                <div className={cn("flex items-center gap-4", isMobile ? "mb-3" : "mb-4")}>
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{category}</h3>
-                  <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
-                </div>
-                <div className={cn("grid gap-5", isMobile ? "grid-cols-1 gap-3" : "grid-cols-[repeat(auto-fill,minmax(330px,1fr))]")}>
-                  {products
-                    .filter((p) => p.category === category)
-                    .map((product) => (
-                      <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} isMobile={isMobile} />
-                    ))}
-                </div>
+            {catalogView === "grid" ? (
+              <>
+                {categories.map((category) => (
+                  <div key={category} className={cn(isMobile ? "mb-5" : "mb-7")}>
+                    <div className={cn("flex items-center gap-4", isMobile ? "mb-3" : "mb-4")}>
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{category}</h3>
+                      <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+                    </div>
+                    <div className={cn("grid gap-5", isMobile ? "grid-cols-1 gap-3" : "grid-cols-[repeat(auto-fill,minmax(330px,1fr))]")}>
+                      {products
+                        .filter((p) => p.category === category)
+                        .map((product) => (
+                          <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} isMobile={isMobile} />
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {products.map((product) => {
+                  const isOutOfStock = product.stock <= 0;
+                  return (
+                    <button
+                      key={product.id}
+                      onClick={() => !isOutOfStock && addToCart(product)}
+                      disabled={isOutOfStock}
+                      className={cn(
+                        "flex items-center gap-3 py-3 px-4 text-left transition-all rounded-xl border",
+                        isOutOfStock
+                          ? "opacity-50 cursor-not-allowed border-border bg-muted/30"
+                          : "border-border bg-card hover:border-foreground/20 hover:shadow-sm cursor-pointer"
+                      )}
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-input border border-border flex items-center justify-center text-lg shrink-0">
+                        {product.category === "Ube Halaya" ? "🍠" : "🫙"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
+                        <div className="mt-0.5">
+                          {renderVariationBadges(product.variation, "hsl(var(--muted-foreground))", "#d4d4d8", "#ebebeb", true)}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0 pl-3">
+                        <p className="text-sm font-bold text-foreground">₱{product.price}</p>
+                        <p className={cn("text-[10px] font-medium", isOutOfStock ? "text-destructive" : "text-muted-foreground")}>
+                          {isOutOfStock ? "Out of stock" : `${product.stock} left`}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 
@@ -1424,7 +1488,7 @@ function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: ()
           </Badge>
         </div>
         <div className={cn("mt-1 mb-1.5", isOutOfStock && "opacity-70")}>
-          {renderVariationBadges(product.variation, "hsl(var(--muted-foreground))", "hsl(var(--border))", "hsl(var(--input))", false)}
+          {renderVariationBadges(product.variation, "hsl(var(--muted-foreground))", "#d4d4d8", "#ebebeb", false)}
         </div>
         <p className={cn(
           "font-bold m-0",

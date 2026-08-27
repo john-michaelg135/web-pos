@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Variation, Product } from "@/components/module-pos/types";
 import { CloseLineIcon } from "@/icons/index";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
@@ -39,8 +40,13 @@ export function VariationFormDialog({
   const [isActive,      setIsActive]      = useState(true);
   const [errors,        setErrors]        = useState<FormErrors>({});
   const [touched,       setTouched]       = useState<Set<string>>(new Set());
+  const [ready,         setReady]         = useState(false);
 
   useEffect(() => {
+    if (!isOpen) {
+      setReady(false);
+      return;
+    }
     if (initial) {
       setProductId(initial.productId);
       setPackagingType(initial.packagingType);
@@ -62,6 +68,7 @@ export function VariationFormDialog({
     }
     setErrors({});
     setTouched(new Set());
+    setReady(true);
   }, [initial, isOpen]);
 
   function validate(allFields = false, checkProductId = productId): boolean {
@@ -169,17 +176,38 @@ export function VariationFormDialog({
     setSku(sanitized);
   }
 
-  if (!isOpen) return null;
+  if (!isOpen || !ready) return null;
 
   const isEdit = !!initial;
 
-  return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh] overflow-y-auto">
+  const modalContent = (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, zIndex: 99998, backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 99999,
+          width: "100%",
+          maxWidth: 600,
+          maxHeight: "90vh",
+          backgroundColor: "#ffffff",
+          borderRadius: 12,
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-2xl">
-          <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+        <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
             {isEdit ? "Edit Variation Price" : "Add Variation"}
           </h2>
         </div>
@@ -190,7 +218,7 @@ export function VariationFormDialog({
             {/* Product */}
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                Product <span className="text-error-500">*</span>
+                Product <span className="text-destructive">*</span>
               </label>
               {isEdit ? (
                 <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed select-none">
@@ -208,7 +236,7 @@ export function VariationFormDialog({
                     setProductId(val);
                     handleBlur("productId");
                   }}
-                  className={`w-full text-sm ${errors.productId ? "border-error-500" : ""}`}
+                  className={`w-full text-sm ${errors.productId ? "border-destructive" : ""}`}
                   options={[
                     { value: "", label: "Select a product" },
                     ...products.filter(p => p.isActive).map((p) => ({
@@ -218,13 +246,13 @@ export function VariationFormDialog({
                   ]}
                 />
               )}
-              {errors.productId && <p className="mt-1 text-xs text-error-500 font-medium">{errors.productId}</p>}
+              {errors.productId && <p className="mt-1 text-xs text-destructive font-medium">{errors.productId}</p>}
             </div>
 
             {/* Packaging Type */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                Packaging Type <span className="text-error-500">*</span>
+                Packaging Type <span className="text-destructive">*</span>
               </label>
               {isEdit ? (
                 <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed select-none">
@@ -237,7 +265,7 @@ export function VariationFormDialog({
                     setPackagingType(val);
                     handleBlur("packagingType");
                   }}
-                  className={`w-full text-sm ${errors.packagingType ? "border-error-500" : ""}`}
+                  className={`w-full text-sm ${errors.packagingType ? "border-destructive" : ""}`}
                   options={[
                     { value: "", label: "Select packaging type" },
                     { value: "Jar", label: "Jar" },
@@ -246,13 +274,13 @@ export function VariationFormDialog({
                   ]}
                 />
               )}
-              {errors.packagingType && <p className="mt-1 text-xs text-error-500 font-medium">{errors.packagingType}</p>}
+              {errors.packagingType && <p className="mt-1 text-xs text-destructive font-medium">{errors.packagingType}</p>}
             </div>
 
             {/* Size & Unit */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                Size & Unit <span className="text-error-500">*</span>
+                Size & Unit <span className="text-destructive">*</span>
               </label>
               {isEdit ? (
                 <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed select-none">
@@ -268,8 +296,8 @@ export function VariationFormDialog({
                     value={sizeValue}
                     onChange={(e) => handleSizeChange(e.target.value)}
                     onBlur={() => handleBlur("size")}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-                      errors.size ? "border-error-500" : "border-gray-200 dark:border-gray-700"
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ring ${
+                      errors.size ? "border-destructive" : "border-gray-200 dark:border-gray-700"
                     }`}
                   />
                   <CustomSelect
@@ -286,13 +314,13 @@ export function VariationFormDialog({
                   />
                 </div>
               )}
-              {errors.size && <p className="mt-1 text-xs text-error-500 font-medium">{errors.size}</p>}
+              {errors.size && <p className="mt-1 text-xs text-destructive font-medium">{errors.size}</p>}
             </div>
 
             {/* Price */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                Price (₱) <span className="text-error-500">*</span>
+                Price (₱) <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
@@ -302,17 +330,17 @@ export function VariationFormDialog({
                 onBlur={() => handleBlur("price")}
                 maxLength={10}
                 placeholder="0.00"
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-                  errors.price ? "border-error-500" : "border-gray-200 dark:border-gray-700"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ring ${
+                  errors.price ? "border-destructive" : "border-gray-200 dark:border-gray-700"
                 }`}
               />
-              {errors.price && <p className="mt-1 text-xs text-error-500 font-medium">{errors.price}</p>}
+              {errors.price && <p className="mt-1 text-xs text-destructive font-medium">{errors.price}</p>}
             </div>
 
             {/* SKU */}
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                SKU <span className="text-error-500">*</span>
+                SKU <span className="text-destructive">*</span>
               </label>
               {isEdit ? (
                 <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed select-none">
@@ -325,12 +353,12 @@ export function VariationFormDialog({
                   onBlur={() => handleBlur("sku")}
                   maxLength={SKU_MAX}
                   placeholder="e.g. UBH-SM-500"
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ${
-                    errors.sku ? "border-error-500" : "border-gray-200 dark:border-gray-700"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ring ${
+                    errors.sku ? "border-destructive" : "border-gray-200 dark:border-gray-700"
                   }`}
                 />
               )}
-              {!isEdit && errors.sku && <p className="mt-1 text-xs text-error-500 font-medium">{errors.sku}</p>}
+              {!isEdit && errors.sku && <p className="mt-1 text-xs text-destructive font-medium">{errors.sku}</p>}
             </div>
 
             {/* Active Toggle */}
@@ -341,7 +369,7 @@ export function VariationFormDialog({
                 disabled={isEdit}
                 onClick={() => setIsActive(!isActive)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  isActive ? "bg-success-500" : "bg-gray-300 dark:bg-gray-600"
+                  isActive ? "bg-foreground" : "bg-gray-300 dark:bg-gray-600"
                 } ${isEdit ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 <span
@@ -355,21 +383,23 @@ export function VariationFormDialog({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl">
+        <div style={{ padding: "12px 24px", borderTop: "1px solid #e4e4e7", display: "flex", justifyContent: "flex-end", gap: 8, backgroundColor: "#fafafa", borderRadius: "0 0 12px 12px", flexShrink: 0 }}>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent border border-border transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm"
+            className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-foreground hover:bg-foreground/90 transition-colors shadow-sm"
           >
             {isEdit ? "Update Price" : "Add Variation"}
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
+
+  return createPortal(modalContent, document.body);
 }

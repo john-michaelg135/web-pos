@@ -164,17 +164,17 @@ export function ViewSalesAnalytics() {
 
   return (
     <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in print:p-5 print:bg-white">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
           <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Analytics Report</h1>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <div className="flex items-center gap-2 mt-1 flex-wrap min-w-0">
             <p className="text-sm text-muted-foreground">Comprehensive overview of sales performance and trends.</p>
             <span className="text-muted-foreground font-bold">&middot;</span>
-            <Badge variant="secondary" className="text-xs font-bold whitespace-nowrap">
+            <Badge variant="secondary" className="text-xs font-bold truncate max-w-[200px]">
               {locationLabel}
             </Badge>
             {!authUser?.locationId && (
-              <div className="w-48 ml-1">
+              <div className="w-48 ml-1 shrink-0">
                 <CustomSelect
                   value={filterLocation ? String(filterLocation) : "All"}
                   onChange={(val) => setFilterLocation(val === "All" ? undefined : Number(val))}
@@ -188,14 +188,14 @@ export function ViewSalesAnalytics() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 print:hidden flex-wrap">
+        <div className="flex items-center gap-3 print:hidden shrink-0">
           <div className="flex items-center gap-2">
             <Input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              className="w-[130px] cursor-pointer"
+              className="w-[160px] cursor-pointer"
             />
             <span className="text-muted-foreground text-sm">to</span>
             <Input
@@ -203,7 +203,7 @@ export function ViewSalesAnalytics() {
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              className="w-[130px] cursor-pointer"
+              className="w-[160px] cursor-pointer"
             />
           </div>
           <Button onClick={() => setIsCsvPreviewOpen(true)}>Generate Report</Button>
