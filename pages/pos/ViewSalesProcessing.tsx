@@ -897,6 +897,10 @@ export default function ViewSalesProcessing() {
               </>
             ) : (
               <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-4 mb-2">
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Ube Products</h3>
+                  <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+                </div>
                 {products.map((product) => {
                   const isOutOfStock = product.stock <= 0;
                   return (

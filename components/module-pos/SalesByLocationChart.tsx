@@ -12,7 +12,7 @@ export function SalesByLocationChart({ dateFrom, dateTo }: SalesByLocationChartP
   const [showPercentage, setShowPercentage] = useState(true);
 
   // Colors for pie chart
-  const colors = ["#1e3a5f", "#065f46", "#713f12", "#4c1d95", "#831843", "#115e59", "#3b0764", "#7c2d12"];
+  const colors = ["#0f2942", "#1a3d5c", "#254f6e", "#356585", "#4a7a9b", "#6090af", "#7ba8c4", "#97bed6"];
 
   useEffect(() => {
     const fetchData = async () => {

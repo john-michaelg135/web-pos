@@ -505,6 +505,8 @@ export function ViewOrderModal({
         </div>
 
         {/* Printable Waybill Area */}
+        {createPortal(
+          <div id="waybill-print-root">
         <div id="printable-waybill" className="hidden p-8 bg-white text-black font-sans w-full max-w-[800px] mx-auto">
           <div className="border-b-2 border-dashed border-gray-400 pb-4 mb-6 flex justify-between items-start">
             <div>
@@ -614,22 +616,33 @@ export function ViewOrderModal({
             </div>
           </div>
         </div>
+          </div>,
+          document.body
+        )}
 
         <style>{`
           @media print {
+            /* Collapse everything so it takes no layout space */
+            html, body {
+              height: auto !important;
+              overflow: visible !important;
+            }
             body * {
               visibility: hidden;
+            }
+            /* Hide the main app content entirely so it produces no pages */
+            body > *:not(#waybill-print-root) {
+              display: none !important;
             }
             #printable-waybill, #printable-waybill * {
               visibility: visible;
             }
             #printable-waybill {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-              height: 100%;
+              position: static !important;
               display: block !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
             }
           }
         `}</style>

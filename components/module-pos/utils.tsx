@@ -52,7 +52,7 @@ export function renderVariationBadges(
         display: "flex",
         flexWrap: "wrap",
         alignItems: "center",
-        gap: 8,
+        gap: 6,
         marginTop: isSmall ? 2 : 4,
         marginBottom: isSmall ? 2 : 4,
       }}
@@ -60,14 +60,15 @@ export function renderVariationBadges(
       {packaging && (
         <span
           style={{
-            padding: isSmall ? "2.5px 7px" : "4px 10px",
-            borderRadius: 5,
-            background: inputBgStyle,
-            border: `1px solid ${borderStyle}`,
-            fontSize: isSmall ? 11 : 13,
-            fontWeight: 700,
+            padding: isSmall ? "2px 8px" : "3px 10px",
+            borderRadius: 6,
+            background: "#eef1f6",
+            border: "1px solid #e2e6ed",
+            fontSize: isSmall ? 10 : 12,
+            fontWeight: 600,
             textTransform: "uppercase",
-            color: mutedColor,
+            color: "#4a5568",
+            letterSpacing: "0.02em",
           }}
         >
           {packaging}
@@ -76,14 +77,15 @@ export function renderVariationBadges(
       {size && (
         <span
           style={{
-            padding: isSmall ? "2.5px 7px" : "4px 10px",
-            borderRadius: 5,
-            background: inputBgStyle,
-            border: `1px solid ${borderStyle}`,
-            fontSize: isSmall ? 11 : 13,
-            fontWeight: 700,
+            padding: isSmall ? "2px 8px" : "3px 10px",
+            borderRadius: 6,
+            background: "#eef1f6",
+            border: "1px solid #e2e6ed",
+            fontSize: isSmall ? 10 : 12,
+            fontWeight: 600,
             textTransform: "uppercase",
-            color: mutedColor,
+            color: "#4a5568",
+            letterSpacing: "0.02em",
           }}
         >
           {size}
@@ -92,11 +94,10 @@ export function renderVariationBadges(
       {sku && (
         <span
           style={{
-            fontSize: isSmall ? 11 : 13,
+            fontSize: isSmall ? 10 : 12,
             fontFamily: "monospace",
-            color: mutedColor,
-            opacity: 0.8,
-            letterSpacing: "0.05em",
+            color: "#94a3b8",
+            letterSpacing: "0.03em",
           }}
         >
           {sku}

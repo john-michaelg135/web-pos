@@ -13,7 +13,7 @@ export function SalesByChannelChart({ dateFrom, dateTo, locationId }: SalesByCha
   const [showPercentage, setShowPercentage] = useState(true);
 
   // Colors for pie chart (different palette from location to distinguish)
-  const colors = ["#5b21b6", "#9d174d", "#9a3412", "#92400e", "#065f46", "#1e40af"];
+  const colors = ["#1e3a5f", "#2d4a6f", "#3d5a80", "#5b7ea1", "#7e9bb5", "#a3b8cc"];
 
   useEffect(() => {
     const fetchData = async () => {
