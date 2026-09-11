@@ -54,7 +54,7 @@ export default function ApproveRefundDialog({
                 Order ID
               </label>
               <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 select-none">
-                {order.id}
+                {order.orderNumber || order.id}
               </div>
             </div>
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, LayoutGrid, List, Search } from "lucide-react";
+import { Loader2, LayoutGrid, List } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -16,7 +16,6 @@ import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { StockLevel, StockMovement } from "@/components/module-pos/types";
 
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -30,7 +29,6 @@ export function ViewStockManagement() {
   const [locationName, setLocationName] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [locations, setLocations] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const [showAdjustmentDialog, setShowAdjustmentDialog] = useState(false);
@@ -256,17 +254,7 @@ export function ViewStockManagement() {
 
         {/* Stock Levels */}
         <TabsContent value="levels" className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-border bg-card p-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search by product name, SKU, or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                maxLength={25}
-                className="pl-9"
-              />
-            </div>
+          <div className="flex flex-col md:flex-row md:items-center justify-end gap-4 rounded-xl border border-border bg-card p-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location:</span>
@@ -291,7 +279,7 @@ export function ViewStockManagement() {
               </div>
             </div>
           </div>
-          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} searchQuery={searchQuery} viewMode={viewMode} onAdjustStock={handleAdjustStock} />
+          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} />
         </TabsContent>
 
         {/* Receive Stock */}

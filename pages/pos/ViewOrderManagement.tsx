@@ -64,6 +64,7 @@ export default function ViewOrderManagement() {
 
   const mapToFrontendOrder = (dto: OrderManagementResponseDto): Order => ({
     id: dto.orderId?.toString() || "0",
+    orderNumber: dto.orderNumber || (dto.orderId ? `#${dto.orderId}` : undefined),
     type: (dto.orderType?.toLowerCase() as "walk-in" | "store" | "online" | "institutional") || "online",
     source: dto.orderSource,
     customer: (dto as any).seniorPwdName ? (dto as any).seniorPwdName : (dto.contactPerson ? dto.contactPerson : (dto.customerId ? `Customer ${dto.customerId}` : "Customer")),
@@ -188,7 +189,7 @@ export default function ViewOrderManagement() {
     try {
       const managerId = Number(authUser?.id) || 1;
       await apiClient.apiPos.orderManagementOrdersRejectRefundUpdate(Number(orderToReject.id), { rejectedBy: managerId, rejectionRemarks: rejectReason.trim() });
-      toast.success(`Refund request for Order #${orderToReject.id} has been rejected.`);
+      toast.success(`Refund request for Order ${orderToReject.orderNumber || `#${orderToReject.id}`} has been rejected.`);
       fetchOrders();
     } catch (err) { console.error("Failed to reject refund:", err); toast.error("Failed to reject refund."); }
     setShowRejectDialog(false); setRejectReason(""); setOrderToReject(null);
@@ -200,7 +201,7 @@ export default function ViewOrderManagement() {
     if (/[<>]/.test(refundReason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
     try {
       await apiClient.apiPos.orderManagementOrdersRequestRefundUpdate(Number(selectedOrder.id), { reason: refundReason });
-      toast.success(`Refund requested successfully for Order #${selectedOrder.id}.`);
+      toast.success(`Refund requested successfully for Order ${selectedOrder.orderNumber || `#${selectedOrder.id}`}.`);
       fetchOrders();
     } catch (err) { console.error("Failed to request refund:", err); toast.error("Failed to request refund."); }
     setShowRefundDialog(false); setRefundReason("");

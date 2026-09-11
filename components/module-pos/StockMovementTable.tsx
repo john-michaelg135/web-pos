@@ -64,15 +64,15 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                           try {
                             const d = new Date(m.date);
                             if (isNaN(d.getTime())) return m.date;
-                            const yy = d.getFullYear().toString().slice(-2);
-                            const mm = String(d.getMonth() + 1).padStart(2, '0');
-                            const dd = String(d.getDate()).padStart(2, '0');
+                            const yyyy = d.getFullYear();
+                            const mm = d.getMonth() + 1;
+                            const dd = d.getDate();
                             let hours = d.getHours();
                             const minutes = String(d.getMinutes()).padStart(2, '0');
                             const ampm = hours >= 12 ? 'PM' : 'AM';
                             hours = hours % 12;
                             hours = hours ? hours : 12; // the hour '0' should be '12'
-                            return `${yy}/${mm}/${dd} ${hours}:${minutes} ${ampm}`;
+                            return `${mm}/${dd}/${yyyy} ${hours}:${minutes} ${ampm}`;
                           } catch (e) {
                             return m.date;
                           }

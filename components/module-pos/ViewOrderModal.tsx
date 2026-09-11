@@ -123,7 +123,7 @@ export function ViewOrderModal({
         >
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold" style={{ color: text }}>
-              Manage Order {order.id}
+              Manage Order {order.orderNumber || order.id}
             </h2>
             <span
               className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider"

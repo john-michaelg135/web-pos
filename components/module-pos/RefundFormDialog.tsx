@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
 import { Order } from "@/components/module-pos/types";
 
@@ -43,6 +44,11 @@ export default function RefundFormDialog({
   ];
   
   const [selectedOption, setSelectedOption] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -56,7 +62,7 @@ export default function RefundFormDialog({
     }
   }, [isOpen, reason]);
 
-  if (!isOpen || !order) return null;
+  if (!isOpen || !order || !mounted) return null;
 
   const labelStyle: React.CSSProperties = {
     display: "block",
@@ -81,8 +87,8 @@ export default function RefundFormDialog({
     fontFamily: "inherit",
   };
 
-  return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+  const dialogContent = (
+    <div className="fixed inset-0 z-[100010] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
@@ -104,7 +110,7 @@ export default function RefundFormDialog({
                 Order ID
               </label>
               <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 select-none">
-                {order.id}
+                {order.orderNumber || order.id}
               </div>
             </div>
 
@@ -198,4 +204,6 @@ export default function RefundFormDialog({
       </div>
     </div>
   );
+
+  return createPortal(dialogContent, document.body);
 }

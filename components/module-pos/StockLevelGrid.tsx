@@ -17,7 +17,8 @@ const useTheme = () => {
 
 interface StockLevelGridProps {
   selectedLocation: string;
-  searchQuery:      string;
+  /** Optional externally-controlled search. When omitted, the grid manages its own search state. */
+  searchQuery?:     string;
   viewMode:         "grid" | "table";
   onAdjustStock?:   (stock: any) => void;
 }
@@ -34,6 +35,10 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
   const { user: authUser } = useAuth();
   const [stocks, setStocks] = useState<ParsedStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Self-managed search state (mirrors ProductTable). Falls back to the controlled
+  // `searchQuery` prop when one is provided by the parent.
+  const [internalSearch, setInternalSearch] = useState("");
+  const search = searchQuery !== undefined ? searchQuery : internalSearch;
 
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -76,10 +81,11 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
     }
 
     const matchesLoc = selectedLocation === "All" || stock.locationName === selectedLocation;
-    const q = searchQuery.toLowerCase();
+    const q = (search || "").toLowerCase().trim();
     const matchesQuery = !q ||
       stock.productName.toLowerCase().includes(q) ||
-      (stock.variationName || "").toLowerCase().includes(q);
+      (stock.variationName || "").toLowerCase().includes(q) ||
+      (stock.locationName || "").toLowerCase().includes(q);
     return matchesLoc && matchesQuery;
   });
 
@@ -93,6 +99,18 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
 
   return (
     <div className="w-full min-w-0">
+      {/* Self-managed search (used when parent does not control searchQuery) */}
+      {searchQuery === undefined && (
+        <div className="mb-5">
+          <input
+            value={internalSearch}
+            onChange={(e) => setInternalSearch(e.target.value)}
+            placeholder="Search by product, variation, or location…"
+            maxLength={25}
+            className="w-full sm:max-w-[280px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          />
+        </div>
+      )}
       {viewMode === "table" ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
           <table className="w-full text-left">

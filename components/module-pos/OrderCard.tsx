@@ -84,7 +84,7 @@ export default function OrderCard({
               marginBottom: 12,
             }}
           >
-            <h3 style={{ fontSize: isMobile ? 22 : 24, fontWeight: 700 }}>{order.id}</h3>
+            <h3 style={{ fontSize: isMobile ? 22 : 24, fontWeight: 700 }}>{order.orderNumber || order.id}</h3>
             <div style={{ display: "flex", gap: 8 }}>
               <span
                 style={{

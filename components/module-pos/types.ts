@@ -24,6 +24,8 @@ export type OrderStatusHistory = {
 
 export type Order = {
   id: string;
+  /** Human-readable order number (e.g. ORD-20260911-0002). Falls back to `#<id>` when unavailable. */
+  orderNumber?: string;
   type: "walk-in" | "store" | "online" | "institutional";
   customer: string;
   items: {
