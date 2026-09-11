@@ -75,7 +75,7 @@ export function CustomSelect({
   const selectedOption = options.find((opt) => opt.value === value);
 
   return (
-    <div ref={dropdownRef} style={{ position: "relative", ...style }} className={className}>
+    <div ref={dropdownRef} style={{ position: "relative", width: "100%", minWidth: 180, ...style }} className={className}>
       <button
         ref={buttonRef}
         type="button"
@@ -98,7 +98,7 @@ export function CustomSelect({
           opacity: disabled ? 0.6 : 1,
         }}
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ flex: 1, minWidth: 0, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown

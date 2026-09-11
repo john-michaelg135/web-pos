@@ -1181,7 +1181,7 @@ export default function ViewSalesProcessing() {
 
       {/* Institutional Details Modal */}
       <Dialog open={showInstitutionalModal} onOpenChange={setShowInstitutionalModal}>
-        <DialogContent className="max-w-4xl max-h-[96vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-4xl max-h-[96vh] flex flex-col p-0 gap-0 rounded-2xl overflow-hidden">
           <DialogHeader className="px-5 py-3 sm:px-6 sm:py-4 border-b border-border sticky top-0 bg-background z-10">
             <DialogTitle className="text-base sm:text-lg font-bold">
               Institutional Details
