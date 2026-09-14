@@ -148,52 +148,47 @@ export function ViewOrderModal({
         <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
           {/* Info Section */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-            <div className="p-4 rounded-xl border flex flex-col gap-1" style={{ borderColor: border, background: `${border}10` }}>
+            <div className="p-4 rounded-xl border flex flex-col gap-1 min-w-0" style={{ borderColor: border, background: `${border}10` }}>
               <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>Customer Details</p>
-              <p className="text-sm font-bold" style={{ color: text }}>{order.customer}</p>
+              <p className="text-sm font-bold break-words [overflow-wrap:anywhere]" style={{ color: text }}>{order.customer}</p>
               {isPwdOrder ? (
                 <>
                   {order.seniorPwdStreet && (
-                    <p className="text-xs font-semibold" style={{ color: muted }}>
+                    <p className="text-xs font-semibold break-words [overflow-wrap:anywhere]" style={{ color: muted }}>
                       Address: <span style={{ color: text }}>
                         {`${order.seniorPwdStreet}, ${order.seniorPwdBarangay || ""}, ${order.seniorPwdCity || ""}, ${order.seniorPwdProvince || ""} ${order.seniorPwdZipCode || ""}`.replace(/,\s*,/g, ",").trim()}
                       </span>
                     </p>
                   )}
-                  <p className="text-xs font-semibold" style={{ color: muted }}>
+                  <p className="text-xs font-semibold break-words [overflow-wrap:anywhere]" style={{ color: muted }}>
                     PWD ID: <span style={{ color: text }}>{order.seniorPwdId}</span>
                   </p>
                 </>
               ) : (
                 <>
                   {order.deliveryAddress && (
-                    <p className="text-xs font-semibold" style={{ color: muted }}>
+                    <p className="text-xs font-semibold break-words [overflow-wrap:anywhere]" style={{ color: muted }}>
                       Address: <span style={{ color: text }}>{order.deliveryAddress}</span>
-                    </p>
-                  )}
-                  {order.customVariationNotes && (
-                    <p className="text-xs font-semibold" style={{ color: muted }}>
-                      Notes: <span style={{ color: text }}>{order.customVariationNotes}</span>
                     </p>
                   )}
                 </>
               )}
 
             </div>
-            <div className="p-4 rounded-xl border" style={{ borderColor: border, background: `${border}10` }}>
+            <div className="p-4 rounded-xl border min-w-0" style={{ borderColor: border, background: `${border}10` }}>
               <p className="text-[10px] font-bold uppercase mb-1 tracking-wider" style={{ color: muted }}>Order Information</p>
               <div className="flex flex-col gap-1.5">
-                <p className="text-sm font-bold flex justify-between" style={{ color: text }}>
-                  <span style={{ color: muted, fontWeight: 600 }}>Type:</span>
-                  <span className="uppercase">{order.type} {order.isPreOrder ? "(Pre-order)" : ""}</span>
+                <p className="text-sm font-bold flex justify-between gap-3" style={{ color: text }}>
+                  <span className="shrink-0" style={{ color: muted, fontWeight: 600 }}>Type:</span>
+                  <span className="uppercase text-right min-w-0 break-words [overflow-wrap:anywhere]">{order.type} {order.isPreOrder ? "(Pre-order)" : ""}</span>
                 </p>
-                <p className="text-sm font-bold flex justify-between" style={{ color: text }}>
-                  <span style={{ color: muted, fontWeight: 600 }}>Date:</span>
-                  <span>{order.date}</span>
+                <p className="text-sm font-bold flex justify-between gap-3" style={{ color: text }}>
+                  <span className="shrink-0" style={{ color: muted, fontWeight: 600 }}>Date:</span>
+                  <span className="text-right min-w-0 break-words [overflow-wrap:anywhere]">{order.date}</span>
                 </p>
-                <p className="text-sm font-bold flex justify-between" style={{ color: text }}>
-                  <span style={{ color: muted, fontWeight: 600 }}>Location:</span>
-                  <span>{order.location}</span>
+                <p className="text-sm font-bold flex justify-between gap-3" style={{ color: text }}>
+                  <span className="shrink-0" style={{ color: muted, fontWeight: 600 }}>Location:</span>
+                  <span className="text-right min-w-0 break-words [overflow-wrap:anywhere]">{order.location}</span>
                 </p>
               </div>
             </div>
@@ -349,10 +344,20 @@ export function ViewOrderModal({
               </table>
             </div>
             
+            {order.customVariationNotes && (
+              <div
+                className="mt-4 p-3 rounded-lg border"
+                style={{ borderColor: border, background: `${border}10` }}
+              >
+                <p className="text-[10px] font-bold uppercase mb-1 tracking-wider" style={{ color: muted }}>Customization</p>
+                <p className="text-xs font-medium break-words [overflow-wrap:anywhere]" style={{ color: text }}>{order.customVariationNotes}</p>
+              </div>
+            )}
+
             {order.remarks && (
               <div className="mt-4 p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800">
                 <p className="text-[10px] font-bold uppercase text-red-500 mb-1 tracking-wider">Remarks / Reason</p>
-                <p className="text-xs font-medium text-red-700 dark:text-red-400">{order.remarks}</p>
+                <p className="text-xs font-medium text-red-700 dark:text-red-400 break-words [overflow-wrap:anywhere]">{order.remarks}</p>
               </div>
             )}
           </div>
@@ -406,7 +411,7 @@ export function ViewOrderModal({
                 </>
               )}
               <div className="border-t pt-2 flex justify-between items-center" style={{ borderColor: border }}>
-                <span className="text-sm font-bold uppercase tracking-wider" style={{ color: text }}>Grand Total</span>
+                <span className="text-sm font-bold uppercase tracking-wider" style={{ color: text }}>Total Price</span>
                 <span className="text-2xl font-bold" style={{ color: primary }}>
                   ₱{pricing.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
@@ -596,7 +601,7 @@ export function ViewOrderModal({
                   </>
                 )}
                 <div className="border-t border-black pt-2 flex justify-between font-black text-base">
-                  <span>Grand Total</span>
+                  <span>Total Price</span>
                   <span>₱{pricing.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>

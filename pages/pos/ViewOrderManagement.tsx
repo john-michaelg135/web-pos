@@ -77,7 +77,9 @@ export default function ViewOrderManagement() {
     location: dto.locationName || "Unknown",
     isPreOrder: !!dto.isPreorder,
     paymentStatus: (dto.paymentStatus?.toLowerCase() as "pending" | "paid") || "pending",
-    remarks: dto.rejectionRemarks || dto.customVariationNotes || "",
+    // Only actual rejection/cancellation reasons belong in "Remarks / Reason".
+    // Customization notes are surfaced separately via customVariationNotes.
+    remarks: dto.rejectionRemarks || "",
     paymentUrl: dto.payments?.find(p => p.gatewayReferenceNumber)?.gatewayReferenceNumber || null,
     deliveryAddress: dto.deliveryAddress || "",
     amountTendered: (dto as any).amountTendered,

@@ -112,7 +112,7 @@ export default function ReviewDialog({
                   ))}
                 </div>
                 <div className="p-3 bg-gray-100/50 dark:bg-gray-900/50 flex justify-between items-center text-sm font-bold text-gray-900 dark:text-white">
-                  <span>Grand Total</span>
+                  <span>Total Price</span>
                   <span className="text-lg text-brand-500">
                     ₱{order.total.toLocaleString()}
                   </span>

@@ -334,7 +334,7 @@ export default function OrderCard({
                 marginBottom: 16,
               }}
             >
-              Grand Total
+              Total Price
             </p>
             <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, margin: 0 }}>
               ₱{order.total.toLocaleString()}

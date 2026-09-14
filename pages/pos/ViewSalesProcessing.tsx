@@ -22,7 +22,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -564,9 +563,9 @@ export default function ViewSalesProcessing() {
   const categories = Array.from(new Set(products.map(p => p.category)));
 
   const renderCart = (
-    <Card className={cn("shadow-none border-border overflow-hidden flex flex-col", isMobile ? "h-full rounded-none rounded-t-2xl" : "rounded-2xl")}>
+    <Card className={cn("shadow-none border-border overflow-hidden flex flex-col", isMobile ? "h-full rounded-none rounded-t-2xl" : "rounded-2xl h-full min-h-0")}>
       {/* Cart Header */}
-      <CardHeader className={cn("flex flex-row items-center justify-between border-b border-border bg-muted/50 px-4 py-3", isMobile && "px-4 py-3")}>
+      <CardHeader className={cn("flex flex-row items-center justify-between border-b border-border bg-muted/50 px-4 py-3 shrink-0", isMobile && "px-4 py-3")}>
         <h2 className="text-title-lg font-bold text-foreground">Cart</h2>
         <div className="flex items-center gap-3">
           {isMobile && (
@@ -629,7 +628,7 @@ export default function ViewSalesProcessing() {
         </div>
       </CardHeader>
 
-      <div className={cn("flex flex-col", isMobile ? "flex-1 overflow-y-auto" : "")}>
+      <div className={cn("flex flex-col flex-1 min-h-0 overflow-y-auto custom-scrollbar")}>
         {/* Order Mode Info Panel */}
         {(isPreOrder || isInstitutional) && (
           <div className={cn("border-b border-border/40 bg-muted/30", isMobile ? "p-3" : "p-4")}>
@@ -650,11 +649,9 @@ export default function ViewSalesProcessing() {
                   </button>
                 </div>
                 {contactPerson ? (
-                  <div className="text-xs text-foreground flex flex-col gap-1 mt-1">
+                  <div className="text-xs text-foreground flex flex-col gap-1 mt-1 min-w-0 break-words [overflow-wrap:anywhere]">
                     <p className="m-0"><strong>Contact Name:</strong> {contactPerson}</p>
                     {contactNumber && <p className="m-0"><strong>Contact Number:</strong> {contactNumber}</p>}
-                    <p className="m-0"><strong>Address:</strong> {street}, {city}, {province} {zipCode}</p>
-                    {notes && <p className="m-0"><strong>Notes:</strong> {notes}</p>}
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground mt-1 m-0">No details added yet.</p>
@@ -677,7 +674,7 @@ export default function ViewSalesProcessing() {
         )}
 
         {/* Cart Items */}
-        <div className={cn(isMobile ? "p-3" : "p-4")}>
+        <div className={cn(cart.length === 0 && "flex-1 flex flex-col justify-center", isMobile ? "p-3" : "p-4")}>
           {cart.length === 0 ? (
             <div className="text-center py-6">
               <div className="w-20 h-20 rounded-3xl bg-muted/50 border border-border/30 flex items-center justify-center mx-auto mb-4">
@@ -686,16 +683,16 @@ export default function ViewSalesProcessing() {
               <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-foreground/25">Cart is empty</h3>
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2.5">
               {cart.map((item) => (
-                <div key={item.id} className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-input border border-border flex items-center justify-center text-2xl shrink-0">
+                <div key={item.id} className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-input border border-border flex items-center justify-center text-xl shrink-0">
                     {item.category === "Ube Halaya" ? "🍠" : "🫙"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold m-0 text-foreground">{item.name}</p>
-                    <div className="flex flex-col gap-0.5 mt-0.5">
-                      {renderVariationBadges(item.variation, "hsl(var(--muted-foreground))", "hsl(var(--border))", "hsl(var(--input))", false)}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                      {renderVariationBadges(item.variation, "hsl(var(--muted-foreground))", "hsl(var(--border))", "hsl(var(--input))", true)}
                       <p className="text-[11px] text-muted-foreground font-bold m-0">₱{item.price}</p>
                     </div>
                   </div>
@@ -742,9 +739,9 @@ export default function ViewSalesProcessing() {
       </div>
 
       {/* Cart Footer */}
-      <div className={cn("border-t border-border bg-muted/30 flex flex-col gap-4 shrink-0", isMobile ? "p-3" : "p-4")}>
+      <div className={cn("border-t border-border bg-muted/30 flex flex-col gap-2 shrink-0", isMobile ? "p-3" : "px-4 py-2.5")}>
         {/* Senior/PWD Toggle */}
-        <div className="flex items-center justify-between px-3 h-11 rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between px-3 h-9 rounded-lg border border-border bg-card">
           <span className="text-xs font-bold text-foreground">Senior/PWD</span>
           <div className="flex items-center gap-2">
             {isSeniorPWD && (
@@ -771,7 +768,7 @@ export default function ViewSalesProcessing() {
             <Button
               size="sm"
               variant={isSeniorPWD ? "outline" : "default"}
-              className={cn("text-xs font-bold rounded-lg h-7 px-3", isSeniorPWD && "text-primary border-primary/20 bg-primary/10 hover:bg-primary/20")}
+              className={cn("text-xs font-bold rounded-lg h-6 px-2.5", isSeniorPWD && "text-primary border-primary/20 bg-primary/10 hover:bg-primary/20")}
               onClick={() => setShowPwdModal(true)}
             >
               {isSeniorPWD ? "Applied" : "Apply"}
@@ -779,36 +776,34 @@ export default function ViewSalesProcessing() {
           </div>
         </div>
 
-        <Separator className="my-2" />
-
         {/* Totals */}
         <div>
-          <div className="flex justify-between text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mb-2">
+          <div className="flex justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">
             <span>Subtotal</span>
             <span className="text-foreground">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           {isSeniorPWD && (
             <>
-              <div className="flex justify-between text-[11px] font-bold uppercase text-destructive mb-2">
+              <div className="flex justify-between text-[10px] font-bold uppercase text-destructive mb-1">
                 <span>VAT Exemption (12%)</span>
                 <span>- ₱{pwdDetails.vatExempt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between text-[11px] font-bold uppercase text-destructive mb-2">
+              <div className="flex justify-between text-[10px] font-bold uppercase text-destructive mb-1">
                 <span>Senior/PWD Discount (20%)</span>
                 <span>- ₱{pwdDetails.discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </>
           )}
-          <div className="flex justify-between items-end mt-2">
-            <span className="text-lg font-bold text-foreground">Total Price</span>
-            <span className="text-2xl font-bold text-primary">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <div className="flex justify-between items-center mt-1">
+            <span className="text-sm font-bold text-foreground">Total Price</span>
+            <span className="text-xl font-bold text-primary">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
         </div>
 
         <Button
           disabled={cart.length === 0}
           onClick={handleCheckout}
-          className="w-full h-14 rounded-2xl text-[15px] font-bold uppercase tracking-[0.1em]"
+          className="w-full h-10 rounded-xl text-sm font-bold uppercase tracking-[0.1em]"
         >
           Complete Sale
         </Button>
@@ -833,7 +828,10 @@ export default function ViewSalesProcessing() {
   if (!isMounted) return null;
 
   return (
-    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className={cn(
+      "w-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500",
+      isMobile ? "min-h-full" : "flex flex-col h-[calc(100vh-4rem)]"
+    )}>
       {/* Header */}
       <div className="shrink-0">
         <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Processing</h1>
@@ -848,8 +846,8 @@ export default function ViewSalesProcessing() {
 
       <div className={cn("flex-1 min-h-0 grid gap-6", isMobile ? "grid-cols-1 pb-28" : "grid-cols-[1fr_420px]")}>
         {/* Product Catalog */}
-        <Card className="shadow-none border-border overflow-hidden rounded-2xl">
-          <CardHeader className={cn("border-b border-border flex flex-row items-center justify-between", isMobile ? "px-3.5 py-3" : "px-5 py-4")}>
+        <Card className={cn("shadow-none border-border overflow-hidden rounded-2xl", !isMobile && "flex flex-col min-h-0")}>
+          <CardHeader className={cn("border-b border-border flex flex-row items-center justify-between shrink-0", isMobile ? "px-3.5 py-3" : "px-5 py-4")}>
             <h2 className={cn("font-bold", isMobile ? "text-lg" : "text-xl")}>Product Catalog</h2>
             <div className="flex items-center bg-muted rounded-lg p-1">
               <button
@@ -876,7 +874,7 @@ export default function ViewSalesProcessing() {
               </button>
             </div>
           </CardHeader>
-          <CardContent className={cn(isMobile ? "p-3" : "p-5")}>
+          <CardContent className={cn(isMobile ? "p-3" : "p-5", !isMobile && "flex-1 min-h-0 overflow-y-auto custom-scrollbar")}>
             {catalogView === "grid" ? (
               <>
                 {categories.map((category) => (
@@ -940,7 +938,7 @@ export default function ViewSalesProcessing() {
 
         {/* Desktop Shopping Cart */}
         {!isMobile && (
-          <div className="flex flex-col">
+          <div className="flex flex-col min-h-0">
             {renderCart}
           </div>
         )}
@@ -1019,7 +1017,7 @@ export default function ViewSalesProcessing() {
             {/* Body */}
             <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto flex-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                     Items Summary
                   </h3>
@@ -1027,7 +1025,7 @@ export default function ViewSalesProcessing() {
                     {cart.map((item) => (
                       <div key={item.id} className="flex justify-between items-center text-sm">
                         <div className="flex-1 min-w-0 pr-4">
-                          <p className="font-bold m-0 text-foreground">{item.name}</p>
+                          <p className="font-bold m-0 text-foreground break-words">{item.name}</p>
                           <div className="flex flex-col gap-1 mt-1">
                             {renderVariationBadges(item.variation, "hsl(var(--muted-foreground))", "hsl(var(--border))", "hsl(var(--input))", false)}
                             <p className="text-xs text-muted-foreground font-bold uppercase m-0">Qty: {item.quantity}</p>
@@ -1039,11 +1037,11 @@ export default function ViewSalesProcessing() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 min-w-0">
                   {isInstitutional && (
-                    <div className="p-4 bg-muted border border-border rounded-xl text-sm">
+                    <div className="p-4 bg-muted border border-border rounded-xl text-sm min-w-0">
                       <p className="text-xs font-bold text-primary uppercase tracking-widest mb-2">Delivery & Contact Details</p>
-                      <div className="flex flex-col gap-1 text-foreground/80">
+                      <div className="flex flex-col gap-1 text-foreground/80 min-w-0 break-words [overflow-wrap:anywhere]">
                         <p className="m-0"><strong>Name / Org:</strong> {contactPerson}</p>
                         {contactNumber && <p className="m-0"><strong>Contact Number:</strong> {contactNumber}</p>}
                         <p className="m-0"><strong>Address:</strong> {street}, {barangay}, {city}, {province} {zipCode}</p>
@@ -1112,7 +1110,7 @@ export default function ViewSalesProcessing() {
                   )}
 
                   <div className="flex justify-between items-end border-t border-border pt-4 mt-2">
-                    <span className="text-base font-bold text-foreground">Grand Total</span>
+                    <span className="text-base font-bold text-foreground">Total Price</span>
                     <span className="text-2xl font-bold text-foreground">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
 
