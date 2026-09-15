@@ -311,13 +311,19 @@ export function ViewOrderModal({
           <div>
             <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: muted }}>Order Items</h3>
             <div className="rounded-xl border overflow-hidden" style={{ borderColor: border }}>
-              <table className="w-full text-left">
+              <table className="w-full text-left" style={{ tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "auto" }} />
+                  <col style={{ width: "80px" }} />
+                  <col style={{ width: "120px" }} />
+                  <col style={{ width: "120px" }} />
+                </colgroup>
                 <thead style={{ background: `${border}20` }}>
                   <tr>
-                    <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>Item</th>
-                    <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-center" style={{ color: muted }}>Qty</th>
-                    <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-right" style={{ color: muted }}>Price</th>
-                    <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-right" style={{ color: muted }}>Total</th>
+                    <th className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-left" style={{ color: muted }}>Item</th>
+                    <th className="px-4 py-2 text-[10px] font-bold uppercase text-left" style={{ color: muted }}>Qty</th>
+                    <th className="px-4 py-2 text-[10px] font-bold uppercase text-left" style={{ color: muted }}>Price</th>
+                    <th className="px-4 py-2 text-[10px] font-bold uppercase text-left" style={{ color: muted }}>Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: border }}>
@@ -329,13 +335,13 @@ export function ViewOrderModal({
                           {renderVariationBadges(item.variation, muted, border, cardBg, true)}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-center" style={{ color: text }}>
+                      <td className="px-4 py-3 text-sm font-bold text-left" style={{ color: text }}>
                         {item.quantity}
                       </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-right" style={{ color: muted }}>
+                      <td className="px-4 py-3 text-sm font-semibold text-left" style={{ color: muted }}>
                         ₱{item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-right" style={{ color: text }}>
+                      <td className="px-4 py-3 text-sm font-bold text-left" style={{ color: text }}>
                         ₱{(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
