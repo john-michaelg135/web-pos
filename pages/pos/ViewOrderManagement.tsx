@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/components/module-pos/api";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import { useAuth } from "@/context/AuthContext";
+import { useMyLocations } from "@/lib/useMyLocations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,11 +33,20 @@ const LEGACY_COLORS = {
 
 export default function ViewOrderManagement() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const { scope, locations: myLocations } = useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [cashierLocationName, setCashierLocationName] = useState<string>("");
+
+  // Only admins/owners (super users, "all" scope) may see or switch between
+  // locations. Everyone else is pinned to their assigned branch.
+  const canSwitchLocation = scope === "all";
+  const assignedLocation = useMemo(
+    () => myLocations.find((l) => l.isPrimary) ?? myLocations[0] ?? null,
+    [myLocations]
+  );
 
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "completed" | "refunds" | "cancelled">("pending");
   const [refundSubTab, setRefundSubTab] = useState<"requested" | "refunded" | "rejected">("requested");
@@ -112,24 +122,20 @@ export default function ViewOrderManagement() {
 
   useEffect(() => { setIsMounted(true); fetchOrders(); }, []);
 
+  // Pin non-super users to their assigned branch. Super users ("all" scope)
+  // keep the "All" default and may switch freely via the filters.
   useEffect(() => {
-    if ((authUser?.subRole === "Cashier" || authUser?.subRole === "OrderManager") && authUser.locationId) {
-      if (authUser?.subRole === "Cashier") setChannelTab("pos");
-      const fetchUserLocation = async () => {
-        try {
-          const { data } = await apiClient.apiPos.locationsList();
-          const matched = data.find(l => Number(l.locationId) === Number(authUser.locationId));
-          if (matched) { setCashierLocationName(matched.locationName || ""); setFilterLocation(matched.locationName || "Store"); }
-        } catch (err) { console.error("Failed to fetch locations in order management:", err); }
-      };
-      fetchUserLocation();
+    if (canSwitchLocation) return;
+    if (assignedLocation) {
+      setCashierLocationName(assignedLocation.locationName || "");
+      setFilterLocation(assignedLocation.locationName || "Store");
     }
-  }, [authUser]);
+  }, [canSwitchLocation, assignedLocation]);
 
   const resetFilters = () => {
     setFilterType("All");
     setFilterStatus("All");
-    if ((authUser?.subRole === "Cashier" || authUser?.subRole === "OrderManager") && authUser.locationId) {
+    if (!canSwitchLocation) {
       setFilterLocation(cashierLocationName || "Store");
     } else { setFilterLocation("All"); }
     setSearchQuery("");
@@ -139,7 +145,9 @@ export default function ViewOrderManagement() {
     return orders.filter((o) => {
       const isWebOrder = o.type.toLowerCase() === "online" || o.source?.toLowerCase() === "e-commerce" || o.source?.toLowerCase() === "ecommerce";
       const isRefundStatus = o.status === "refund_requested" || o.status === "refunded";
-      if ((authUser?.subRole === "Cashier" || authUser?.subRole === "OrderManager") && authUser.locationId) {
+      // Non-super users only ever see orders from their assigned branch
+      // (refund items still surface so they can be actioned).
+      if (!canSwitchLocation) {
         if (authUser?.subRole === "Cashier" && isWebOrder && !isRefundStatus) return false;
         if (cashierLocationName && o.location.toLowerCase() !== cashierLocationName.toLowerCase() && !isRefundStatus) return false;
       }
@@ -151,7 +159,7 @@ export default function ViewOrderManagement() {
       if (filterLocation !== "All" && o.location.toLowerCase() !== filterLocation.toLowerCase()) return false;
       return true;
     });
-  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName]);
+  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation]);
 
   const handleApproveRefund = (order: Order) => { setOrderToApprove(order); setShowApproveDialog(true); };
 
@@ -286,7 +294,7 @@ export default function ViewOrderManagement() {
         </div>
       </div>
 
-      <OrderFilters show={showFilters} onClose={() => setShowFilters(false)} filterType={filterType} setFilterType={setFilterType} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterLocation={filterLocation} setFilterLocation={setFilterLocation} resetFilters={resetFilters} />
+      <OrderFilters show={showFilters} onClose={() => setShowFilters(false)} filterType={filterType} setFilterType={setFilterType} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterLocation={filterLocation} setFilterLocation={setFilterLocation} resetFilters={resetFilters} canSwitchLocation={canSwitchLocation} locationOptions={orders.reduce<string[]>((acc, o) => { if (o.location && o.location !== "Unknown" && !acc.includes(o.location)) acc.push(o.location); return acc; }, [])} />
 
       {/* Channel Tabs */}
       {authUser?.subRole !== "Cashier" && (

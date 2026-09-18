@@ -33,6 +33,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useMyLocations } from "@/lib/useMyLocations";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import PwdFormModal from "@/components/module-pos/PwdFormModal";
@@ -62,19 +63,33 @@ const toTitleCase = (str: string) => {
 
 export default function ViewSalesProcessing() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const { scope, locations: myLocations, isLoading: locationsLoading } = useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [locationName, setLocationName] = useState<string>("");
   const [locationType, setLocationType] = useState<string>("");
 
+  // Resolve the branch this page operates on. Assigned staff are pinned to
+  // their primary (or first) assigned location; super users ("all" scope) fall
+  // back to the default branch since they aren't tied to a single location.
+  const assignedLocation = useMemo(
+    () => myLocations.find((l) => l.isPrimary) ?? myLocations[0] ?? null,
+    [myLocations]
+  );
+  const effectiveLocationId =
+    scope === "assigned" && assignedLocation ? assignedLocation.locationId : 1;
+
   useEffect(() => {
     if (authLoading || !authUser) return;
     if (authUser.username !== "posuser" && !authUser.apps.includes("sales-processing")) return;
+    // Wait for the location scope so assigned staff load their own branch
+    // instead of momentarily hitting the fallback branch (id 1).
+    if (locationsLoading) return;
     setIsMounted(true);
     const fetchProducts = async () => {
       try {
-        const locationIdVal = authUser.locationId || 1;
+        const locationIdVal = effectiveLocationId;
 
         // withCredentials omitted on purpose: api-pos uses Bearer auth, not the
         // NextAuth cookie. Sending the large session cookie here causes HTTP 431
@@ -101,10 +116,16 @@ export default function ViewSalesProcessing() {
     };
 
     const fetchLocationInfo = async () => {
+      // Prefer the assigned-location details we already have from the scope
+      // hook so the badge reflects the user's branch without another lookup.
+      if (scope === "assigned" && assignedLocation) {
+        setLocationName(assignedLocation.locationName || "");
+        setLocationType(assignedLocation.locationType || "");
+        return;
+      }
       try {
         const { data } = await apiClient.apiPos.locationsList();
-        const locationIdVal = authUser.locationId || 1;
-        const matched = data.find(l => Number(l.locationId) === Number(locationIdVal));
+        const matched = data.find(l => Number(l.locationId) === Number(effectiveLocationId));
         if (matched) {
           setLocationName(matched.locationName || "");
           setLocationType(matched.locationType || "");
@@ -116,7 +137,7 @@ export default function ViewSalesProcessing() {
 
     fetchProducts();
     fetchLocationInfo();
-  }, [authUser, authLoading]);
+  }, [authUser, authLoading, locationsLoading, scope, assignedLocation, effectiveLocationId]);
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [itemToRemove, setItemToRemove] = useState<{ id: string; name: string } | null>(null);
@@ -459,7 +480,9 @@ export default function ViewSalesProcessing() {
           quantity: Number(item.quantity) || 1
         }));
 
-        const locationIdVal = authUser?.locationId || 1;
+        // Stamp the order with the branch this cashier is assigned to (same
+        // location driving the product grid/badge), not the fallback branch.
+        const locationIdVal = effectiveLocationId;
         if (isInstitutional) {
           const { data: response } = await apiClient.apiPos.orderEntryOrdersInstitutionalCreate({
             locationId: locationIdVal,
@@ -840,7 +863,11 @@ export default function ViewSalesProcessing() {
           <span>Process walk-in and institutional orders</span>
           <span>·</span>
           <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
-            {locationType && locationName ? `${locationType} - ${locationName}` : "Store"}
+            {scope === "all"
+              ? "All Locations"
+              : locationType && locationName
+                ? `${locationType} - ${locationName}`
+                : "Store"}
           </Badge>
         </div>
       </div>

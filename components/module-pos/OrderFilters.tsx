@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { STATUS_LABELS } from "@/components/module-pos/types";
-import { useAuth } from "@/context/AuthContext";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,6 +18,10 @@ interface OrderFiltersProps {
   filterLocation: string;
   setFilterLocation: (location: string) => void;
   resetFilters: () => void;
+  /** Only admins/owners may switch locations; others are locked to theirs. */
+  canSwitchLocation?: boolean;
+  /** Branch names available to switch between (super users only). */
+  locationOptions?: string[];
 }
 
 export default function OrderFilters({
@@ -31,9 +34,11 @@ export default function OrderFilters({
   filterLocation,
   setFilterLocation,
   resetFilters,
+  canSwitchLocation = false,
+  locationOptions = [],
 }: OrderFiltersProps) {
-  const { user: authUser } = useAuth();
-  const hasLocationLock = !!authUser?.locationId;
+  // Lock the location picker for everyone except admins/owners.
+  const hasLocationLock = !canSwitchLocation;
 
   const [localType, setLocalType] = useState(filterType);
   const [localStatus, setLocalStatus] = useState(filterStatus);
@@ -134,8 +139,7 @@ export default function OrderFilters({
                 { value: localLocation, label: localLocation === "All" ? "All Locations" : localLocation }
               ] : [
                 { value: "All", label: "All Locations" },
-                { value: "Antipolo Store Branch", label: "Antipolo Store Branch" },
-                { value: "Commissary 999", label: "Commissary 999" },
+                ...locationOptions.map((name) => ({ value: name, label: name })),
               ]}
             />
           </div>

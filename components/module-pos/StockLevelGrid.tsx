@@ -5,7 +5,6 @@ import { apiClient } from "@/components/module-pos/api";
 import { StockResponseDto } from "@/components/module-pos/api/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
-import { useAuth } from "@/context/AuthContext";
 
 const useTheme = () => {
   try {
@@ -21,6 +20,8 @@ interface StockLevelGridProps {
   searchQuery?:     string;
   viewMode:         "grid" | "table";
   onAdjustStock?:   (stock: any) => void;
+  /** When false (assigned staff), the grid is pinned to `selectedLocation` and hides Commissary. */
+  canSwitchLocation?: boolean;
 }
 
 // Extends StockResponseDto with parsed fields
@@ -31,8 +32,7 @@ interface ParsedStock extends Omit<StockResponseDto, 'productName' | 'quantity'>
   quantity: number;
 }
 
-export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdjustStock }: StockLevelGridProps) {
-  const { user: authUser } = useAuth();
+export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdjustStock, canSwitchLocation = true }: StockLevelGridProps) {
   const [stocks, setStocks] = useState<ParsedStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // Self-managed search state (mirrors ProductTable). Falls back to the controlled
@@ -74,10 +74,13 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
   }, []);
 
   const filteredStocks = stocks.filter((stock) => {
-    // Block cashiers from seeing Commissary (Location 999) or other store locations
-    if (authUser?.subRole === "Cashier") {
+    // Scoped (non-admin/owner) users are pinned to a single branch: the parent
+    // sets `selectedLocation` to their assigned branch and locks the picker, so
+    // filtering on it here restricts the grid to that location. We also keep
+    // them out of the SCM Commissary (Location 999) which they can't touch.
+    if (!canSwitchLocation) {
       if (stock.locationId === 999 || stock.locationName === "Commissary") return false;
-      if (Number(stock.locationId) !== Number(authUser.locationId)) return false;
+      if (selectedLocation !== "All" && stock.locationName !== selectedLocation) return false;
     }
 
     const matchesLoc = selectedLocation === "All" || stock.locationName === selectedLocation;

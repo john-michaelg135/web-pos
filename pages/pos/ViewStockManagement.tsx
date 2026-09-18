@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useMyLocations } from "@/lib/useMyLocations";
 import { apiClient } from "@/components/module-pos/api";
 import { StockLevelGrid } from "@/components/module-pos/StockLevelGrid";
 import { StockReceivingForm } from "@/components/module-pos/StockReceivingForm";
@@ -22,11 +23,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export function ViewStockManagement() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const { scope, locations: myLocations } = useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history">("levels");
 
-  const [locationName, setLocationName] = useState<string | null>(null);
+  // Only admins/owners (super users, "all" scope) may see or switch between
+  // locations. Assigned staff are pinned to their own branch.
+  const canSwitchLocation = scope === "all";
+  const assignedLocation = myLocations.find((l) => l.isPrimary) ?? myLocations[0] ?? null;
+
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [locations, setLocations] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
@@ -102,27 +108,18 @@ export function ViewStockManagement() {
     fetchAdjustments();
     fetchMovements();
 
-    if (authUser?.locationId) {
-      const fetchLocation = async () => {
-        try {
-          const { data } = await apiClient.apiPos.locationsList();
-          const matched = data.find((l) => Number(l.locationId) === Number(authUser.locationId));
-          if (matched) setLocationName(matched.locationName || null);
-        } catch (err) {
-          console.error("Failed to fetch location name:", err);
-        }
-      };
-      fetchLocation();
-    }
-
     const fetchLocations = async () => {
       try {
         const { data } = await apiClient.apiPos.locationsList();
-        if (authUser?.subRole === "Cashier") {
-          const matched = data.filter((l) => Number(l.locationId) === Number(authUser.locationId) && l.locationId !== 999);
+        if (!canSwitchLocation && assignedLocation) {
+          // Assigned staff: lock to their own branch only.
+          const matched = data.filter(
+            (l) => Number(l.locationId) === Number(assignedLocation.locationId)
+          );
           setLocations(matched);
-          if (matched.length > 0) setSelectedLocation(matched[0].locationName || "All");
+          setSelectedLocation(assignedLocation.locationName || "All");
         } else {
+          // Admins/owners: full list with an "All Locations" option.
           setLocations(data);
         }
       } catch (err) {
@@ -130,7 +127,7 @@ export function ViewStockManagement() {
       }
     };
     fetchLocations();
-  }, [authUser]);
+  }, [authUser, canSwitchLocation, assignedLocation]);
 
   useEffect(() => {
     if (activeTab === "history") fetchMovements();
@@ -224,7 +221,11 @@ export function ViewStockManagement() {
           <div className="flex items-center gap-2">
             <p className="text-sm text-muted-foreground">Monitor stock levels, manage adjustments, and record new arrivals.</p>
             <Badge variant="secondary" className="text-xs font-semibold">
-              {locationName ? `Store - ${locationName}` : "All Locations"}
+              {canSwitchLocation
+                ? "All Locations"
+                : assignedLocation
+                  ? `${assignedLocation.locationType} - ${assignedLocation.locationName}`
+                  : "All Locations"}
             </Badge>
           </div>
         </div>
@@ -260,11 +261,11 @@ export function ViewStockManagement() {
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location:</span>
                 <CustomSelect
                   value={selectedLocation}
-                  onChange={(val) => setSelectedLocation(val)}
-                  disabled={authUser?.subRole === "Cashier"}
+                  onChange={(val) => { if (canSwitchLocation) setSelectedLocation(val); }}
+                  disabled={!canSwitchLocation}
                   className="w-48"
                   options={[
-                    ...(authUser?.subRole !== "Cashier" ? [{ value: "All", label: "All Locations" }] : []),
+                    ...(canSwitchLocation ? [{ value: "All", label: "All Locations" }] : []),
                     ...locations.map((loc) => ({ value: loc.locationName, label: loc.locationName })),
                   ]}
                 />
@@ -279,7 +280,7 @@ export function ViewStockManagement() {
               </div>
             </div>
           </div>
-          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} />
+          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} />
         </TabsContent>
 
         {/* Receive Stock */}
