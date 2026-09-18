@@ -1,12 +1,13 @@
 "use client";
 
-import { SidebarProvider, useSharedTheme } from "@r3b2p/uilib";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "sonner";
 
 export default function LayoutProvider({ children }: { children: React.ReactNode }) {
-  useSharedTheme();
   return (
-    <SidebarProvider>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       {children}
-    </SidebarProvider>
+      <Toaster richColors position="top-right" />
+    </ThemeProvider>
   );
 }
