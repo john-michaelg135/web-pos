@@ -8,6 +8,7 @@ import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
 import { toast } from "sonner";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
+import { useMyLocations } from "@/lib/useMyLocations";
 
 const useTheme = () => {
   try {
@@ -55,6 +56,8 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
   const [manualLocationId, setManualLocationId] = useState("");
   const [manualQuantity, setManualQuantity] = useState("");
   const [manualNotes, setManualNotes] = useState("");
+
+  const { scope: locScope, locations: myLocations } = useMyLocations();
 
   const { theme } = useTheme();
   const dark = theme === "dark";
@@ -110,8 +113,15 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
       }))
   );
 
-  // Non-commissary locations for the manual form
-  const receivableLocations = locations.filter((l) => l.locationId !== 999 && l.isActive !== false);
+  // Non-commissary locations for the manual form.
+  // Assigned (non-super) users can only receive into their own branch(es);
+  // super users see every receivable location.
+  const assignedIds = new Set(myLocations.map((l) => l.locationId));
+  const receivableLocations = locations.filter((l) => {
+    if (l.locationId === 999 || l.isActive === false) return false;
+    if (locScope === "assigned") return assignedIds.has(l.locationId);
+    return true;
+  });
 
   const filteredTransfers = transfers.filter((t) => {
     const q = (searchTerm || "").toLowerCase().trim();

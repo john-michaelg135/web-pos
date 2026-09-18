@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -37,9 +38,15 @@ export function CustomSelect({
   const muted = dark ? "#8899aa" : "#667085";
 
   const [isOpen, setIsOpen] = useState(false);
-  const [openAbove, setOpenAbove] = useState(false);
+  const [menuPos, setMenuPos] = useState<{
+    left: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+  } | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const calculatePosition = useCallback(() => {
     if (!buttonRef.current) return;
@@ -49,20 +56,41 @@ export function CustomSelect({
     const dropdownHeight = Math.min(options.length * 40 + 8, 250);
 
     // Open above if not enough space below but enough above
-    setOpenAbove(spaceBelow < dropdownHeight && spaceAbove > dropdownHeight);
+    const openAbove = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
+
+    setMenuPos({
+      left: rect.left,
+      width: rect.width,
+      ...(openAbove
+        ? { bottom: window.innerHeight - rect.top + 6 }
+        : { top: rect.bottom + 6 }),
+    });
   }, [options.length]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      const target = event.target as Node;
+      if (dropdownRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setIsOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Keep the portalled menu aligned while open (scroll/resize).
+  useEffect(() => {
+    if (!isOpen) return;
+    const reposition = () => calculatePosition();
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [isOpen, calculatePosition]);
 
   const handleToggle = () => {
     if (disabled) return;
@@ -113,20 +141,20 @@ export function CustomSelect({
         />
       </button>
 
-      {isOpen && !disabled && (
+      {isOpen && !disabled && menuPos && typeof document !== "undefined" && createPortal(
         <div
+          ref={menuRef}
           style={{
-            position: "absolute",
-            left: 0,
-            ...(openAbove
-              ? { bottom: "100%", marginBottom: 6 }
-              : { top: "100%", marginTop: 6 }),
+            position: "fixed",
+            left: menuPos.left,
+            width: menuPos.width,
+            ...(menuPos.top !== undefined ? { top: menuPos.top } : {}),
+            ...(menuPos.bottom !== undefined ? { bottom: menuPos.bottom } : {}),
             background: cardBg,
             border: `1px solid ${border}`,
             borderRadius: 12,
             boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)",
-            zIndex: 100000,
-            minWidth: "100%",
+            zIndex: 100001,
             overflow: "hidden",
             maxHeight: 250,
             overflowY: "auto",
@@ -186,7 +214,8 @@ export function CustomSelect({
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

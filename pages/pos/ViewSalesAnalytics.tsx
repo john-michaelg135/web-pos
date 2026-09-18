@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { useMyLocations } from "@/lib/useMyLocations";
 import { apiClient } from "@/components/module-pos/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { SalesAnalyticsCharts } from "@/components/module-pos/SalesAnalyticsCharts";
@@ -31,6 +32,8 @@ interface TopSellingVariation {
 
 export function ViewSalesAnalytics() {
   const { user: authUser, isLoading: authLoading } = useAuth();
+  const { scope: locScope, locations: myLocations, isLoading: locLoading, isUnassigned } =
+    useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = useState(false);
@@ -50,29 +53,48 @@ export function ViewSalesAnalytics() {
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
 
-    if (authUser?.locationId) {
-      const fetchLocation = async () => {
-        try {
-          const { data } = await apiClient.apiPos.locationsList();
-          const matched = data.find((l) => Number(l.locationId) === Number(authUser.locationId));
-          if (matched) setLocationName(matched.locationName || null);
-        } catch (err) {
-          console.error("Failed to fetch location name:", err);
+  // Populate the location selector according to the user's runtime scope.
+  // Super users (scope "all") pick from every location; assigned users are
+  // constrained to their branch(es) and locked to their (single) branch.
+  useEffect(() => {
+    if (locLoading) return;
+
+    const populateLocations = async () => {
+      if (locScope === "assigned") {
+        const scoped = myLocations.map((l) => ({
+          id: l.locationId,
+          name: l.locationName || "Store",
+        }));
+        setLocations(scoped);
+        if (scoped.length === 1) {
+          setLocationName(scoped[0].name);
+          setFilterLocation(scoped[0].id);
+        } else if (scoped.length > 1) {
+          // Multi-branch (e.g. a manager) — default to first, still selectable.
+          setFilterLocation((prev) => prev ?? scoped[0].id);
         }
-      };
-      fetchLocation();
-    } else {
-      const fetchLocations = async () => {
-        try {
-          const { data } = await apiClient.apiPos.locationsList();
-          setLocations(data.map((l) => ({ id: Number(l.locationId), name: l.locationName || "Store" })));
-        } catch (err) {
-          console.error("Failed to fetch locations:", err);
-        }
-      };
-      fetchLocations();
-    }
+        return;
+      }
+
+      // Super user: fetch all locations for the selector.
+      try {
+        const { data } = await apiClient.apiPos.locationsList();
+        setLocations(
+          data
+            .filter((l) => l.isActive)
+            .map((l) => ({ id: Number(l.locationId), name: l.locationName || "Store" }))
+        );
+      } catch (err) {
+        console.error("Failed to fetch locations:", err);
+      }
+    };
+
+    void populateLocations();
+  }, [locScope, locLoading, myLocations]);
+
+  useEffect(() => {
 
     const fetchTopSelling = async () => {
       try {
@@ -125,7 +147,7 @@ export function ViewSalesAnalytics() {
     if (!authLoading && !hasAccess) router.replace("/access-denied");
   }, [authUser, authLoading, hasAccess, router]);
 
-  if (authLoading)
+  if (authLoading || locLoading)
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -133,14 +155,35 @@ export function ViewSalesAnalytics() {
     );
   if (!hasAccess || !isMounted) return null;
 
-  const locationLabel = authUser?.locationId
-    ? locationName ? `Store - ${locationName}` : "All Locations"
+  // Non-super user with no assigned branch: gate the location-scoped report.
+  if (isUnassigned) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+        <h2 className="text-lg font-semibold text-foreground">No location assigned</h2>
+        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+          You haven&apos;t been assigned to a branch yet. Ask an administrator to
+          assign your location in Location Management to view sales reports.
+        </p>
+      </div>
+    );
+  }
+
+  // Location scoping:
+  //  - super users: free selector across all locations (default "All Locations")
+  //  - assigned to 1 branch: locked to that branch, no selector
+  //  - assigned to N branches: selector limited to those branches
+  const isLocked = locScope === "assigned" && myLocations.length === 1;
+  const canPickAll = locScope === "all";
+  const showLocationSelector = canPickAll || (locScope === "assigned" && myLocations.length > 1);
+
+  const locationLabel = isLocked
+    ? `Store - ${locationName ?? myLocations[0]?.locationName ?? "Unknown"}`
     : filterLocation
       ? `Store - ${locations.find((l) => l.id === filterLocation)?.name || "Unknown"}`
       : "All Locations";
 
   const handleDownloadCsv = () => {
-    let csvContent =
+    const csvContent =
       "data:text/csv;charset=utf-8,Name,Sales (units),Percent,Amount\n" +
       topSellingData.map((e) => `"${e.name}",${e.sales},${e.percent}%,${e.amount}`).join("\n");
     const link = document.createElement("a");
@@ -156,7 +199,7 @@ export function ViewSalesAnalytics() {
     const emDashIdx = name.indexOf(" — ");
     const enDashIdx = name.indexOf(" – ");
     const hyphenIdx = name.indexOf(" - ");
-    let splitIdx = emDashIdx !== -1 ? emDashIdx : enDashIdx !== -1 ? enDashIdx : hyphenIdx;
+    const splitIdx = emDashIdx !== -1 ? emDashIdx : enDashIdx !== -1 ? enDashIdx : hyphenIdx;
     if (splitIdx !== -1) return { prodName: name.substring(0, splitIdx), variationPart: name.substring(splitIdx + 3) };
     if (name.includes("|")) return { prodName: "", variationPart: name };
     return { prodName: name, variationPart: "" };
@@ -173,13 +216,14 @@ export function ViewSalesAnalytics() {
             <Badge variant="secondary" className="text-xs font-bold truncate max-w-[200px]">
               {locationLabel}
             </Badge>
-            {!authUser?.locationId && (
+            {showLocationSelector && (
               <div className="w-48 ml-1 shrink-0">
                 <CustomSelect
                   value={filterLocation ? String(filterLocation) : "All"}
                   onChange={(val) => setFilterLocation(val === "All" ? undefined : Number(val))}
                   options={[
-                    { value: "All", label: "All Locations" },
+                    // Only super users get the "All Locations" aggregate option.
+                    ...(canPickAll ? [{ value: "All", label: "All Locations" }] : []),
                     ...locations.map((l) => ({ value: String(l.id), label: `Store - ${l.name}` })),
                   ]}
                 />

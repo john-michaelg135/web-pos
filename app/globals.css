@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "./pos-overrides.css";
 
 @custom-variant dark (&:is(.dark *));
