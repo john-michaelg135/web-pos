@@ -1,5 +1,11 @@
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
+  // Only trust the local mkcert CA during local development.
+  // In production the auth service uses a real public certificate,
+  // and the mkcert binary is not present on the host.
+  if (
+    process.env.NEXT_RUNTIME === "nodejs" &&
+    process.env.NODE_ENV === "development"
+  ) {
     const fs = await import("fs");
     const { execSync } = await import("child_process");
     const { setGlobalDispatcher, Agent } = await import("undici");
