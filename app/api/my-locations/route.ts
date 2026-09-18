@@ -61,6 +61,7 @@ export async function GET() {
         locationType: a.locationType,
         isPrimary: a.isPrimary,
       })),
+      _debug: { sessionUserId: authUserId },
     });
   } catch (error) {
     console.error("[my-locations] Failed to load assignments:", error);

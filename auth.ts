@@ -138,12 +138,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Extract user profile claims
       if (profile) {
-        // TEMP DEBUG: log the raw claims so we can see what br-auth actually sends.
-        // Remove once RBAC is confirmed working.
-        console.log("[auth][debug] profile keys:", Object.keys(profile));
-        console.log("[auth][debug] profile.systems:", profile.systems);
-        console.log("[auth][debug] profile.isSuperUser:", profile.isSuperUser);
-        console.log("[auth][debug] profile.permissions:", profile.permissions);
+        // TEMP DEBUG: confirm which subject values are available.
+        console.log("[auth][sub] profile.sub =", profile.sub, "| token.sub =", token.sub);
+        // br-auth stamps the OIDC subject as the user's id. Pin it onto the
+        // token so session.user.id is ALWAYS the br-auth user id, independent of
+        // any NextAuth-internal token.sub handling.
+        if (profile.sub) {
+          token.brAuthUserId = profile.sub;
+        }
         if (profile.systems) {
           token.systems = (profile.systems as string).split(",");
         }
@@ -207,8 +209,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Compact POS permissions map: { "<Module>": "rwu", ... }
       session.permissions = (token.permissions ?? {}) as Record<string, string>;
 
-      if (token.sub && session.user) {
-        session.user.id = token.sub;
+      // Prefer the pinned br-auth user id (from profile.sub); fall back to
+      // NextAuth's token.sub only if it's somehow missing.
+      const resolvedUserId = (token.brAuthUserId as string | undefined) ?? (token.sub as string | undefined);
+      if (session.user && resolvedUserId) {
+        session.user.id = resolvedUserId as string;
       }
 
       if (token.error) {

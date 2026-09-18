@@ -25,6 +25,7 @@ declare module "next-auth/jwt" {
     accessToken?: string;
     refreshToken?: string;
     expiresAt?: number;
+    brAuthUserId?: string;
     systems?: string[];
     role?: string;
     isSuperUser?: boolean;
