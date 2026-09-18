@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { mainNavItems, settingsNavItem, systems } from "./SidebarNav";
 import { SidebarProfileFooter } from "./SidebarProfileFooter";
+import { canRead } from "@/lib/permissions";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -55,7 +56,18 @@ export function Sidebar() {
   const SettingsIcon = settingsNavItem.icon;
   const isSettingsActive = pathname === settingsNavItem.href;
 
-  const showSettings = !!session?.isSuperUser || session?.role === "Administrator";
+  // Granular RBAC: super users see all nav items; everyone else sees only the
+  // modules they have read access to (from the compact session.permissions map).
+  const isSuperUser = !!session?.isSuperUser;
+  const permissions = session?.permissions;
+  const visibleNavItems = isSuperUser
+    ? mainNavItems
+    : mainNavItems.filter((item) => canRead(permissions, item.module));
+
+  const showSettings =
+    isSuperUser ||
+    session?.role === "Administrator" ||
+    canRead(permissions, settingsNavItem.module);
 
   return (
     <>
@@ -136,7 +148,7 @@ export function Sidebar() {
           <SidebarGroup className="p-0">
             <SidebarGroupContent>
               <SidebarMenu>
-                {mainNavItems.map((item) => {
+                {visibleNavItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (

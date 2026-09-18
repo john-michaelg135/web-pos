@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { canAccessPath, firstAccessiblePath } from "@/lib/permissions";
 
 // Module-level cache for in-flight token refresh promises.
 const refreshCache = new Map<string, { promise: Promise<any>; expiresAt: number }>();
@@ -137,6 +138,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Extract user profile claims
       if (profile) {
+        // TEMP DEBUG: log the raw claims so we can see what br-auth actually sends.
+        // Remove once RBAC is confirmed working.
+        console.log("[auth][debug] profile keys:", Object.keys(profile));
+        console.log("[auth][debug] profile.systems:", profile.systems);
+        console.log("[auth][debug] profile.isSuperUser:", profile.isSuperUser);
+        console.log("[auth][debug] profile.permissions:", profile.permissions);
         if (profile.systems) {
           token.systems = (profile.systems as string).split(",");
         }
@@ -146,12 +153,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (profile.isSuperUser) {
           token.isSuperUser = profile.isSuperUser === "true" || profile.isSuperUser === true;
         }
+        // Store a COMPACT POS permissions map in the token so the frontend can
+        // enforce granular RBAC. br-auth's `permissions` claim is a JSON string:
+        //   { "POS": { "<Module>": { canRead, canWrite, canUpdate, canDelete, canApprove, canExport } } }
+        // We keep only the POS app and, per module, only the action letters that are
+        // granted (e.g. "rwu"). This is tiny (a handful of short strings) so it does
+        // not re-bloat the session cookie the way the full raw object would.
         if (profile.permissions) {
           try {
             const allPerms = typeof profile.permissions === "string"
               ? JSON.parse(profile.permissions)
               : profile.permissions;
-            token.permissions = { POS: allPerms?.POS || {} };
+            const posPerms = allPerms?.POS ?? {};
+            const compact: Record<string, string> = {};
+            for (const [moduleName, flags] of Object.entries(posPerms as Record<string, any>)) {
+              let actions = "";
+              if (flags?.canRead) actions += "r";
+              if (flags?.canWrite) actions += "w";
+              if (flags?.canUpdate) actions += "u";
+              if (flags?.canDelete) actions += "d";
+              if (flags?.canApprove) actions += "a";
+              if (flags?.canExport) actions += "e";
+              // Only keep modules the user has at least one action on.
+              if (actions) compact[moduleName] = actions;
+            }
+            token.permissions = compact;
           } catch {
             token.permissions = {};
           }
@@ -178,7 +204,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.systems = (token.systems as string[]) ?? [];
       session.role = (token.role as string) ?? "Staff/Employee";
       session.isSuperUser = (token.isSuperUser as boolean) ?? false;
-      session.permissions = token.permissions ?? {};
+      // Compact POS permissions map: { "<Module>": "rwu", ... }
+      session.permissions = (token.permissions ?? {}) as Record<string, string>;
 
       if (token.sub && session.user) {
         session.user.id = token.sub;
@@ -228,18 +255,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return true;
         }
 
-        // Enforce system permission — user must have POS access
-        // (Disabled: all authenticated users can access POS)
-        // const systems = (auth.systems || []).map((s: string) => s.toUpperCase());
-        // const hasPosAccess = systems.includes("POS");
-        // if (!hasPosAccess) {
-        //   if (isAccessDeniedPage) return true;
-        //   return Response.redirect(new URL("/access-denied", request.nextUrl));
-        // }
+        // Always allow the access-denied page itself so we don't loop.
+        if (isAccessDeniedPage) return true;
 
         // Authenticated user — redirect away from signin
         if (isSignInPage) {
           return Response.redirect(new URL("/", request.nextUrl));
+        }
+
+        // Granular RBAC: enforce per-module read access on page navigations.
+        // API routes are not gated here (api-pos does its own auth); this only
+        // guards direct page access so a user can't reach a module by typing
+        // the URL even though its nav item is hidden.
+        if (isPageRequest) {
+          const perms = auth.permissions as Record<string, string> | undefined;
+          const allowed = canAccessPath(pathname, perms, !!auth.isSuperUser);
+          if (!allowed) {
+            // Don't hard-deny the landing page. If the user can access ANY module,
+            // send them to their first accessible tab instead of access-denied.
+            // Only users with no readable POS module at all see access-denied.
+            const landing = firstAccessiblePath(perms);
+            if (landing && landing !== pathname) {
+              return Response.redirect(new URL(landing, request.nextUrl));
+            }
+            if (!landing) {
+              return Response.redirect(new URL("/access-denied", request.nextUrl));
+            }
+            // landing === pathname but not allowed shouldn't happen; fall through.
+          }
         }
 
         return true;

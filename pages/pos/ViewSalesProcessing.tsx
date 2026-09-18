@@ -76,9 +76,10 @@ export default function ViewSalesProcessing() {
       try {
         const locationIdVal = authUser.locationId || 1;
 
-        const response = await axios.get(`/api-pos/order-entry/product-grid?locationId=${locationIdVal}&_t=${Date.now()}`, {
-          withCredentials: true
-        });
+        // withCredentials omitted on purpose: api-pos uses Bearer auth, not the
+        // NextAuth cookie. Sending the large session cookie here causes HTTP 431
+        // for cashier accounts with big tokens.
+        const response = await axios.get(`/api-pos/order-entry/product-grid?locationId=${locationIdVal}&_t=${Date.now()}`);
 
         if (response.data) {
           const data = response.data;

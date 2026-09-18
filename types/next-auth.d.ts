@@ -6,7 +6,8 @@ declare module "next-auth" {
     systems: string[];
     role: string;
     isSuperUser: boolean;
-    permissions: any;
+    /** Compact POS permissions map: module name -> granted action letters (e.g. "rwu"). */
+    permissions: Record<string, string>;
     error?: string;
     user: DefaultSession["user"];
   }
@@ -27,7 +28,8 @@ declare module "next-auth/jwt" {
     systems?: string[];
     role?: string;
     isSuperUser?: boolean;
-    permissions?: any;
+    /** Compact POS permissions map: module name -> granted action letters (e.g. "rwu"). */
+    permissions?: Record<string, string>;
     error?: string;
   }
 }

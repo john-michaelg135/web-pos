@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "set NODE_EXTRA_CA_CERTS=certs\\rootCA.pem&& next dev --port 3002 --experimental-https --experimental-https-cert localhost.pem --experimental-https-key localhost-key.pem",
+    "dev": "set NODE_EXTRA_CA_CERTS=certs\\rootCA.pem&& set NODE_OPTIONS=--max-http-header-size=65536&& next dev --port 3002 --experimental-https --experimental-https-cert localhost.pem --experimental-https-key localhost-key.pem",
     "build": "next build",
-    "start": "next start",
+    "start": "set NODE_OPTIONS=--max-http-header-size=65536&& next start",
     "lint": "eslint"
   },
   "dependencies": {
