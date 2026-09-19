@@ -291,7 +291,9 @@ export default function ViewLocationsManagement() {
   // ── Assignment handlers ──
   const openAssign = (user: PosUserRow) => {
     setAssignUser(user);
-    setAssignLocationId("");
+    // Preselect the current branch so reassigning starts from where they are.
+    const current = user.locations[0];
+    setAssignLocationId(current ? String(current.locationId) : "");
     setAssignDialogOpen(true);
   };
 
@@ -300,6 +302,7 @@ export default function ViewLocationsManagement() {
       toast.error("Select a location.");
       return;
     }
+    const wasReassign = assignUser.locations.length > 0;
     try {
       setSavingAssign(true);
       const res = await fetch("/api/pos-users/assign", {
@@ -314,7 +317,11 @@ export default function ViewLocationsManagement() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || `Request failed (${res.status})`);
       }
-      toast.success(`Location assigned to ${assignUser.fullName}.`);
+      toast.success(
+        wasReassign
+          ? `${assignUser.fullName} reassigned.`
+          : `Location assigned to ${assignUser.fullName}.`
+      );
       setAssignDialogOpen(false);
       await loadUsers();
     } catch (err: unknown) {
@@ -399,7 +406,7 @@ export default function ViewLocationsManagement() {
                       <TableHead>Name</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -420,7 +427,7 @@ export default function ViewLocationsManagement() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -445,9 +452,10 @@ export default function ViewLocationsManagement() {
             <CardHeader>
               <CardTitle className="text-base">Staff Assignment</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Assign each employee the branch(es) they work at. Staff without an
-                assignment are limited until a location is set. Super admins see all
-                locations and don&apos;t need an assignment.
+                Assign each employee the branch they work at. Each employee works
+                at one branch, so reassigning replaces their current location.
+                Staff without an assignment are limited until a location is set.
+                Super admins see all locations and don&apos;t need an assignment.
               </p>
             </CardHeader>
             <CardContent>
@@ -465,8 +473,8 @@ export default function ViewLocationsManagement() {
                     <TableRow>
                       <TableHead>Employee</TableHead>
                       <TableHead>Role</TableHead>
-                      <TableHead>Assigned Location(s)</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>Assigned Location</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -505,14 +513,15 @@ export default function ViewLocationsManagement() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => openAssign(u)}
                             className="gap-1.5"
                           >
-                            <Plus className="w-3.5 h-3.5" /> Assign
+                            <Plus className="w-3.5 h-3.5" />
+                            {u.locations.length > 0 ? "Reassign" : "Assign"}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -569,7 +578,7 @@ export default function ViewLocationsManagement() {
       <ModalShell
         open={assignDialogOpen}
         onClose={() => setAssignDialogOpen(false)}
-        title={`Assign Location${assignUser ? ` — ${assignUser.fullName}` : ""}`}
+        title={`${assignUser && assignUser.locations.length > 0 ? "Reassign" : "Assign"} Location${assignUser ? ` — ${assignUser.fullName}` : ""}`}
         footer={
           <>
             <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
@@ -577,7 +586,7 @@ export default function ViewLocationsManagement() {
             </Button>
             <Button onClick={saveAssignment} disabled={savingAssign || !assignLocationId}>
               {savingAssign && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
-              Assign
+              {assignUser && assignUser.locations.length > 0 ? "Reassign" : "Assign"}
             </Button>
           </>
         }
@@ -593,6 +602,15 @@ export default function ViewLocationsManagement() {
               label: `${loc.locationName} (${loc.locationType})`,
             }))}
           />
+          {assignUser && assignUser.locations.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Currently at{" "}
+              <span className="font-medium text-foreground">
+                {assignUser.locations[0].locationName}
+              </span>
+              . Choosing a different branch replaces it.
+            </p>
+          )}
           {activeBranches.length === 0 && (
             <p className="text-xs text-amber-600 dark:text-amber-400">
               No active branches. Add one under the Branches tab first.
