@@ -6,6 +6,7 @@ import { ViewOrderModal } from "./ViewOrderModal";
 import { CalenderIcon } from "@/icons/index";
 import { Order, OrderStatus, STATUS_LABELS, STATUS_PIPELINE } from "@/components/module-pos/types";
 import { useAuth } from "@/context/AuthContext";
+import { POS_MODULES } from "@/lib/permissions";
 
 interface OrderCardProps {
   order: Order;
@@ -37,12 +38,10 @@ export default function OrderCard({
   onRejectRefund,
   isMobile,
 }: OrderCardProps) {
-  const { user } = useAuth();
-  const username = (user?.username || "").toLowerCase();
-  const isDev = username === "posuser";
-  const isCashier = user?.subRole === "Cashier";
-  const isOrderManager = user?.subRole === "OrderManager";
-  const isAdmin = user?.subRole === "Admin" || user?.role === "Admin" || user?.roles?.includes("Admin");
+  const { can } = useAuth();
+  // Managers (Order Management approve) can act on refunds → "Manage Order".
+  // Users without approve (e.g. cashiers) only review refund-state orders → "Review Order".
+  const canManageRefunds = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
 
   const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
   const isPending = order.status === "pending";
@@ -360,7 +359,7 @@ export default function OrderCard({
             onMouseOver={(e) => (e.currentTarget.style.background = `${primary}10`)}
             onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            {isCashier && ["refund_requested", "refunded"].includes(order.status) ? "Review Order" : "Manage Order"}
+            {!canManageRefunds && ["refund_requested", "refunded"].includes(order.status) ? "Review Order" : "Manage Order"}
           </button>
           
 

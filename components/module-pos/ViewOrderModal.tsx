@@ -7,6 +7,7 @@ import { Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types
 import { renderVariationBadges } from "./utils";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { POS_MODULES } from "@/lib/permissions";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 interface ViewOrderModalProps {
@@ -38,7 +39,7 @@ export function ViewOrderModal({
   onApplyRefund,
   onRejectRefund,
 }: ViewOrderModalProps) {
-  const { user } = useAuth();
+  const { can } = useAuth();
   const handleStatusChange = async (status: OrderStatus) => {
     if (onStatusUpdate) {
       await onStatusUpdate(status);
@@ -58,12 +59,14 @@ export function ViewOrderModal({
     }
   }, [order.status, order.id, isOpen]);
 
-  const username = (user?.username || "").toLowerCase();
-  const isDev = username === "posuser";
-  const isCashier = user?.subRole === "Cashier";
-  const isOrderManager = user?.subRole === "OrderManager";
-  const isAdmin = user?.subRole === "Admin" || user?.role === "Admin" || user?.roles?.includes("Admin");
-  const isAuthorizedToEdit = isDev || isOrderManager || isAdmin;
+  // Granular RBAC (br-auth "Order Management" module):
+  //   approve  → can approve/reject refund requests (manager capability)
+  //   update   → can change order status directly (manager capability)
+  //   write    → can file a refund request (cashier capability)
+  const canApproveRefund = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
+  const canRejectRefund = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
+  const canRequestRefund = can(POS_MODULES.ORDER_MANAGEMENT, "write");
+  const isAuthorizedToEdit = can(POS_MODULES.ORDER_MANAGEMENT, "update");
 
   const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
   const isInstitutional = order.type === "institutional";
@@ -463,8 +466,8 @@ export function ViewOrderModal({
               </button>
             )}
 
-            {/* Request Refund Button: visible if order has been paid or is completed */}
-            {(order.status === "completed" || order.paymentStatus === "paid") && !["refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestRefund && (
+            {/* Request Refund Button: cashier capability (Order Management write). Visible if order paid/completed. */}
+            {canRequestRefund && (order.status === "completed" || order.paymentStatus === "paid") && !["refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestRefund && (
               <button
                 onClick={onRequestRefund}
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
@@ -473,8 +476,8 @@ export function ViewOrderModal({
               </button>
             )}
 
-            {/* Approve Refund Button: visible to admin/manager when status is refund_requested */}
-            {order.status === "refund_requested" && onApplyRefund && (isDev || isOrderManager || isAdmin) && (
+            {/* Approve Refund Button: manager capability (Order Management approve) when status is refund_requested */}
+            {order.status === "refund_requested" && onApplyRefund && canApproveRefund && (
               <button
                 onClick={onApplyRefund}
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-foreground rounded-lg hover:bg-foreground/90 active:scale-95 transition-all shadow-sm"
@@ -483,8 +486,8 @@ export function ViewOrderModal({
               </button>
             )}
 
-            {/* Reject Refund Button: visible to admin/manager when status is refund_requested */}
-            {order.status === "refund_requested" && onRejectRefund && (isDev || isOrderManager || isAdmin) && (
+            {/* Reject Refund Button: manager capability (Order Management approve) when status is refund_requested */}
+            {order.status === "refund_requested" && onRejectRefund && canRejectRefund && (
               <button
                 onClick={onRejectRefund}
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"

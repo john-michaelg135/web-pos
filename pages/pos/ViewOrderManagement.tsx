@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { apiClient } from "@/components/module-pos/api";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import { useAuth } from "@/context/AuthContext";
+import { POS_MODULES } from "@/lib/permissions";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +33,17 @@ const LEGACY_COLORS = {
 };
 
 export default function ViewOrderManagement() {
-  const { user: authUser, isLoading: authLoading } = useAuth();
+  const { user: authUser, isLoading: authLoading, can, canRead } = useAuth();
   const { scope, locations: myLocations } = useMyLocations();
+
+  // Granular RBAC (br-auth "Order Management" module).
+  //   read    → may open the Order Management page at all
+  //   approve → manager capability (approve/reject refunds, see all channels)
+  // A user with read but NOT approve behaves like the old "cashier": limited to
+  // POS orders from their branch (plus refund-state items to action).
+  const canViewOrders = canRead(POS_MODULES.ORDER_MANAGEMENT);
+  const canManageRefunds = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
+  const isCashierLevel = canViewOrders && !canManageRefunds;
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -148,7 +158,7 @@ export default function ViewOrderManagement() {
       // Non-super users only ever see orders from their assigned branch
       // (refund items still surface so they can be actioned).
       if (!canSwitchLocation) {
-        if (authUser?.subRole === "Cashier" && isWebOrder && !isRefundStatus) return false;
+        if (isCashierLevel && isWebOrder && !isRefundStatus) return false;
         if (cashierLocationName && o.location.toLowerCase() !== cashierLocationName.toLowerCase() && !isRefundStatus) return false;
       }
       if (channelTab === "pos" && isWebOrder && !isRefundStatus) return false;
@@ -159,7 +169,7 @@ export default function ViewOrderManagement() {
       if (filterLocation !== "All" && o.location.toLowerCase() !== filterLocation.toLowerCase()) return false;
       return true;
     });
-  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation]);
+  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation, isCashierLevel]);
 
   const handleApproveRefund = (order: Order) => { setOrderToApprove(order); setShowApproveDialog(true); };
 
@@ -252,7 +262,7 @@ export default function ViewOrderManagement() {
   const refundedOrders = filteredOrders.filter((o) => o.status === "refunded");
   const cancelledOrders = filteredOrders.filter((o) => ["cancelled", "rejected"].includes(o.status));
 
-  const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("order-management") || authUser.roles?.includes("Admin") || authUser.subRole === "Admin");
+  const hasAccess = !!authUser && canViewOrders;
 
   useEffect(() => { if (!authLoading && !hasAccess) router.replace("/access-denied"); }, [authUser, authLoading, hasAccess, router]);
 
@@ -296,8 +306,8 @@ export default function ViewOrderManagement() {
 
       <OrderFilters show={showFilters} onClose={() => setShowFilters(false)} filterType={filterType} setFilterType={setFilterType} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterLocation={filterLocation} setFilterLocation={setFilterLocation} resetFilters={resetFilters} canSwitchLocation={canSwitchLocation} locationOptions={orders.reduce<string[]>((acc, o) => { if (o.location && o.location !== "Unknown" && !acc.includes(o.location)) acc.push(o.location); return acc; }, [])} />
 
-      {/* Channel Tabs */}
-      {authUser?.subRole !== "Cashier" && (
+      {/* Channel Tabs — hidden for cashier-level users (no cross-channel view) */}
+      {!isCashierLevel && (
         <div className="flex border-b border-border overflow-x-auto">
           {(["all", "pos", "web"] as const).map((tab) => (
             <button key={tab} onClick={() => setChannelTab(tab)} className={cn("px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors", channelTab === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")}>

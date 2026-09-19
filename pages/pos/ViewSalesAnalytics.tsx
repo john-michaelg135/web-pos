@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { POS_MODULES } from "@/lib/permissions";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { apiClient } from "@/components/module-pos/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
@@ -31,7 +32,7 @@ interface TopSellingVariation {
 }
 
 export function ViewSalesAnalytics() {
-  const { user: authUser, isLoading: authLoading } = useAuth();
+  const { user: authUser, isLoading: authLoading, canRead } = useAuth();
   const { scope: locScope, locations: myLocations, isLoading: locLoading, isUnassigned } =
     useMyLocations();
   const router = useRouter();
@@ -136,12 +137,7 @@ export function ViewSalesAnalytics() {
     fetchTopSelling();
   }, [dateFrom, dateTo, filterLocation, authUser]);
 
-  const hasAccess =
-    authUser &&
-    (authUser.username === "posuser" ||
-      authUser.apps.includes("sales-reports") ||
-      authUser.roles?.includes("Admin") ||
-      authUser.subRole === "Admin");
+  const hasAccess = !!authUser && canRead(POS_MODULES.SALES_REPORTS);
 
   useEffect(() => {
     if (!authLoading && !hasAccess) router.replace("/access-denied");

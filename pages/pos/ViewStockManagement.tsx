@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { POS_MODULES } from "@/lib/permissions";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { apiClient } from "@/components/module-pos/api";
 import { StockLevelGrid } from "@/components/module-pos/StockLevelGrid";
@@ -22,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export function ViewStockManagement() {
-  const { user: authUser, isLoading: authLoading } = useAuth();
+  const { user: authUser, isLoading: authLoading, canRead } = useAuth();
   const { scope, locations: myLocations } = useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
@@ -195,12 +196,14 @@ export function ViewStockManagement() {
     }
   };
 
-  const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("stock-management"));
-  const isCashier = authUser?.subRole === "Cashier";
+  // Stock Management is a manager-level module. Read access is granted only to
+  // managers/owners in br-auth; cashiers have no Stock Management permission and
+  // are therefore denied here automatically.
+  const hasAccess = !!authUser && canRead(POS_MODULES.STOCK_MANAGEMENT);
 
   useEffect(() => {
-    if (!authLoading && (!hasAccess || isCashier)) router.replace("/access-denied");
-  }, [authUser, authLoading, hasAccess, isCashier, router]);
+    if (!authLoading && !hasAccess) router.replace("/access-denied");
+  }, [authUser, authLoading, hasAccess, router]);
 
   if (authLoading) {
     return (
@@ -210,7 +213,7 @@ export function ViewStockManagement() {
     );
   }
 
-  if (!hasAccess || isCashier) return null;
+  if (!hasAccess) return null;
 
   return (
     <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in">

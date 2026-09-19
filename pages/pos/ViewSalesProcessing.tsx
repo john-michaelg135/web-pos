@@ -33,6 +33,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useAuth } from "@/context/AuthContext";
+import { POS_MODULES } from "@/lib/permissions";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
@@ -62,7 +63,7 @@ const toTitleCase = (str: string) => {
 };
 
 export default function ViewSalesProcessing() {
-  const { user: authUser, isLoading: authLoading } = useAuth();
+  const { user: authUser, isLoading: authLoading, canRead } = useAuth();
   const { scope, locations: myLocations, isLoading: locationsLoading } = useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
@@ -82,7 +83,7 @@ export default function ViewSalesProcessing() {
 
   useEffect(() => {
     if (authLoading || !authUser) return;
-    if (authUser.username !== "posuser" && !authUser.apps.includes("sales-processing")) return;
+    if (!canRead(POS_MODULES.SALES_PROCESSING)) return;
     // Wait for the location scope so assigned staff load their own branch
     // instead of momentarily hitting the fallback branch (id 1).
     if (locationsLoading) return;
@@ -835,7 +836,7 @@ export default function ViewSalesProcessing() {
     </Card>
   );
 
-  const hasAccess = authUser && (authUser.username === "posuser" || authUser.apps.includes("sales-processing") || authUser.roles?.includes("Admin") || authUser.subRole === "Admin");
+  const hasAccess = !!authUser && canRead(POS_MODULES.SALES_PROCESSING);
 
   useEffect(() => {
     if (!authLoading && !hasAccess) {

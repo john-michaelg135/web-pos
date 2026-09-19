@@ -13,6 +13,7 @@ import { VariationFormDialog } from "@/components/module-pos/VariationFormDialog
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 import { apiClient } from "@/components/module-pos/api";
 import { useAuth } from "@/context/AuthContext";
+import { POS_MODULES } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 type ViewTab = "products" | "variations";
 
 export default function ViewProductManagement() {
-  const { user: authUser, isLoading: authLoading } = useAuth();
+  const { user: authUser, isLoading: authLoading, canRead } = useAuth();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -228,12 +229,7 @@ export default function ViewProductManagement() {
 
   // ── Access control ────────────────────────────────────────────────
 
-  const hasAccess =
-    authUser &&
-    (authUser.username === "posuser" ||
-      authUser.apps.includes("product-management") ||
-      authUser.roles?.includes("Admin") ||
-      authUser.subRole === "Admin");
+  const hasAccess = !!authUser && canRead(POS_MODULES.PRODUCT_MANAGEMENT);
 
   useEffect(() => {
     if (!authLoading && !hasAccess) {
