@@ -65,7 +65,7 @@ export function ProductTable({ products }: ProductTableProps) {
               <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Product</th>
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Category</th>
-                <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide text-center whitespace-nowrap">Status</th>
+                <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -86,7 +86,7 @@ export function ProductTable({ products }: ProductTableProps) {
                         {p.category}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-5 py-4">
                       <span className={`text-xs font-bold px-4 py-1.5 rounded-full inline-flex items-center justify-center min-w-[80px] ${
                         p.isActive
                           ? "bg-success-50 dark:bg-success-500/20 text-success-600 dark:text-success-400"

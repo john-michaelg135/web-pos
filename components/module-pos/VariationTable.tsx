@@ -75,8 +75,8 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Size</th>
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Price</th>
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">SKU</th>
-                <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide text-center whitespace-nowrap">Status</th>
-                <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide text-center whitespace-nowrap">Actions</th>
+                <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Status</th>
+                <th className="px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -110,7 +110,7 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
                         {v.sku}
                       </code>
                     </td>
-                    <td className="px-5 py-4 text-center">
+                    <td className="px-5 py-4">
                       <span className={`text-xs font-bold px-4 py-1.5 rounded-full inline-flex items-center justify-center min-w-[80px] ${
                         v.isActive
                           ? "bg-success-50 dark:bg-success-500/20 text-success-600 dark:text-success-400"
@@ -119,8 +119,8 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
                         {v.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
                         <button
                           onClick={() => onEdit(v)}
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

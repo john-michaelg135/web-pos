@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Order } from "@/components/module-pos/types";
 
 interface RejectRefundDialogProps {
@@ -33,10 +35,13 @@ export default function RejectRefundDialog({
   inputBg,
   isMobile,
 }: RejectRefundDialogProps) {
-  if (!isOpen || !order) return null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+  if (!isOpen || !order || !mounted) return null;
+
+  const dialogContent = (
+    <div className="fixed inset-0 z-[100010] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
@@ -120,4 +125,6 @@ export default function RejectRefundDialog({
       </div>
     </div>
   );
+
+  return createPortal(dialogContent, document.body);
 }
