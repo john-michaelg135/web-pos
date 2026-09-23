@@ -24,6 +24,14 @@ interface UserLocation {
 }
 
 export async function GET() {
+  // TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
+  // No real server session in demo mode. The client useMyLocations() hook already
+  // derives scope from the demo role; this keeps any server-side reader of this
+  // route consistent by reporting the widest scope.
+  if (process.env.NEXT_PUBLIC_DEMO_AUTH === "true") {
+    return NextResponse.json({ scope: "all", locations: [] });
+  }
+
   const session = await auth();
 
   if (!session?.user) {

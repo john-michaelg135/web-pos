@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
+import { isDemoAuth, useDemoAuth } from "@/lib/demoAuth";
 
 export interface MyLocation {
   locationId: number;
@@ -29,8 +31,41 @@ export function useMyLocations(): MyLocationScope {
   const [locations, setLocations] = useState<MyLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // DEMO AUTH: role + selected branch drive the scope.
+  const { role: demoRole, selectedLocation: demoLocation } = useDemoAuth();
+
   useEffect(() => {
     let cancelled = false;
+
+    // DEMO AUTH: skip the token-gated /api/my-locations call and derive scope
+    // from the demo role. Owner/Admin gets "all" (every location) so the
+    // location selector appears and reports/stock cover all branches;
+    // Cashier/Manager are pinned to the REAL selected demo branch (reassignable
+    // from the demo switcher), so sales they create match Order Management.
+    if (isDemoAuth()) {
+      if (demoRole === "owner") {
+        setScope("all");
+        setLocations([]);
+      } else {
+        setScope("assigned");
+        setLocations(
+          demoLocation
+            ? [
+                {
+                  locationId: demoLocation.locationId,
+                  locationName: demoLocation.locationName,
+                  locationType: demoLocation.locationType,
+                  isPrimary: true,
+                },
+              ]
+            : []
+        );
+      }
+      setIsLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     (async () => {
       try {
@@ -54,7 +89,8 @@ export function useMyLocations(): MyLocationScope {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // Re-derive scope when the demo role OR selected branch changes.
+  }, [demoRole, demoLocation]);
 
   return {
     scope,

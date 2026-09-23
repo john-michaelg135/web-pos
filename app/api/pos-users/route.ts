@@ -80,6 +80,45 @@ interface PosUserRow {
 }
 
 export async function GET() {
+  // TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
+  // In demo mode there is no real server session/token, so return mock POS staff
+  // instead of calling br-auth. The Owner/Admin demo account can then view the
+  // Location Management page populated with sample users.
+  if (process.env.NEXT_PUBLIC_DEMO_AUTH === "true") {
+    return NextResponse.json({
+      users: [
+        {
+          authUserId: "demo-cashier",
+          username: "cashier",
+          fullName: "Demo Cashier",
+          email: "cashier@demo.local",
+          role: "Staff/Employee",
+          locations: [
+            { id: 1, locationId: 1, locationName: "Antipolo", locationType: "Store", isPrimary: true },
+          ],
+        },
+        {
+          authUserId: "demo-manager",
+          username: "manager",
+          fullName: "Demo Manager",
+          email: "manager@demo.local",
+          role: "Staff/Employee",
+          locations: [
+            { id: 2, locationId: 2, locationName: "Taytay", locationType: "Store", isPrimary: true },
+          ],
+        },
+        {
+          authUserId: "demo-staff",
+          username: "staff",
+          fullName: "Demo Staff (Unassigned)",
+          email: "staff@demo.local",
+          role: "Staff/Employee",
+          locations: [],
+        },
+      ] satisfies PosUserRow[],
+    });
+  }
+
   const session = await auth();
 
   if (!session?.user) {

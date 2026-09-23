@@ -6,6 +6,8 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 import { MobileNav } from "./MobileNav";
+// TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
+import { DemoRoleSwitcher } from "@/lib/demoAuth";
 
 function MainContent({ children }: { children: React.ReactNode }) {
   const { open } = useSidebar();
@@ -40,6 +42,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <MainContent>{children}</MainContent>
         <MobileNav />
+        {/* DEMO AUTH: floating role switcher; self-hides when the flag is off. */}
+        <DemoRoleSwitcher />
       </div>
     </SidebarProvider>
   );

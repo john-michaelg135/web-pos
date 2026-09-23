@@ -224,6 +224,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async authorized({ auth, request }) {
+      // TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
+      // In demo mode there is no real session; allow all routes so the mock
+      // session (client-side) drives access instead of the OIDC middleware.
+      if (process.env.NEXT_PUBLIC_DEMO_AUTH === "true") return true;
+
       const { pathname } = request.nextUrl;
       const isAuthPath = pathname.startsWith("/api/auth");
       const isSignInPage = pathname === "/signin";

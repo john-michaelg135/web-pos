@@ -95,6 +95,7 @@ export default function ViewOrderManagement() {
     status: (dto.orderStatus?.toLowerCase().replace(" ", "_") as OrderStatus) || "pending",
     date: new Date(dto.createdAt || new Date()).toLocaleDateString(),
     location: dto.locationName || "Unknown",
+    locationId: dto.locationId != null ? Number(dto.locationId) : undefined,
     isPreOrder: !!dto.isPreorder,
     paymentStatus: (dto.paymentStatus?.toLowerCase() as "pending" | "paid") || "pending",
     // Only actual rejection/cancellation reasons belong in "Remarks / Reason".
@@ -156,10 +157,16 @@ export default function ViewOrderManagement() {
       const isWebOrder = o.type.toLowerCase() === "online" || o.source?.toLowerCase() === "e-commerce" || o.source?.toLowerCase() === "ecommerce";
       const isRefundStatus = o.status === "refund_requested" || o.status === "refunded";
       // Non-super users only ever see orders from their assigned branch
-      // (refund items still surface so they can be actioned).
+      // (refund items still surface so they can be actioned). Compare by
+      // locationId (reliable) and fall back to the name only if id is absent.
       if (!canSwitchLocation) {
         if (isCashierLevel && isWebOrder && !isRefundStatus) return false;
-        if (cashierLocationName && o.location.toLowerCase() !== cashierLocationName.toLowerCase() && !isRefundStatus) return false;
+        const assignedId = assignedLocation?.locationId;
+        if (!isRefundStatus && assignedId != null && o.locationId != null) {
+          if (o.locationId !== assignedId) return false;
+        } else if (!isRefundStatus && cashierLocationName && o.locationId == null) {
+          if (o.location.toLowerCase() !== cashierLocationName.toLowerCase()) return false;
+        }
       }
       if (channelTab === "pos" && isWebOrder && !isRefundStatus) return false;
       if (channelTab === "web" && !isWebOrder) return false;
@@ -169,7 +176,7 @@ export default function ViewOrderManagement() {
       if (filterLocation !== "All" && o.location.toLowerCase() !== filterLocation.toLowerCase()) return false;
       return true;
     });
-  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation, isCashierLevel]);
+  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation, isCashierLevel, assignedLocation]);
 
   const handleApproveRefund = (order: Order) => { setOrderToApprove(order); setShowApproveDialog(true); };
 

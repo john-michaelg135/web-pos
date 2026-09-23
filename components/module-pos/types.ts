@@ -38,6 +38,8 @@ export type Order = {
   status: OrderStatus;
   date: string;
   location: string;
+  /** Numeric branch id — used for reliable location filtering (name can drift). */
+  locationId?: number;
   isPreOrder: boolean;
   paymentStatus: "pending" | "paid";
   remarks?: string;

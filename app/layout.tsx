@@ -3,6 +3,9 @@ import { Hanken_Grotesk, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import "@/app/globals.css";
 import LayoutProvider from "@/providers/LayoutProvider";
+// TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
+import { isDemoAuth } from "@/lib/demoAuthFlag";
+import { DemoAuthProvider } from "@/lib/demoAuth";
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken-grotesk",
@@ -31,9 +34,16 @@ const RootLayout = ({
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
-        <SessionProvider>
-          <LayoutProvider>{children}</LayoutProvider>
-        </SessionProvider>
+        {/* DEMO AUTH: mock session provider when the flag is on; real one otherwise. */}
+        {isDemoAuth() ? (
+          <DemoAuthProvider>
+            <LayoutProvider>{children}</LayoutProvider>
+          </DemoAuthProvider>
+        ) : (
+          <SessionProvider>
+            <LayoutProvider>{children}</LayoutProvider>
+          </SessionProvider>
+        )}
       </body>
     </html>
   );
