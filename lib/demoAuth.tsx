@@ -89,7 +89,7 @@ export const DEMO_ROLES: Record<DemoRole, DemoRoleConfig> = {
   },
   owner: {
     key: "owner",
-    label: "Owner / Admin",
+    label: "Admin",
     displayName: "Demo Owner",
     roleString: "Super Admin",
     isSuperUser: true, // bypasses all checks; sees every module + all branches

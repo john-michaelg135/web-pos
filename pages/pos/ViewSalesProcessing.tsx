@@ -1096,16 +1096,16 @@ export default function ViewSalesProcessing() {
                           <span className="text-xs font-bold uppercase">Cash</span>
                         </button>
                         <button
-                          onClick={() => setPaymentMethod("gcash")}
+                          type="button"
+                          disabled
+                          title="QRPH is not available yet — company QRPH account pending setup."
                           className={cn(
                             "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
-                            paymentMethod === "gcash"
-                              ? "border-foreground bg-foreground/5 text-foreground"
-                              : "border-border text-muted-foreground hover:border-muted-foreground/30"
+                            "border-border text-muted-foreground/50 bg-muted/30 cursor-not-allowed opacity-60"
                           )}
                         >
                           <Package className="h-5 w-5" />
-                          <span className="text-xs font-bold uppercase">E-Wallet / Card / QR PH</span>
+                          <span className="text-xs font-bold uppercase">QRPH</span>
                         </button>
                       </div>
                     </div>
