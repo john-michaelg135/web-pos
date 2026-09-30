@@ -60,7 +60,7 @@ export default function ViewOrderManagement() {
 
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "completed" | "refunds" | "cancelled">("pending");
   const [refundSubTab, setRefundSubTab] = useState<"requested" | "refunded" | "rejected">("requested");
-  const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("all");
+  const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("pos"); // Soft-delete: default to pos
   const [showFilters, setShowFilters] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -168,9 +168,12 @@ export default function ViewOrderManagement() {
           if (o.location.toLowerCase() !== cashierLocationName.toLowerCase()) return false;
         }
       }
+      // Soft-delete Web Orders (handled by CRMS now)
+      if (isWebOrder) return false;
+
       if (channelTab === "pos" && isWebOrder && !isRefundStatus) return false;
       if (channelTab === "web" && !isWebOrder) return false;
-      if (searchQuery && !o.id.toLowerCase().includes(searchQuery.toLowerCase()) && !o.customer.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      if (searchQuery && !o.id.toLowerCase().includes(searchQuery.toLowerCase()) && !o.customer.toLowerCase().includes(searchQuery.toLowerCase()) && !(o.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase())) && !(o.date?.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
       if (filterType !== "All" && o.type.toLowerCase() !== filterType.toLowerCase()) return false;
       if (filterStatus !== "All" && o.status.toLowerCase() !== filterStatus.toLowerCase()) return false;
       if (filterLocation !== "All" && o.location.toLowerCase() !== filterLocation.toLowerCase()) return false;
@@ -303,7 +306,7 @@ export default function ViewOrderManagement() {
         <div className={cn("flex items-center gap-3", isMobile && "flex-col w-full")}>
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search ID or Customer..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} maxLength={25} className="pl-10 h-12" />
+            <Input placeholder="Search ID or Date..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} maxLength={25} className="pl-10 h-12" />
           </div>
           <Button variant={showFilters ? "default" : "outline"} onClick={() => setShowFilters(!showFilters)} className={cn("h-12 gap-2 rounded-xl text-xs font-bold uppercase", isMobile && "w-full")}>
             <Filter className="h-3.5 w-3.5" /> Filters
@@ -314,6 +317,7 @@ export default function ViewOrderManagement() {
       <OrderFilters show={showFilters} onClose={() => setShowFilters(false)} filterType={filterType} setFilterType={setFilterType} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterLocation={filterLocation} setFilterLocation={setFilterLocation} resetFilters={resetFilters} canSwitchLocation={canSwitchLocation} locationOptions={orders.reduce<string[]>((acc, o) => { if (o.location && o.location !== "Unknown" && !acc.includes(o.location)) acc.push(o.location); return acc; }, [])} />
 
       {/* Channel Tabs — hidden for cashier-level users (no cross-channel view) */}
+      {/* SOFT DELETE: Web Orders are now handled by CRMS
       {!isCashierLevel && (
         <div className="flex border-b border-border overflow-x-auto">
           {(["all", "pos", "web"] as const).map((tab) => (
@@ -323,6 +327,7 @@ export default function ViewOrderManagement() {
           ))}
         </div>
       )}
+      */}
 
       {/* Status Tabs */}
       <div className="flex overflow-x-auto gap-3">

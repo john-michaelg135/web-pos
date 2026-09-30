@@ -48,6 +48,8 @@ export function ViewOrderModal({
 
   const [tempStatus, setTempStatus] = useState<OrderStatus>(order.status);
   const [mounted, setMounted] = useState(false);
+  const [statusToConfirm, setStatusToConfirm] = useState<OrderStatus | null>(null);
+  const [cancelToConfirm, setCancelToConfirm] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -114,9 +116,10 @@ export function ViewOrderModal({
   if (!isOpen || !mounted) return null;
 
   const modalContent = (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div 
-        className="w-full max-w-4xl mx-4 rounded-2xl shadow-xl border flex flex-col max-h-[90vh]"
+    <>
+      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div 
+          className="w-full max-w-4xl mx-4 rounded-2xl shadow-xl border flex flex-col max-h-[90vh]"
         style={{ background: cardBg, borderColor: border }}
       >
         {/* Header */}
@@ -297,9 +300,7 @@ export function ViewOrderModal({
                       toast.error("Please select a different status to update.");
                       return;
                     }
-                    if (window.confirm(`Are you sure you want to change order status from ${STATUS_LABELS[order.status]} to ${STATUS_LABELS[tempStatus]}?`)) {
-                      handleStatusChange(tempStatus);
-                    }
+                    setStatusToConfirm(tempStatus);
                   }}
                   className="px-4 py-2 text-xs font-black uppercase rounded-lg transition-colors border active:scale-95 whitespace-nowrap w-full sm:w-auto"
                   style={{ borderColor: `${primary}50`, background: `${primary}1A`, color: primary }}
@@ -455,11 +456,7 @@ export function ViewOrderModal({
             {/* Cancel Order Button */}
             {["pending", "awaiting_stock", "processing", "shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (
               <button
-                onClick={() => {
-                  if (window.confirm(`Are you sure you want to cancel Order #${order.id}?`)) {
-                    handleStatusChange("cancelled");
-                  }
-                }}
+                onClick={() => setCancelToConfirm(true)}
                 className="px-4 py-2 text-xs font-bold uppercase text-red-600 border border-red-500/40 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 active:scale-95 transition-all"
               >
                 Cancel Order
@@ -657,11 +654,139 @@ export function ViewOrderModal({
               width: 100% !important;
               max-width: 100% !important;
               margin: 0 !important;
-            }
           }
         `}</style>
+        </div>
       </div>
-    </div>
+
+      {/* Status Change Confirmation Modal */}
+      {statusToConfirm && (
+        <>
+          <div
+            onClick={() => setStatusToConfirm(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 100001, backgroundColor: "rgba(0, 0, 0, 0.6)", backdropFilter: "blur(4px)" }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 100002,
+              width: "100%",
+              maxWidth: 400,
+              backgroundColor: cardBg,
+              borderRadius: 12,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "16px 24px", borderBottom: `1px solid ${border}` }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: text }}>
+                Confirm Status Update
+              </h2>
+            </div>
+            <div style={{ padding: "24px" }}>
+              <p style={{ margin: 0, fontSize: 14, color: muted }}>
+                Are you sure you want to change order status from <span style={{ fontWeight: "bold", color: text }}>{STATUS_LABELS[order.status]}</span> to <span style={{ fontWeight: "bold", color: text }}>{STATUS_LABELS[statusToConfirm]}</span>?
+              </p>
+            </div>
+            <div
+              style={{
+                padding: "12px 24px",
+                borderTop: `1px solid ${border}`,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                backgroundColor: `${border}10`,
+              }}
+            >
+              <button 
+                onClick={() => setStatusToConfirm(null)}
+                style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${border}`, background: cardBg, color: text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  handleStatusChange(statusToConfirm);
+                  setStatusToConfirm(null);
+                }}
+                style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: primary, color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancelToConfirm && (
+        <>
+          <div
+            onClick={() => setCancelToConfirm(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 100001, backgroundColor: "rgba(0, 0, 0, 0.6)", backdropFilter: "blur(4px)" }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 100002,
+              width: "100%",
+              maxWidth: 400,
+              backgroundColor: cardBg,
+              borderRadius: 12,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "16px 24px", borderBottom: `1px solid ${border}` }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#dc2626" }}>
+                Cancel Order
+              </h2>
+            </div>
+            <div style={{ padding: "24px" }}>
+              <p style={{ margin: 0, fontSize: 14, color: muted }}>
+                Are you sure you want to cancel Order #{order.id}? This action cannot be undone.
+              </p>
+            </div>
+            <div
+              style={{
+                padding: "12px 24px",
+                borderTop: `1px solid ${border}`,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                backgroundColor: `${border}10`,
+              }}
+            >
+              <button 
+                onClick={() => setCancelToConfirm(false)}
+                style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${border}`, background: cardBg, color: text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                Keep Order
+              </button>
+              <button 
+                onClick={() => {
+                  handleStatusChange("cancelled");
+                  setCancelToConfirm(false);
+                }}
+                style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: "#dc2626", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 
   return createPortal(modalContent, document.body);

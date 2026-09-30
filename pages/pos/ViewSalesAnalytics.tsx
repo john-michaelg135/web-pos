@@ -232,6 +232,7 @@ export function ViewSalesAnalytics() {
           <div className="flex items-center gap-2">
             <Input
               type="date"
+              min="2026-09-20"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
@@ -240,6 +241,7 @@ export function ViewSalesAnalytics() {
             <span className="text-muted-foreground text-sm">to</span>
             <Input
               type="date"
+              min="2026-09-20"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}

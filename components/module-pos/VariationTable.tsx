@@ -57,9 +57,9 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
           onChange={(val) => setStatusFilter(val as "all" | "active" | "inactive")}
           className="w-full sm:w-40"
           options={[
+            { value: "all", label: "All Status" },
             { value: "active", label: "Active" },
             { value: "inactive", label: "Inactive" },
-            { value: "all", label: "All Status" },
           ]}
         />
       </div>
