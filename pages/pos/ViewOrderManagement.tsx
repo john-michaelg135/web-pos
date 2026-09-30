@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, Loader2 } from "lucide-react";
+import { Search, Filter, Loader2, LayoutGrid, List } from "lucide-react";
 import { Order, OrderStatus, STATUS_LABELS } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
@@ -62,6 +62,7 @@ export default function ViewOrderManagement() {
   const [refundSubTab, setRefundSubTab] = useState<"requested" | "refunded" | "rejected">("requested");
   const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("pos"); // Soft-delete: default to pos
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("All");
@@ -308,6 +309,20 @@ export default function ViewOrderManagement() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search ID or Date..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} maxLength={25} className="pl-10 h-12" />
           </div>
+          <div className="flex bg-muted/50 p-1 rounded-xl h-12 shrink-0">
+            <button 
+              onClick={() => setViewMode("grid")} 
+              className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setViewMode("list")} 
+              className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
           <Button variant={showFilters ? "default" : "outline"} onClick={() => setShowFilters(!showFilters)} className={cn("h-12 gap-2 rounded-xl text-xs font-bold uppercase", isMobile && "w-full")}>
             <Filter className="h-3.5 w-3.5" /> Filters
           </Button>
@@ -359,24 +374,66 @@ export default function ViewOrderManagement() {
             </div>
           )}
 
-          <div className={cn("grid gap-6", isMobile ? "grid-cols-1" : "grid-cols-[repeat(auto-fill,minmax(450px,1fr))]")}>
-            {currentOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                primary={LEGACY_COLORS.primary}
-                muted={LEGACY_COLORS.muted}
-                border={LEGACY_COLORS.border}
-                text={LEGACY_COLORS.text}
-                cardBg={LEGACY_COLORS.cardBg}
-                inputBg={LEGACY_COLORS.inputBg}
-                onRequestRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
-                onApplyRefund={() => handleApproveRefund(order)}
-                onRejectRefund={() => handleRejectRefund(order)}
-                onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
-                isMobile={isMobile}
-              />
-            ))}
+          <div className={cn(
+            viewMode === "grid" 
+              ? cn("grid gap-6", isMobile ? "grid-cols-1" : "grid-cols-[repeat(auto-fill,minmax(450px,1fr))]")
+              : "flex flex-col gap-4 w-full"
+          )}>
+            {viewMode === "list" && currentOrders.length > 0 ? (
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
+                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer</th>
+                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Order ID & Location</th>
+                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
+                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {currentOrders.map((order) => (
+                      <OrderCard
+                        key={order.id}
+                        order={order}
+                        primary={LEGACY_COLORS.primary}
+                        muted={LEGACY_COLORS.muted}
+                        border={LEGACY_COLORS.border}
+                        text={LEGACY_COLORS.text}
+                        cardBg={LEGACY_COLORS.cardBg}
+                        inputBg={LEGACY_COLORS.inputBg}
+                        onRequestRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
+                        onApplyRefund={() => handleApproveRefund(order)}
+                        onRejectRefund={() => handleRejectRefund(order)}
+                        onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
+                        isMobile={isMobile}
+                        viewMode="list"
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              currentOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  primary={LEGACY_COLORS.primary}
+                  muted={LEGACY_COLORS.muted}
+                  border={LEGACY_COLORS.border}
+                  text={LEGACY_COLORS.text}
+                  cardBg={LEGACY_COLORS.cardBg}
+                  inputBg={LEGACY_COLORS.inputBg}
+                  onRequestRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
+                  onApplyRefund={() => handleApproveRefund(order)}
+                  onRejectRefund={() => handleRejectRefund(order)}
+                  onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
+                  isMobile={isMobile}
+                  viewMode="grid"
+                />
+              ))
+            )}
             {currentOrders.length === 0 && (
               <div className="col-span-full text-center py-12 text-muted-foreground">
                 No {activeTab === "refunds" ? (refundSubTab === "requested" ? "refund request" : refundSubTab === "refunded" ? "refunded" : "rejected") : activeTab} orders found.

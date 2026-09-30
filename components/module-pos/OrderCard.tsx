@@ -22,6 +22,7 @@ interface OrderCardProps {
   onApplyRefund?: () => void;
   onRejectRefund?: () => void;
   isMobile?: boolean;
+  viewMode?: "grid" | "list";
 }
 
 export default function OrderCard({
@@ -37,6 +38,7 @@ export default function OrderCard({
   onApplyRefund,
   onRejectRefund,
   isMobile,
+  viewMode = "grid",
 }: OrderCardProps) {
   const { can } = useAuth();
   // Managers (Order Management approve) can act on refunds → "Manage Order".
@@ -48,6 +50,71 @@ export default function OrderCard({
   const isRejected = order.status === "rejected";
   const isCompleted = order.status === "completed" || (isWebOrder && order.status === "delivered");
   const [showViewModal, setShowViewModal] = useState(false);
+
+  if (viewMode === "list") {
+    return (
+      <>
+        <tr className="hover:bg-muted/10 transition-colors border-b border-border last:border-b-0 group">
+          <td className="px-5 py-4 text-sm font-medium text-muted-foreground whitespace-nowrap align-middle">
+            {order.date}
+          </td>
+          <td className="px-5 py-4 text-sm font-bold text-foreground align-middle">
+            {order.customer}
+            <div className="text-[10px] text-muted-foreground font-bold uppercase mt-1 tracking-wider">
+              {order.type} {order.isPreOrder && "(Pre-order)"}
+            </div>
+          </td>
+          <td className="px-5 py-4 text-sm text-foreground align-middle">
+            <span className="font-bold">{order.orderNumber || order.id}</span>
+            <div className="text-[11px] text-muted-foreground mt-1 font-medium">
+              {order.location}
+            </div>
+          </td>
+          <td className="px-5 py-4 text-sm font-bold text-foreground whitespace-nowrap align-middle">
+            ₱{order.total.toLocaleString()}
+          </td>
+          <td className="px-5 py-4 whitespace-nowrap align-middle">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase" style={{
+              background: isPending ? "#fafafa" : isRejected ? "#fef2f2" : isCompleted ? "#f4f4f5" : `${primary}08`,
+              color: isPending ? "#71717a" : isRejected ? "#dc2626" : isCompleted ? "#18181b" : primary,
+              border: `1px solid ${isPending ? "#e4e4e7" : isRejected ? "#fee2e2" : isCompleted ? "#e4e4e7" : `${primary}15`}`
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
+              {STATUS_LABELS[order.status]}
+            </div>
+          </td>
+          <td className="px-5 py-4 whitespace-nowrap align-middle">
+            <button
+              onClick={() => setShowViewModal(true)}
+              className="h-8 px-4 rounded-lg bg-transparent text-xs font-bold uppercase cursor-pointer transition-all border"
+              style={{
+                color: primary,
+                borderColor: `${primary}40`,
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = `${primary}10`)}
+              onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              {!canManageRefunds && ["refund_requested", "refunded"].includes(order.status) ? "Review" : "Manage"}
+            </button>
+          </td>
+        </tr>
+        <ViewOrderModal
+          isOpen={showViewModal}
+          onClose={() => setShowViewModal(false)}
+          order={order}
+          primary={primary}
+          muted={muted}
+          border={border}
+          text={text}
+          cardBg={cardBg}
+          onStatusUpdate={onStatusUpdate}
+          onRequestRefund={onRequestRefund}
+          onApplyRefund={onApplyRefund}
+          onRejectRefund={onRejectRefund}
+        />
+      </>
+    );
+  }
 
   return (
     <div
