@@ -5,12 +5,13 @@ export type OrderStatus =
   | "ready_for_delivery"
   | "shipped"
   | "delivered"
-  | "paid"
   | "completed"
   | "rejected"
   | "cancelled"
   | "refund_requested"
-  | "refunded";
+  | "refunded"
+  | "void_requested"
+  | "voided";
 
 export type OrderStatusHistory = {
   id: number;
@@ -65,7 +66,6 @@ export const STATUS_PIPELINE: OrderStatus[] = [
   "ready_for_delivery",
   "shipped",
   "delivered",
-  "paid",
   "completed",
 ];
 
@@ -76,12 +76,13 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   ready_for_delivery: "For Delivery",
   shipped: "Shipped",
   delivered: "Delivered",
-  paid: "Paid",
   completed: "Completed",
   rejected: "Rejected",
   cancelled: "Cancelled",
   refund_requested: "Refund Req.",
   refunded: "Refunded",
+  void_requested: "Void Req.",
+  voided: "Voided",
 };
 
 // ── Product Management ──────────────────────────────────────────────

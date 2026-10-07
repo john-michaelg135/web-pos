@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { LocationSelects } from "./LocationSelects";
 
 interface PwdFormModalProps {
   show: boolean;
@@ -15,8 +16,14 @@ interface PwdFormModalProps {
   onProceed: () => void;
   idNumber: string;
   setIdNumber: (v: string) => void;
-  pwdCustomerName: string;
-  setPwdCustomerName: (v: string) => void;
+  pwdFirstName: string;
+  setPwdFirstName: (v: string) => void;
+  pwdMiddleName: string;
+  setPwdMiddleName: (v: string) => void;
+  pwdLastName: string;
+  setPwdLastName: (v: string) => void;
+  pwdSuffix: string;
+  setPwdSuffix: (v: string) => void;
   pwdStreet: string;
   setPwdStreet: (v: string) => void;
   pwdBarangay: string;
@@ -46,8 +53,14 @@ export default function PwdFormModal({
   onProceed,
   idNumber,
   setIdNumber,
-  pwdCustomerName,
-  setPwdCustomerName,
+  pwdFirstName,
+  setPwdFirstName,
+  pwdMiddleName,
+  setPwdMiddleName,
+  pwdLastName,
+  setPwdLastName,
+  pwdSuffix,
+  setPwdSuffix,
   pwdStreet,
   setPwdStreet,
   pwdBarangay,
@@ -77,23 +90,24 @@ export default function PwdFormModal({
     if (!trimmedId) { newErrors.idNumber = "Required"; isValid = false; }
     else if (!/^\d{2}-\d{4}-\d{3}-\d{7}$/.test(trimmedId)) { newErrors.idNumber = "Invalid format"; isValid = false; }
 
-    const normName = toTitleCase(pwdCustomerName);
+    const normFirst = toTitleCase(pwdFirstName);
+    const normMiddle = toTitleCase(pwdMiddleName);
+    const normLast = toTitleCase(pwdLastName);
+    const normSuffix = toTitleCase(pwdSuffix);
     const normStreet = toTitleCase(pwdStreet);
-    const normBarangay = toTitleCase(pwdBarangay);
-    const normCity = toTitleCase(pwdCity);
-    const normProvince = toTitleCase(pwdProvince);
 
-    setPwdCustomerName(normName);
+    setPwdFirstName(normFirst);
+    setPwdMiddleName(normMiddle);
+    setPwdLastName(normLast);
+    setPwdSuffix(normSuffix);
     setPwdStreet(normStreet);
-    setPwdBarangay(normBarangay);
-    setPwdCity(normCity);
-    setPwdProvince(normProvince);
 
-    if (!normName.trim()) { newErrors.pwdCustomerName = "Required"; isValid = false; }
+    if (!normFirst.trim()) { newErrors.pwdFirstName = "Required"; isValid = false; }
+    if (!normLast.trim()) { newErrors.pwdLastName = "Required"; isValid = false; }
     if (!normStreet.trim()) { newErrors.pwdStreet = "Required"; isValid = false; }
-    if (!normBarangay.trim()) { newErrors.pwdBarangay = "Required"; isValid = false; }
-    if (!normCity.trim()) { newErrors.pwdCity = "Required"; isValid = false; }
-    if (!normProvince.trim()) { newErrors.pwdProvince = "Required"; isValid = false; }
+    if (!pwdBarangay.trim()) { newErrors.pwdBarangay = "Required"; isValid = false; }
+    if (!pwdCity.trim()) { newErrors.pwdCity = "Required"; isValid = false; }
+    if (!pwdProvince.trim()) { newErrors.pwdProvince = "Required"; isValid = false; }
     if (!pwdZipCode.trim()) { newErrors.pwdZipCode = "Required"; isValid = false; }
     else if (!/^\d{4}$/.test(pwdZipCode.trim())) { newErrors.pwdZipCode = "Must be 4 digits"; isValid = false; }
 
@@ -193,21 +207,57 @@ export default function PwdFormModal({
               {errors.idNumber && <p className="text-xs text-destructive mt-1">{errors.idNumber}</p>}
             </div>
 
-            <div className="sm:col-span-2">
-              <Label>Customer Name <span className="text-destructive">*</span></Label>
-              <Input
-                maxLength={50}
-                placeholder="Juan Dela Cruz"
-                value={pwdCustomerName}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                  setPwdCustomerName(cleaned);
-                  if (errors.pwdCustomerName) setErrors((prev) => { const { pwdCustomerName, ...rest } = prev; return rest; });
-                }}
-                onBlur={() => setPwdCustomerName(toTitleCase(pwdCustomerName))}
-                className={cn(errors.pwdCustomerName && "border-destructive")}
-              />
-              {errors.pwdCustomerName && <p className="text-xs text-destructive mt-1">{errors.pwdCustomerName}</p>}
+            <div className="sm:col-span-2 grid grid-cols-2 gap-4">
+              <div>
+                <Label>First Name <span className="text-destructive">*</span></Label>
+                <Input
+                  maxLength={50}
+                  placeholder="Juan"
+                  value={pwdFirstName}
+                  onChange={(e) => {
+                    setPwdFirstName(e.target.value.replace(/[^a-zA-Z\s.\-]/g, ""));
+                    if (errors.pwdFirstName) setErrors((prev) => { const { pwdFirstName, ...rest } = prev; return rest; });
+                  }}
+                  onBlur={() => setPwdFirstName(toTitleCase(pwdFirstName))}
+                  className={cn(errors.pwdFirstName && "border-destructive")}
+                />
+                {errors.pwdFirstName && <p className="text-xs text-destructive mt-1">{errors.pwdFirstName}</p>}
+              </div>
+              <div>
+                <Label>Middle Name</Label>
+                <Input
+                  maxLength={50}
+                  placeholder="Dela"
+                  value={pwdMiddleName}
+                  onChange={(e) => setPwdMiddleName(e.target.value.replace(/[^a-zA-Z\s.\-]/g, ""))}
+                  onBlur={() => setPwdMiddleName(toTitleCase(pwdMiddleName))}
+                />
+              </div>
+              <div>
+                <Label>Last Name <span className="text-destructive">*</span></Label>
+                <Input
+                  maxLength={50}
+                  placeholder="Cruz"
+                  value={pwdLastName}
+                  onChange={(e) => {
+                    setPwdLastName(e.target.value.replace(/[^a-zA-Z\s.\-]/g, ""));
+                    if (errors.pwdLastName) setErrors((prev) => { const { pwdLastName, ...rest } = prev; return rest; });
+                  }}
+                  onBlur={() => setPwdLastName(toTitleCase(pwdLastName))}
+                  className={cn(errors.pwdLastName && "border-destructive")}
+                />
+                {errors.pwdLastName && <p className="text-xs text-destructive mt-1">{errors.pwdLastName}</p>}
+              </div>
+              <div>
+                <Label>Suffix</Label>
+                <Input
+                  maxLength={10}
+                  placeholder="Jr."
+                  value={pwdSuffix}
+                  onChange={(e) => setPwdSuffix(e.target.value.replace(/[^a-zA-Z\s.]/g, ""))}
+                  onBlur={() => setPwdSuffix(toTitleCase(pwdSuffix))}
+                />
+              </div>
             </div>
 
             <div className="sm:col-span-2">
@@ -227,56 +277,15 @@ export default function PwdFormModal({
               {errors.pwdStreet && <p className="text-xs text-destructive mt-1">{errors.pwdStreet}</p>}
             </div>
 
-            <div className="sm:col-span-2">
-              <Label>Barangay <span className="text-destructive">*</span></Label>
-              <Input
-                maxLength={50}
-                placeholder="Barangay 12"
-                value={pwdBarangay}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                  setPwdBarangay(cleaned);
-                  if (errors.pwdBarangay) setErrors((prev) => { const { pwdBarangay, ...rest } = prev; return rest; });
-                }}
-                onBlur={() => setPwdBarangay(toTitleCase(pwdBarangay))}
-                className={cn(errors.pwdBarangay && "border-destructive")}
-              />
-              {errors.pwdBarangay && <p className="text-xs text-destructive mt-1">{errors.pwdBarangay}</p>}
-            </div>
-
-            <div>
-              <Label>City <span className="text-destructive">*</span></Label>
-              <Input
-                maxLength={50}
-                placeholder="City"
-                value={pwdCity}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                  setPwdCity(cleaned);
-                  if (errors.pwdCity) setErrors((prev) => { const { pwdCity, ...rest } = prev; return rest; });
-                }}
-                onBlur={() => setPwdCity(toTitleCase(pwdCity))}
-                className={cn(errors.pwdCity && "border-destructive")}
-              />
-              {errors.pwdCity && <p className="text-xs text-destructive mt-1">{errors.pwdCity}</p>}
-            </div>
-
-            <div>
-              <Label>Province <span className="text-destructive">*</span></Label>
-              <Input
-                maxLength={50}
-                placeholder="Province"
-                value={pwdProvince}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                  setPwdProvince(cleaned);
-                  if (errors.pwdProvince) setErrors((prev) => { const { pwdProvince, ...rest } = prev; return rest; });
-                }}
-                onBlur={() => setPwdProvince(toTitleCase(pwdProvince))}
-                className={cn(errors.pwdProvince && "border-destructive")}
-              />
-              {errors.pwdProvince && <p className="text-xs text-destructive mt-1">{errors.pwdProvince}</p>}
-            </div>
+            <LocationSelects
+              province={pwdProvince}
+              setProvince={setPwdProvince}
+              city={pwdCity}
+              setCity={setPwdCity}
+              barangay={pwdBarangay}
+              setBarangay={setPwdBarangay}
+              errors={errors}
+            />
 
             <div>
               <Label>Zip Code <span className="text-destructive">*</span></Label>

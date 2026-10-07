@@ -153,8 +153,6 @@ export default function OrderFilters({
               options={[
                 { value: "All", label: "All Channels" },
                 { value: "Walk-in", label: "Walk-in" },
-                { value: "Store", label: "Store Pick-up" },
-                { value: "Online", label: "Online Delivery" },
                 { value: "Institutional", label: "Institutional" },
               ]}
             />

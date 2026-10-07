@@ -21,6 +21,9 @@ interface ViewOrderModalProps {
   cardBg: string;
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onRequestRefund?: () => void;
+onRequestVoid?: () => void;
+onApplyVoid?: () => void;
+onRejectVoid?: () => void;
   onApplyRefund?: () => void;
   onRejectRefund?: () => void;
 }
@@ -36,6 +39,9 @@ export function ViewOrderModal({
   cardBg,
   onStatusUpdate,
   onRequestRefund,
+onRequestVoid,
+onApplyVoid,
+onRejectVoid,
   onApplyRefund,
   onRejectRefund,
 }: ViewOrderModalProps) {
@@ -68,6 +74,10 @@ export function ViewOrderModal({
   const canApproveRefund = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const canRejectRefund = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const canRequestRefund = can(POS_MODULES.ORDER_MANAGEMENT, "write");
+  const canRequestVoid = can(POS_MODULES.ORDER_MANAGEMENT, "write");
+  const canApproveVoid = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
+  const canRejectVoid = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
+  const _canRequestRefund_unused = can(POS_MODULES.ORDER_MANAGEMENT, "write");
   const isAuthorizedToEdit = can(POS_MODULES.ORDER_MANAGEMENT, "update");
 
   const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
@@ -78,7 +88,7 @@ export function ViewOrderModal({
     ? ["pending", "processing", "shipped", "delivered"]
     : isInstitutional
     ? ["pending", "processing", "shipped", "completed"]
-    : ["pending", "processing", "paid", "completed"]; // walk-in / store
+    : ["pending", "processing", "completed"]; // walk-in / store
 
   const pricing = useMemo(() => {
     if (!isPwdOrder) {
@@ -463,8 +473,38 @@ export function ViewOrderModal({
               </button>
             )}
 
+            {/* Request Void Button (For pending/completed orders) */}
+            {canRequestVoid && !["void_requested", "voided", "refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestVoid && (
+              <button
+                onClick={onRequestVoid}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-orange-600 rounded-lg hover:bg-orange-700 active:scale-95 transition-all shadow-sm"
+              >
+                Request Void
+              </button>
+            )}
+
+            {/* Approve Void */}
+            {order.status === "void_requested" && onApplyVoid && canApproveVoid && (
+              <button
+                onClick={onApplyVoid}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-foreground rounded-lg hover:bg-foreground/90 active:scale-95 transition-all shadow-sm"
+              >
+                Approve Void
+              </button>
+            )}
+
+            {/* Reject Void */}
+            {order.status === "void_requested" && onRejectVoid && canRejectVoid && (
+              <button
+                onClick={onRejectVoid}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
+              >
+                Reject Void
+              </button>
+            )}
+
             {/* Request Refund Button: cashier capability (Order Management write). Visible if order paid/completed. */}
-            {canRequestRefund && (order.status === "completed" || order.paymentStatus === "paid") && !["refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestRefund && (
+            {canRequestRefund && (order.status === "completed" || order.paymentStatus === "paid") && !["refund_requested", "refunded", "cancelled", "rejected", "void_requested", "voided"].includes(order.status) && onRequestRefund && (
               <button
                 onClick={onRequestRefund}
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"

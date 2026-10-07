@@ -19,6 +19,9 @@ interface OrderCardProps {
 
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onRequestRefund?: () => void;
+onRequestVoid?: () => void;
+onApplyVoid?: () => void;
+onRejectVoid?: () => void;
   onApplyRefund?: () => void;
   onRejectRefund?: () => void;
   isMobile?: boolean;
@@ -35,6 +38,9 @@ export default function OrderCard({
   inputBg,
   onStatusUpdate,
   onRequestRefund,
+onRequestVoid,
+onApplyVoid,
+onRejectVoid,
   onApplyRefund,
   onRejectRefund,
   isMobile,
@@ -94,7 +100,7 @@ export default function OrderCard({
               onMouseOver={(e) => (e.currentTarget.style.background = `${primary}10`)}
               onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              {!canManageRefunds && ["refund_requested", "refunded"].includes(order.status) ? "Review" : "Manage"}
+              {!canManageRefunds && ["refund_requested", "refunded", "void_requested", "voided"].includes(order.status) ? "Review" : "Manage"}
             </button>
           </td>
         </tr>
@@ -110,6 +116,9 @@ export default function OrderCard({
           onStatusUpdate={onStatusUpdate}
           onRequestRefund={onRequestRefund}
           onApplyRefund={onApplyRefund}
+onRequestVoid={onRequestVoid}
+onApplyVoid={onApplyVoid}
+onRejectVoid={onRejectVoid}
           onRejectRefund={onRejectRefund}
         />
       </>
@@ -253,14 +262,14 @@ export default function OrderCard({
         </div>
       </div>
 
-      {!["rejected", "cancelled", "refunded", "refund_requested"].includes(order.status) && (
+      {!["rejected", "cancelled", "refunded", "refund_requested", "voided", "void_requested"].includes(order.status) && (
         <div style={{ position: "relative", padding: isMobile ? "24px 0" : "24px 0 32px", marginBottom: 32 }}>
           {(() => {
             const currentPipeline: OrderStatus[] = isWebOrder
               ? ["pending", "processing", "shipped", "delivered"]
               : order.type === "institutional"
               ? ["pending", "processing", "shipped", "completed"]
-              : ["pending", "processing", "paid", "completed"]; // walk-in / store
+              : ["pending", "processing", "completed"]; // walk-in / store
 
             let currentIndex = currentPipeline.indexOf(order.status);
             if (currentIndex === -1) currentIndex = 0;
@@ -426,7 +435,7 @@ export default function OrderCard({
             onMouseOver={(e) => (e.currentTarget.style.background = `${primary}10`)}
             onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
           >
-            {!canManageRefunds && ["refund_requested", "refunded"].includes(order.status) ? "Review Order" : "Manage Order"}
+            {!canManageRefunds && ["refund_requested", "refunded", "void_requested", "voided"].includes(order.status) ? "Review Order" : "Manage Order"}
           </button>
           
 
@@ -447,6 +456,9 @@ export default function OrderCard({
         onStatusUpdate={onStatusUpdate}
         onRequestRefund={onRequestRefund}
         onApplyRefund={onApplyRefund}
+onRequestVoid={onRequestVoid}
+onApplyVoid={onApplyVoid}
+onRejectVoid={onRejectVoid}
         onRejectRefund={onRejectRefund}
       />
     </div>

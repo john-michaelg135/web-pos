@@ -36,6 +36,7 @@ import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
+import { LocationSelects } from "@/components/module-pos/LocationSelects";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import PwdFormModal from "@/components/module-pos/PwdFormModal";
 import { cn } from "@/lib/utils";
@@ -159,6 +160,10 @@ export default function ViewSalesProcessing() {
   const [province, setProvince] = useState("");
   const [zipCode, setZipCode] = useState("");
 
+  const [contactFirstName, setContactFirstName] = useState("");
+  const [contactMiddleName, setContactMiddleName] = useState("");
+  const [contactLastName, setContactLastName] = useState("");
+  const [contactSuffix, setContactSuffix] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [showOrderTypeDropdown, setShowOrderTypeDropdown] = useState(false);
@@ -191,6 +196,10 @@ export default function ViewSalesProcessing() {
   const [isSeniorPWD, setIsSeniorPWD] = useState(false);
   const [showPwdModal, setShowPwdModal] = useState(false);
   const [idNumber, setIdNumber] = useState("");
+  const [pwdFirstName, setPwdFirstName] = useState("");
+  const [pwdMiddleName, setPwdMiddleName] = useState("");
+  const [pwdLastName, setPwdLastName] = useState("");
+  const [pwdSuffix, setPwdSuffix] = useState("");
   const [pwdCustomerName, setPwdCustomerName] = useState("");
   const [pwdStreet, setPwdStreet] = useState("");
   const [pwdBarangay, setPwdBarangay] = useState("");
@@ -488,7 +497,7 @@ export default function ViewSalesProcessing() {
           const { data: response } = await apiClient.apiPos.orderEntryOrdersInstitutionalCreate({
             locationId: locationIdVal,
             deliveryAddress: `${street}, ${barangay}, ${city}, ${province} ${zipCode}`,
-            contactPerson: contactPerson,
+            contactPerson: [contactFirstName, contactMiddleName, contactLastName, contactSuffix].filter(Boolean).join(" "),
             customVariationNotes: notes,
             paymentMethod: "COD",
             submittedBy: 1,
@@ -506,7 +515,7 @@ export default function ViewSalesProcessing() {
             amountTendered: !isInstitutional && paymentMethod === "cash" && amountPaid.trim() !== "" ? parseFloat(amountPaid) : null,
             changeAmount: !isInstitutional && paymentMethod === "cash" && amountPaid.trim() !== "" ? Math.max(0, parseFloat(amountPaid) - total) : null,
             seniorPwdId: isSeniorPWD ? idNumber : null,
-            seniorPwdName: isSeniorPWD ? pwdCustomerName : null,
+            seniorPwdName: isSeniorPWD ? [pwdFirstName, pwdMiddleName, pwdLastName, pwdSuffix].filter(Boolean).join(" ") : null,
             seniorPwdStreet: isSeniorPWD ? pwdStreet : null,
             seniorPwdBarangay: isSeniorPWD ? pwdBarangay : null,
             seniorPwdCity: isSeniorPWD ? pwdCity : null,
@@ -1217,24 +1226,61 @@ export default function ViewSalesProcessing() {
 
           <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto flex-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Name / Organization <span className="text-destructive">*</span></Label>
-                <Input
-                  type="text"
-                  placeholder="Name / Organization"
-                  maxLength={50}
-                  value={contactPerson}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                    setContactPerson(cleaned);
-                    if (errors.contactPerson) setErrors(prev => { const { contactPerson, ...rest } = prev; return rest; });
-                  }}
-                  onBlur={() => {
-                    setContactPerson(toTitleCase(contactPerson));
-                  }}
-                  className={cn(errors.contactPerson && "border-destructive")}
-                />
-                {errors.contactPerson && <p className="text-xs text-destructive mt-1">{errors.contactPerson}</p>}
+              <div className="sm:col-span-2 grid grid-cols-2 gap-4">
+                <div>
+                  <Label>First Name / Org <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="text"
+                    placeholder="First Name or Org Name"
+                    maxLength={50}
+                    value={contactFirstName}
+                    onChange={(e) => {
+                      setContactFirstName(e.target.value.replace(/[^a-zA-Z\s.\-]/g, ""));
+                      if (errors.contactFirstName) setErrors(prev => { const { contactFirstName, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => setContactFirstName(toTitleCase(contactFirstName))}
+                    className={cn(errors.contactFirstName && "border-destructive")}
+                  />
+                  {errors.contactFirstName && <p className="text-xs text-destructive mt-1">{errors.contactFirstName}</p>}
+                </div>
+                <div>
+                  <Label>Middle Name</Label>
+                  <Input
+                    type="text"
+                    placeholder="Middle Name"
+                    maxLength={50}
+                    value={contactMiddleName}
+                    onChange={(e) => setContactMiddleName(e.target.value.replace(/[^a-zA-Z\s.\-]/g, ""))}
+                    onBlur={() => setContactMiddleName(toTitleCase(contactMiddleName))}
+                  />
+                </div>
+                <div>
+                  <Label>Last Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="text"
+                    placeholder="Last Name"
+                    maxLength={50}
+                    value={contactLastName}
+                    onChange={(e) => {
+                      setContactLastName(e.target.value.replace(/[^a-zA-Z\s.\-]/g, ""));
+                      if (errors.contactLastName) setErrors(prev => { const { contactLastName, ...rest } = prev; return rest; });
+                    }}
+                    onBlur={() => setContactLastName(toTitleCase(contactLastName))}
+                    className={cn(errors.contactLastName && "border-destructive")}
+                  />
+                  {errors.contactLastName && <p className="text-xs text-destructive mt-1">{errors.contactLastName}</p>}
+                </div>
+                <div>
+                  <Label>Suffix</Label>
+                  <Input
+                    type="text"
+                    placeholder="Jr."
+                    maxLength={10}
+                    value={contactSuffix}
+                    onChange={(e) => setContactSuffix(e.target.value.replace(/[^a-zA-Z\s.]/g, ""))}
+                    onBlur={() => setContactSuffix(toTitleCase(contactSuffix))}
+                  />
+                </div>
               </div>
 
               <div>
@@ -1296,61 +1342,15 @@ export default function ViewSalesProcessing() {
                 {errors.street && <p className="text-xs text-destructive mt-1">{errors.street}</p>}
               </div>
 
-              <div>
-                <Label>Barangay <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="Barangay"
-                  maxLength={50}
-                  value={barangay}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                    setBarangay(cleaned);
-                    if (errors.barangay) setErrors(prev => { const { barangay, ...rest } = prev; return rest; });
-                  }}
-                  onBlur={() => {
-                    setBarangay(toTitleCase(barangay));
-                  }}
-                  className={cn(errors.barangay && "border-destructive")}
-                />
-                {errors.barangay && <p className="text-xs text-destructive mt-1">{errors.barangay}</p>}
-              </div>
-              <div>
-                <Label>City <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="City"
-                  maxLength={50}
-                  value={city}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                    setCity(cleaned);
-                    if (errors.city) setErrors(prev => { const { city, ...rest } = prev; return rest; });
-                  }}
-                  onBlur={() => {
-                    setCity(toTitleCase(city));
-                  }}
-                  className={cn(errors.city && "border-destructive")}
-                />
-                {errors.city && <p className="text-xs text-destructive mt-1">{errors.city}</p>}
-              </div>
-
-              <div>
-                <Label>Province <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="Province"
-                  maxLength={50}
-                  value={province}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^a-zA-Z\s.\-,]/g, "");
-                    setProvince(cleaned);
-                    if (errors.province) setErrors(prev => { const { province, ...rest } = prev; return rest; });
-                  }}
-                  onBlur={() => {
-                    setProvince(toTitleCase(province));
-                  }}
-                  className={cn(errors.province && "border-destructive")}
-                />
-                {errors.province && <p className="text-xs text-destructive mt-1">{errors.province}</p>}
-              </div>
+              <LocationSelects
+                province={province}
+                setProvince={setProvince}
+                city={city}
+                setCity={setCity}
+                barangay={barangay}
+                setBarangay={setBarangay}
+                errors={errors}
+              />
               <div>
                 <Label>Zip Code <span className="text-destructive">*</span></Label>
                 <Input
@@ -1393,24 +1393,25 @@ export default function ViewSalesProcessing() {
               onClick={() => {
                 let isValid = true;
                 const newErrors: any = {};
-                const normContactPerson = toTitleCase(contactPerson);
+                const normFirst = toTitleCase(contactFirstName);
+                const normMiddle = toTitleCase(contactMiddleName);
+                const normLast = toTitleCase(contactLastName);
+                const normSuffix = toTitleCase(contactSuffix);
                 const normStreet = toTitleCase(street);
-                const normBarangay = toTitleCase(barangay);
-                const normCity = toTitleCase(city);
-                const normProvince = toTitleCase(province);
 
-                setContactPerson(normContactPerson);
+                setContactFirstName(normFirst);
+                setContactMiddleName(normMiddle);
+                setContactLastName(normLast);
+                setContactSuffix(normSuffix);
                 setStreet(normStreet);
-                setBarangay(normBarangay);
-                setCity(normCity);
-                setProvince(normProvince);
 
-                if (!normContactPerson.trim()) { newErrors.contactPerson = "Required"; isValid = false; }
+                if (!normFirst.trim()) { newErrors.contactFirstName = "Required"; isValid = false; }
+                if (!normLast.trim()) { newErrors.contactLastName = "Required"; isValid = false; }
                 if (!contactNumber.trim() || contactNumber.replace(/\D/g, "").length < 10) { newErrors.contactNumber = "Invalid Contact Number"; isValid = false; }
                 if (!normStreet.trim()) { newErrors.street = "Required"; isValid = false; }
-                if (!normBarangay.trim()) { newErrors.barangay = "Required"; isValid = false; }
-                if (!normCity.trim()) { newErrors.city = "Required"; isValid = false; }
-                if (!normProvince.trim()) { newErrors.province = "Required"; isValid = false; }
+                if (!barangay.trim()) { newErrors.barangay = "Required"; isValid = false; }
+                if (!city.trim()) { newErrors.city = "Required"; isValid = false; }
+                if (!province.trim()) { newErrors.province = "Required"; isValid = false; }
                 if (!zipCode.trim()) { newErrors.zipCode = "Required"; isValid = false; }
 
                 if (!isValid) {
@@ -1436,8 +1437,14 @@ export default function ViewSalesProcessing() {
         onProceed={() => { setIsSeniorPWD(true); setShowPwdModal(false); }}
         idNumber={idNumber}
         setIdNumber={setIdNumber}
-        pwdCustomerName={pwdCustomerName}
-        setPwdCustomerName={setPwdCustomerName}
+        pwdFirstName={pwdFirstName}
+        setPwdFirstName={setPwdFirstName}
+        pwdMiddleName={pwdMiddleName}
+        setPwdMiddleName={setPwdMiddleName}
+        pwdLastName={pwdLastName}
+        setPwdLastName={setPwdLastName}
+        pwdSuffix={pwdSuffix}
+        setPwdSuffix={setPwdSuffix}
         pwdStreet={pwdStreet}
         setPwdStreet={setPwdStreet}
         pwdBarangay={pwdBarangay}
