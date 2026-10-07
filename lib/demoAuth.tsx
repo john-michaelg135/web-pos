@@ -139,7 +139,7 @@ function buildMockSession(role: DemoRole): Session {
       email: `${role}@demo.local`,
     },
     // Custom session fields (see types/next-auth.d.ts).
-    accessToken: "demo-token",
+    accessToken: `demo-token.${cfg.key}`,
     systems: ["POS"],
     role: cfg.roleString,
     isSuperUser: cfg.isSuperUser,
