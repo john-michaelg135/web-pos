@@ -293,11 +293,11 @@ export default function ViewOrderManagement() {
 
   const handleApproveRefund = (order: Order) => { setOrderToApprove(order); setShowApproveDialog(true); };
 
-  const handleApproveRefundSubmit = async () => {
+  const handleApproveRefundSubmit = async (pin: string) => {
     if (!orderToApprove) return;
     try {
       const managerId = Number(authUser?.id) || 1;
-      await apiClient.apiPos.orderManagementOrdersApproveRefundUpdate(Number(orderToApprove.id), { approvedBy: managerId }, { headers });
+      await apiClient.instance.put(`/api-pos/order-management/orders/${orderToApprove.id}/approve-refund`, { approvedBy: managerId, pinCode: pin }, { headers });
       toast.success(
         <div className="flex flex-col gap-1 text-emerald-800 dark:text-emerald-200">
           <div className="font-bold">Refund approved!</div>
@@ -315,24 +315,34 @@ export default function ViewOrderManagement() {
         { duration: 10000 }
       );
       fetchOrders();
-    } catch (err) { console.error("Failed to approve refund:", err); toast.error("Failed to approve refund."); }
-    setShowApproveDialog(false);
-    setOrderToApprove(null);
+      setShowApproveDialog(false);
+      setOrderToApprove(null);
+    } catch (err: any) { 
+      console.warn("Failed to approve refund:", err?.message || "Unknown error"); 
+      const msg = err.response?.data || "Failed to approve refund. Check PIN.";
+      toast.error(typeof msg === "string" ? msg : "Failed to approve refund."); 
+    }
   };
 
-  const handleRejectRefund = (order: Order) => { setOrderToReject(order); setRejectReason(""); setShowRejectDialog(true); };
+  const handleRejectRefund = (order: Order) => { setOrderToReject(order); setShowRejectDialog(true); };
 
-  const handleRejectRefundSubmit = async () => {
-    if (!orderToReject || !rejectReason.trim()) return;
-    if (rejectReason.trim().length > 500) { toast.error("Reason must not exceed 500 characters."); return; }
-    if (/[<>]/.test(rejectReason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
+  const handleRejectRefundSubmit = async (pin: string, reason: string) => {
+    if (!orderToReject) return;
+    if (!reason.trim()) { toast.error("Reason is required."); return; }
+    if (reason.trim().length > 500) { toast.error("Reason must not exceed 500 characters."); return; }
+    if (/[<>]/.test(reason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
     try {
       const managerId = Number(authUser?.id) || 1;
-      await apiClient.apiPos.orderManagementOrdersRejectRefundUpdate(Number(orderToReject.id), { rejectedBy: managerId, rejectionRemarks: rejectReason.trim() }, { headers });
+      await apiClient.instance.put(`/api-pos/order-management/orders/${orderToReject.id}/reject-refund`, { rejectedBy: managerId, rejectionRemarks: reason.trim(), pinCode: pin }, { headers });
       toast.success(`Refund request for Order ${orderToReject.orderNumber || `#${orderToReject.id}`} has been rejected.`);
       fetchOrders();
-    } catch (err) { console.error("Failed to reject refund:", err); toast.error("Failed to reject refund."); }
-    setShowRejectDialog(false); setRejectReason(""); setOrderToReject(null);
+      setShowRejectDialog(false);
+      setOrderToReject(null);
+    } catch (err: any) { 
+      console.warn("Failed to reject refund:", err?.message || "Unknown error"); 
+      const msg = err.response?.data || "Failed to reject refund. Check PIN.";
+      toast.error(typeof msg === "string" ? msg : "Failed to reject refund."); 
+    }
   };
 
   const handleRequestRefundSubmit = async () => {
@@ -591,7 +601,7 @@ export default function ViewOrderManagement() {
       <RejectVoidDialog isOpen={showRejectVoidDialog} onClose={() => setShowRejectVoidDialog(false)} order={orderToRejectVoid} onSubmit={handleRejectVoidSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
       <ApproveVoidDialog isOpen={showApproveVoidDialog} onClose={() => setShowApproveVoidDialog(false)} order={orderToApproveVoid} onSubmit={handleApproveVoidSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
       <RefundFormDialog isOpen={showRefundDialog} onClose={() => setShowRefundDialog(false)} order={selectedOrder} reason={refundReason} setReason={setRefundReason} onSubmit={handleRequestRefundSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
-      <RejectRefundDialog isOpen={showRejectDialog} onClose={() => setShowRejectDialog(false)} order={orderToReject} reason={rejectReason} setReason={setRejectReason} onSubmit={handleRejectRefundSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
+      <RejectRefundDialog isOpen={showRejectDialog} onClose={() => setShowRejectDialog(false)} order={orderToReject} onSubmit={handleRejectRefundSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
       <ApproveRefundDialog isOpen={showApproveDialog} onClose={() => setShowApproveDialog(false)} order={orderToApprove} onSubmit={handleApproveRefundSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
 
       {/* View Manager PIN Dialog */}

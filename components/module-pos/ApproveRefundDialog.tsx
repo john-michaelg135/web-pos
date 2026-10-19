@@ -8,7 +8,7 @@ interface ApproveRefundDialogProps {
   isOpen: boolean;
   onClose: () => void;
   order: Order | null;
-  onSubmit: () => void;
+  onSubmit: (pin: string) => void;
   primary: string;
   muted: string;
   border: string;
@@ -32,7 +32,13 @@ export default function ApproveRefundDialog({
   isMobile,
 }: ApproveRefundDialogProps) {
   const [mounted, setMounted] = useState(false);
+  const [pin, setPin] = useState("");
   useEffect(() => setMounted(true), []);
+
+  // Reset PIN when dialog opens
+  useEffect(() => {
+    if (isOpen) setPin("");
+  }, [isOpen]);
 
   if (!isOpen || !order || !mounted) return null;
 
@@ -93,6 +99,20 @@ export default function ApproveRefundDialog({
                 </span>
               </div>
             </div>
+
+            <div className="sm:col-span-2 mt-2">
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                Manager PIN <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="Enter your 6-digit PIN"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm ${inputBg} ${border} text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50`}
+              />
+            </div>
           </div>
         </div>
 
@@ -105,8 +125,9 @@ export default function ApproveRefundDialog({
             Cancel
           </button>
           <button
-            onClick={onSubmit}
-            className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 cursor-pointer transition-colors shadow-sm"
+            onClick={() => onSubmit(pin)}
+            disabled={pin.length < 4}
+            className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors shadow-sm"
           >
             Approve Refund
           </button>

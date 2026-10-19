@@ -8,9 +8,7 @@ interface RejectRefundDialogProps {
   isOpen: boolean;
   onClose: () => void;
   order: Order | null;
-  reason: string;
-  setReason: (reason: string) => void;
-  onSubmit: () => void;
+  onSubmit: (pin: string, reason: string) => void;
   primary: string;
   muted: string;
   border: string;
@@ -24,8 +22,6 @@ export default function RejectRefundDialog({
   isOpen,
   onClose,
   order,
-  reason,
-  setReason,
   onSubmit,
   primary,
   muted,
@@ -36,7 +32,19 @@ export default function RejectRefundDialog({
   isMobile,
 }: RejectRefundDialogProps) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [pin, setPin] = useState("");
+  const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPin("");
+      setReason("");
+    }
+  }, [isOpen]);
 
   if (!isOpen || !order || !mounted) return null;
 
@@ -86,7 +94,7 @@ export default function RejectRefundDialog({
               </div>
             </div>
 
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 mt-2">
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                 Reason for Rejection <span className="text-red-500">*</span>
               </label>
@@ -95,8 +103,20 @@ export default function RejectRefundDialog({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 maxLength={500}
-                rows={4}
-                className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 resize-none border-gray-200 dark:border-gray-700"
+                rows={3}
+                className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-none border-gray-200 dark:border-gray-700 mb-4"
+              />
+
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                Manager PIN <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="Enter your 6-digit PIN"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm ${inputBg} ${border} text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50`}
               />
             </div>
           </div>
@@ -111,10 +131,10 @@ export default function RejectRefundDialog({
             Cancel
           </button>
           <button
-            onClick={onSubmit}
-            disabled={!reason.trim()}
+            onClick={() => onSubmit(pin, reason.trim())}
+            disabled={pin.length < 4 || !reason.trim()}
             className={`px-5 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-sm ${
-              reason.trim()
+              pin.length >= 4 && reason.trim()
                 ? "bg-red-600 hover:bg-red-700 cursor-pointer"
                 : "bg-gray-300 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
             }`}
