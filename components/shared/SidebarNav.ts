@@ -10,9 +10,10 @@ import {
   Users2,
   CreditCard,
   Truck,
+  Banknote,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { POS_MODULES } from "@/lib/permissions";
+import { POS_MODULES, type PosAction } from "@/lib/permissions";
 
 export interface NavItem {
   name: string;
@@ -20,6 +21,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** br-auth POS module name that guards this item (must have read access). */
   module: string;
+  /** Action required on `module` to see this item. Defaults to "read". */
+  action?: PosAction;
 }
 
 export interface SystemItem {

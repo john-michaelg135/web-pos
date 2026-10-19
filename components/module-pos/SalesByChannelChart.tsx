@@ -56,7 +56,7 @@ export function SalesByChannelChart({ dateFrom, dateTo, locationId }: SalesByCha
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col h-full">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">Sales by Channel</h3>
-        <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
+        <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit print:hidden">
           <button
             onClick={() => setShowPercentage(true)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all

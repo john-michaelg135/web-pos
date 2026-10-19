@@ -44,6 +44,7 @@ const ROUTE_MODULE_MAP: { prefix: string; module: string }[] = [
   { prefix: "/product-management", module: POS_MODULES.PRODUCT_MANAGEMENT },
   { prefix: "/stock-management", module: POS_MODULES.STOCK_MANAGEMENT },
   { prefix: "/manager/reports", module: POS_MODULES.SALES_REPORTS },
+  { prefix: "/manager/starting-cash", module: POS_MODULES.ORDER_MANAGEMENT },
   { prefix: "/admin/locations", module: POS_MODULES.LOCATIONS },
   { prefix: "/", module: POS_MODULES.DASHBOARD },
 ];

@@ -167,6 +167,11 @@ export function CustomSelect({
               <button
                 key={opt.value}
                 type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
                 onClick={() => {
                   onChange(opt.value);
                   setIsOpen(false);

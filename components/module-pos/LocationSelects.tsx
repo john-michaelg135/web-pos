@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
-import { CustomSelect } from "./CustomSelect";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface LocationSelectsProps {
@@ -42,6 +48,14 @@ export function LocationSelects({
       .catch(console.error);
   }, []);
 
+  // Sync selectedProvCode if province prop is already provided
+  useEffect(() => {
+    if (province && provinces.length > 0 && !selectedProvCode) {
+      const match = provinces.find((p) => p.name.toLowerCase() === province.toLowerCase());
+      if (match) setSelectedProvCode(match.code);
+    }
+  }, [province, provinces, selectedProvCode]);
+
   useEffect(() => {
     if (!selectedProvCode) {
       setCities([]);
@@ -60,6 +74,14 @@ export function LocationSelects({
       })
       .catch(console.error);
   }, [selectedProvCode]);
+
+  // Sync selectedCityCode if city prop is already provided
+  useEffect(() => {
+    if (city && cities.length > 0 && !selectedCityCode) {
+      const match = cities.find((c) => c.name.toLowerCase() === city.toLowerCase());
+      if (match) setSelectedCityCode(match.code);
+    }
+  }, [city, cities, selectedCityCode]);
 
   useEffect(() => {
     if (!selectedCityCode) {
@@ -81,10 +103,9 @@ export function LocationSelects({
         <Label>
           Province <span className="text-destructive">*</span>
         </Label>
-        <CustomSelect
-          options={provinces.map((p) => ({ value: p.code, label: p.name }))}
+        <Select
           value={selectedProvCode}
-          onChange={(val) => {
+          onValueChange={(val) => {
             setSelectedProvCode(val);
             const pName = provinces.find((p) => p.code === val)?.name || "";
             setProvince(pName);
@@ -92,9 +113,18 @@ export function LocationSelects({
             setCity("");
             setBarangay("");
           }}
-          className={cn(errors.province && "border-destructive")}
-          placeholder="Select Province"
-        />
+        >
+          <SelectTrigger className={cn("w-full bg-background rounded-xl h-10 border-border text-sm font-semibold", errors.province && "border-destructive")}>
+            <SelectValue placeholder="Select Province" />
+          </SelectTrigger>
+          <SelectContent className="max-h-60 z-[100005]">
+            {provinces.map((p) => (
+              <SelectItem key={p.code} value={p.code} className="cursor-pointer">
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {errors.province && <p className="text-xs text-destructive mt-1">{errors.province}</p>}
       </div>
 
@@ -102,19 +132,27 @@ export function LocationSelects({
         <Label>
           City / Municipality <span className="text-destructive">*</span>
         </Label>
-        <CustomSelect
-          options={cities.map((c) => ({ value: c.code, label: c.name }))}
+        <Select
           value={selectedCityCode}
-          onChange={(val) => {
+          onValueChange={(val) => {
             setSelectedCityCode(val);
             const cName = cities.find((c) => c.code === val)?.name || "";
             setCity(cName);
             setBarangay("");
           }}
-          className={cn(errors.city && "border-destructive")}
-          placeholder="Select City"
-          disabled={!selectedProvCode}
-        />
+          disabled={!selectedProvCode || cities.length === 0}
+        >
+          <SelectTrigger className={cn("w-full bg-background rounded-xl h-10 border-border text-sm font-semibold", errors.city && "border-destructive")}>
+            <SelectValue placeholder={!selectedProvCode ? "Select Province first" : "Select City"} />
+          </SelectTrigger>
+          <SelectContent className="max-h-60 z-[100005]">
+            {cities.map((c) => (
+              <SelectItem key={c.code} value={c.code} className="cursor-pointer">
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {errors.city && <p className="text-xs text-destructive mt-1">{errors.city}</p>}
       </div>
 
@@ -122,17 +160,25 @@ export function LocationSelects({
         <Label>
           Barangay <span className="text-destructive">*</span>
         </Label>
-        <CustomSelect
-          options={barangays.map((b) => ({ value: b.code, label: b.name }))}
+        <Select
           value={barangays.find((b) => b.name === barangay)?.code || ""}
-          onChange={(val) => {
+          onValueChange={(val) => {
             const bName = barangays.find((b) => b.code === val)?.name || "";
             setBarangay(bName);
           }}
-          className={cn(errors.barangay && "border-destructive")}
-          placeholder="Select Barangay"
-          disabled={!selectedCityCode}
-        />
+          disabled={!selectedCityCode || barangays.length === 0}
+        >
+          <SelectTrigger className={cn("w-full bg-background rounded-xl h-10 border-border text-sm font-semibold", errors.barangay && "border-destructive")}>
+            <SelectValue placeholder={!selectedCityCode ? "Select City first" : "Select Barangay"} />
+          </SelectTrigger>
+          <SelectContent className="max-h-60 z-[100005]">
+            {barangays.map((b) => (
+              <SelectItem key={b.code} value={b.code} className="cursor-pointer">
+                {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {errors.barangay && <p className="text-xs text-destructive mt-1">{errors.barangay}</p>}
       </div>
     </>

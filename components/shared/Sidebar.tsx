@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { mainNavItems, settingsNavItem, systems } from "./SidebarNav";
 import { SidebarProfileFooter } from "./SidebarProfileFooter";
-import { canRead } from "@/lib/permissions";
+import { can, canRead } from "@/lib/permissions";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -62,7 +62,7 @@ export function Sidebar() {
   const permissions = session?.permissions;
   const visibleNavItems = isSuperUser
     ? mainNavItems
-    : mainNavItems.filter((item) => canRead(permissions, item.module));
+    : mainNavItems.filter((item) => can(permissions, item.module, item.action ?? "read"));
 
   const showSettings =
     isSuperUser ||
@@ -77,7 +77,7 @@ export function Sidebar() {
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[55] animate-in fade-in duration-200"
         />
       )}
-      <aside className="fixed left-0 top-0 h-full w-64 flex flex-col border-r border-border bg-sidebar text-sidebar-foreground z-[60] transition-all duration-300 shadow-xl md:shadow-none animate-in slide-in-from-left duration-300">
+      <aside className="fixed left-0 top-0 h-full w-64 flex flex-col border-r border-border bg-sidebar text-sidebar-foreground z-[60] transition-all duration-300 shadow-xl md:shadow-none animate-in slide-in-from-left duration-300 print:hidden">
         <SidebarHeader className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between gap-1">
             <div className="flex-1 min-w-0">

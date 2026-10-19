@@ -168,3 +168,80 @@ div[style*="display: flex"][style*="border-bottom"] > button {
 .status-completed { background: var(--badge-success) !important; color: var(--badge-success-foreground) !important; }
 .status-cancelled { background: var(--badge-destructive) !important; color: var(--badge-destructive-foreground) !important; }
 .status-refunded { background: var(--badge-purple) !important; color: var(--badge-purple-foreground) !important; }
+
+/* ── Clean Print / PDF Export Overrides ── */
+@media print {
+  /* Hide application shell elements, navigation, buttons, and dialogs */
+  aside,
+  header,
+  nav,
+  [data-sidebar],
+  [data-slot="sidebar"],
+  .print\:hidden,
+  .no-print,
+  [role="tablist"],
+  [class*="MobileNav"],
+  [class*="DemoRoleSwitcher"] {
+    display: none !important;
+  }
+
+  /* Reset document flow and background */
+  html,
+  body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #111827 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Reset containers and remove sidebar offset/scroll containers */
+  main,
+  [class*="MainContent"],
+  div[class*="md:ml-64"],
+  div[class*="md:ml-0"] {
+    margin: 0 !important;
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Retain exact colors for charts and badges in PDF */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Remove shadows that look blurry in print */
+  * {
+    box-shadow: none !important;
+  }
+
+  /* Table print optimization */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 10mm 15mm;
+    size: auto;
+  }
+}
+

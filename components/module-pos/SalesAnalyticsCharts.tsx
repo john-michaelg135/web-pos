@@ -93,7 +93,7 @@ export function SalesAnalyticsCharts({ dateFrom, dateTo, locationId }: SalesAnal
           <p className="text-xs text-gray-500 dark:text-gray-400">Tracking performance trends over time</p>
         </div>
 
-        <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+        <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl print:hidden">
           {(["daily", "weekly", "monthly"] as const).map((t) => (
             <button
               key={t}

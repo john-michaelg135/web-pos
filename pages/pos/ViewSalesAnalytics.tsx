@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ViewStartingCash, type StartingCashRecord } from "./ViewStartingCash";
 
 interface TopSellingVariation {
   name: string;
@@ -32,7 +34,7 @@ interface TopSellingVariation {
 }
 
 export function ViewSalesAnalytics() {
-  const { user: authUser, isLoading: authLoading, canRead } = useAuth();
+  const { user: authUser, isLoading: authLoading, canRead, can } = useAuth();
   const { scope: locScope, locations: myLocations, isLoading: locLoading, isUnassigned } =
     useMyLocations();
   const router = useRouter();
@@ -46,6 +48,28 @@ export function ViewSalesAnalytics() {
   const [locationName, setLocationName] = useState<string | null>(null);
   const [filterLocation, setFilterLocation] = useState<number | undefined>(undefined);
   const [locations, setLocations] = useState<{ id: number; name: string }[]>([]);
+  const [moneyAuditRecords, setMoneyAuditRecords] = useState<StartingCashRecord[]>([]);
+
+  const canMoneyAudit = !!authUser && (authUser.isSuperUser || can(POS_MODULES.ORDER_MANAGEMENT, "approve"));
+  const [activeTab, setActiveTab] = useState<"analytics" | "money-audit">("analytics");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      if (tabParam === "money-audit" || tabParam === "analytics") {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (val: "analytics" | "money-audit") => {
+    setActiveTab(val);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", val);
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
 
   const getStartOfDay = (dateStr: string) =>
     dateStr ? new Date(dateStr + "T00:00:00").toISOString() : undefined;
@@ -191,6 +215,24 @@ export function ViewSalesAnalytics() {
     setIsCsvPreviewOpen(false);
   };
 
+  const handleDownloadMoneyAuditCsv = () => {
+    const csvContent =
+      "data:text/csv;charset=utf-8,Date,Cashier,Branch,Recorded At,Starting Cash\n" +
+      moneyAuditRecords
+        .map(
+          (r) =>
+            `"${r.businessDate}","${r.cashierName}","${r.locationName || `Branch ${r.locationId}`}","${new Date(r.createdAt).toLocaleString()}","${r.amount}"`
+        )
+        .join("\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "starting_cash_audit_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setIsCsvPreviewOpen(false);
+  };
+
   const parseVariationName = (name: string) => {
     const emDashIdx = name.indexOf(" — ");
     const enDashIdx = name.indexOf(" – ");
@@ -202,10 +244,10 @@ export function ViewSalesAnalytics() {
   };
 
   return (
-    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in print:p-5 print:bg-white">
+    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in print:py-2 print:px-0 print:m-0 print:w-full print:max-w-none print:bg-white">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Analytics Report</h1>
+          <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Report</h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap min-w-0">
             <p className="text-sm text-muted-foreground">Comprehensive overview of sales performance and trends.</p>
             <span className="text-muted-foreground font-bold">&middot;</span>
@@ -213,7 +255,7 @@ export function ViewSalesAnalytics() {
               {locationLabel}
             </Badge>
             {showLocationSelector && (
-              <div className="w-48 ml-1 shrink-0">
+              <div className="w-48 ml-1 shrink-0 print:hidden">
                 <CustomSelect
                   value={filterLocation ? String(filterLocation) : "All"}
                   onChange={(val) => setFilterLocation(val === "All" ? undefined : Number(val))}
@@ -225,6 +267,11 @@ export function ViewSalesAnalytics() {
                 />
               </div>
             )}
+            {(dateFrom || dateTo) && (
+              <p className="hidden print:block text-xs text-muted-foreground w-full mt-1">
+                Report Period: {dateFrom || "Earliest"} to {dateTo || "Latest"}
+              </p>
+            )}
           </div>
         </div>
 
@@ -232,37 +279,77 @@ export function ViewSalesAnalytics() {
           <div className="flex items-center gap-2">
             <Input
               type="date"
-              min="2026-09-20"
+              min="2026-07-10"
+              max={dateTo || undefined}
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val && val < "2026-07-10") return;
+                setDateFrom(val);
+              }}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               className="w-[160px] cursor-pointer"
             />
             <span className="text-muted-foreground text-sm">to</span>
             <Input
               type="date"
-              min="2026-09-20"
+              min={dateFrom || "2026-07-10"}
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val && val < "2026-07-10") return;
+                setDateTo(val);
+              }}
               onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
               className="w-[160px] cursor-pointer"
             />
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!dateFrom && !dateTo}
+              onClick={() => { setDateFrom(""); setDateTo(""); }}
+              className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Reset
+            </Button>
           </div>
           <Button onClick={() => setIsCsvPreviewOpen(true)}>Generate Report</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
-        <SalesAnalyticsCharts dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} locationId={filterLocation} />
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as "analytics" | "money-audit")} className="space-y-6">
+        <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start gap-2 p-0 print:hidden">
+          {[
+            { value: "analytics", label: "Analytics" },
+            ...(canMoneyAudit ? [{ value: "money-audit", label: "Money Audit" }] : []),
+          ].map((tab) => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className={cn(
+                "rounded-t-lg rounded-b-none px-4 py-2.5 text-sm font-semibold border transition-colors data-[state=active]:shadow-none",
+                "data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary",
+                "data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border"
+              )}
+            >
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-        <div className={cn("grid grid-cols-1 gap-8", !authUser?.locationId && !filterLocation && "lg:grid-cols-2")}>
-          <SalesByChannelChart dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} locationId={filterLocation} />
-          {!authUser?.locationId && !filterLocation && (
-            <SalesByLocationChart dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} />
-          )}
-        </div>
+        <TabsContent value="analytics" className="space-y-6 mt-0">
+          <div className="grid grid-cols-1 gap-8">
+            <SalesAnalyticsCharts dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} locationId={filterLocation} />
 
-        <Card className="shadow-none border-border">
+            <div className={cn("grid grid-cols-1 gap-8", !authUser?.locationId && !filterLocation && "lg:grid-cols-2")}>
+              <SalesByChannelChart dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} locationId={filterLocation} />
+              {!authUser?.locationId && !filterLocation && (
+                <SalesByLocationChart dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} />
+              )}
+            </div>
+
+            <Card className="shadow-none border-border">
           <CardHeader>
             <CardTitle>Top Selling Variations</CardTitle>
           </CardHeader>
@@ -302,6 +389,20 @@ export function ViewSalesAnalytics() {
           </CardContent>
         </Card>
       </div>
+    </TabsContent>
+
+    {canMoneyAudit && (
+      <TabsContent value="money-audit" className="space-y-6 mt-0">
+        <ViewStartingCash
+          embedded
+          locationId={filterLocation ?? (locScope === "assigned" && myLocations.length > 0 ? myLocations[0].locationId : undefined)}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onRecordsChange={setMoneyAuditRecords}
+        />
+      </TabsContent>
+    )}
+  </Tabs>
 
       {/* Report Export Modal */}
       {isCsvPreviewOpen && typeof document !== "undefined" &&
@@ -311,7 +412,7 @@ export function ViewSalesAnalytics() {
               <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />
-                  Generate Report Options
+                  {activeTab === "analytics" ? "Generate Sales Report" : "Generate Starting Cash Report"}
                 </CardTitle>
                 <Button variant="ghost" size="icon" onClick={() => setIsCsvPreviewOpen(false)}>
                   <X className="h-4 w-4" />
@@ -319,52 +420,117 @@ export function ViewSalesAnalytics() {
               </CardHeader>
               <Separator />
               <CardContent className="overflow-y-auto flex-1 p-5">
-                <div className="border border-border rounded-sm overflow-x-auto bg-card font-mono text-sm">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-muted text-muted-foreground select-none">
-                      <tr>
-                        <th className="px-3 py-1.5 border border-border w-10 text-center font-normal" />
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">A</th>
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">B</th>
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">C</th>
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">D</th>
-                      </tr>
-                      <tr className="bg-card">
-                        <td className="px-3 py-2 border border-border text-center font-normal bg-muted text-muted-foreground">1</td>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Name</th>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Sales (units)</th>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Percent</th>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {topSellingData.map((item, index) => (
-                        <tr key={index} className="hover:bg-muted/50 transition-colors">
-                          <td className="px-3 py-2 border border-border text-center bg-muted text-muted-foreground select-none">{index + 2}</td>
-                          <td className="px-4 py-2 border border-border text-foreground whitespace-nowrap">{item.name}</td>
-                          <td className="px-4 py-2 border border-border text-foreground text-right">{item.sales}</td>
-                          <td className="px-4 py-2 border border-border text-foreground text-right">{item.percent}%</td>
-                          <td className="px-4 py-2 border border-border text-foreground text-right">
-                            ₱{item.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
+                {activeTab === "analytics" ? (
+                  <div className="border border-border rounded-sm overflow-x-auto bg-card font-mono text-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-muted text-muted-foreground select-none">
+                        <tr>
+                          <th className="px-3 py-1.5 border border-border w-10 text-center font-normal" />
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">A</th>
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">B</th>
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">C</th>
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">D</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        <tr className="bg-card">
+                          <td className="px-3 py-2 border border-border text-center font-normal bg-muted text-muted-foreground">1</td>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Name</th>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Sales (units)</th>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Percent</th>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topSellingData.map((item, index) => (
+                          <tr key={index} className="hover:bg-muted/50 transition-colors">
+                            <td className="px-3 py-2 border border-border text-center bg-muted text-muted-foreground select-none">{index + 2}</td>
+                            <td className="px-4 py-2 border border-border text-foreground whitespace-nowrap">{item.name}</td>
+                            <td className="px-4 py-2 border border-border text-foreground text-right">{item.sales}</td>
+                            <td className="px-4 py-2 border border-border text-foreground text-right">{item.percent}%</td>
+                            <td className="px-4 py-2 border border-border text-foreground text-right">
+                              ₱{item.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="border border-border rounded-sm overflow-x-auto bg-card font-mono text-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-muted text-muted-foreground select-none">
+                        <tr>
+                          <th className="px-3 py-1.5 border border-border w-10 text-center font-normal" />
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">A</th>
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">B</th>
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">C</th>
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">D</th>
+                          <th className="px-4 py-1.5 border border-border text-center font-normal">E</th>
+                        </tr>
+                        <tr className="bg-card">
+                          <td className="px-3 py-2 border border-border text-center font-normal bg-muted text-muted-foreground">1</td>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Date</th>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Cashier</th>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Branch</th>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Recorded At</th>
+                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Starting Cash</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {moneyAuditRecords.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground font-sans">
+                              No starting cash records found for the selected date range.
+                            </td>
+                          </tr>
+                        ) : (
+                          moneyAuditRecords.map((item, index) => (
+                            <tr key={index} className="hover:bg-muted/50 transition-colors">
+                              <td className="px-3 py-2 border border-border text-center bg-muted text-muted-foreground select-none">{index + 2}</td>
+                              <td className="px-4 py-2 border border-border text-foreground whitespace-nowrap">{item.businessDate}</td>
+                              <td className="px-4 py-2 border border-border text-foreground">{item.cashierName}</td>
+                              <td className="px-4 py-2 border border-border text-foreground">{item.locationName || `Branch ${item.locationId}`}</td>
+                              <td className="px-4 py-2 border border-border text-foreground text-muted-foreground text-xs">
+                                {new Date(item.createdAt).toLocaleString()}
+                              </td>
+                              <td className="px-4 py-2 border border-border text-foreground text-right font-medium">
+                                ₱{item.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
               <Separator />
               <div className="flex justify-end gap-3 p-4">
                 <Button variant="outline" onClick={() => setIsCsvPreviewOpen(false)}>Cancel</Button>
                 <Button
                   variant="outline"
-                  onClick={() => { setIsCsvPreviewOpen(false); setTimeout(() => window.print(), 100); }}
+                  onClick={() => {
+                    setIsCsvPreviewOpen(false);
+                    const originalTitle = typeof document !== "undefined" ? document.title : "";
+                    if (typeof document !== "undefined") {
+                      document.title = activeTab === "money-audit" ? "Money Audit Report | ERP System" : "Sales Report | ERP System";
+                    }
+                    setTimeout(() => {
+                      window.print();
+                      setTimeout(() => {
+                        if (typeof document !== "undefined") document.title = originalTitle;
+                      }, 1000);
+                    }, 250);
+                  }}
                   className="gap-2"
                 >
                   <FileText className="h-4 w-4 text-destructive" />
                   Export PDF
                 </Button>
-                <Button variant="outline" onClick={handleDownloadCsv} className="gap-2">
+                <Button
+                  variant="outline"
+                  onClick={activeTab === "analytics" ? handleDownloadCsv : handleDownloadMoneyAuditCsv}
+                  className="gap-2"
+                >
                   <Download className="h-4 w-4 text-green-600" />
                   Download CSV
                 </Button>
