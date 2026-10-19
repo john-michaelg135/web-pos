@@ -156,7 +156,7 @@ export function LocationSelects({
         {errors.city && <p className="text-xs text-destructive mt-1">{errors.city}</p>}
       </div>
 
-      <div className="sm:col-span-2">
+      <div>
         <Label>
           Barangay <span className="text-destructive">*</span>
         </Label>

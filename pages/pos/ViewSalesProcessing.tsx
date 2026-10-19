@@ -1384,7 +1384,7 @@ export default function ViewSalesProcessing() {
                 </div>
               )}
 
-              <div>
+              <div className="sm:col-span-2">
                 <Label>Contact Number <span className="text-destructive">*</span></Label>
                 <Input
                   type="text"
@@ -1424,6 +1424,33 @@ export default function ViewSalesProcessing() {
                 {errors.contactNumber && <p className="text-xs text-destructive mt-1">{errors.contactNumber}</p>}
               </div>
 
+              <LocationSelects
+                province={province}
+                setProvince={setProvince}
+                city={city}
+                setCity={setCity}
+                barangay={barangay}
+                setBarangay={setBarangay}
+                errors={errors}
+              />
+
+              <div>
+                <Label>Zip Code <span className="text-destructive">*</span></Label>
+                <Input
+                  type="text"
+                  placeholder="Zip"
+                  maxLength={4}
+                  value={zipCode}
+                  onChange={(e) => {
+                    const cleanVal = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setZipCode(cleanVal);
+                    if (errors.zipCode) setErrors(prev => { const { zipCode, ...rest } = prev; return rest; });
+                  }}
+                  className={cn(errors.zipCode && "border-destructive")}
+                />
+                {errors.zipCode && <p className="text-xs text-destructive mt-1">{errors.zipCode}</p>}
+              </div>
+
               <div className="sm:col-span-2">
                 <Label>Street <span className="text-destructive">*</span></Label>
                 <Input
@@ -1441,32 +1468,6 @@ export default function ViewSalesProcessing() {
                   className={cn(errors.street && "border-destructive")}
                 />
                 {errors.street && <p className="text-xs text-destructive mt-1">{errors.street}</p>}
-              </div>
-
-              <LocationSelects
-                province={province}
-                setProvince={setProvince}
-                city={city}
-                setCity={setCity}
-                barangay={barangay}
-                setBarangay={setBarangay}
-                errors={errors}
-              />
-              <div>
-                <Label>Zip Code <span className="text-destructive">*</span></Label>
-                <Input
-                  type="text"
-                  placeholder="Zip"
-                  maxLength={4}
-                  value={zipCode}
-                  onChange={(e) => {
-                    const cleanVal = e.target.value.replace(/\D/g, "").slice(0, 4);
-                    setZipCode(cleanVal);
-                    if (errors.zipCode) setErrors(prev => { const { zipCode, ...rest } = prev; return rest; });
-                  }}
-                  className={cn(errors.zipCode && "border-destructive")}
-                />
-                {errors.zipCode && <p className="text-xs text-destructive mt-1">{errors.zipCode}</p>}
               </div>
 
               <div className="sm:col-span-2">

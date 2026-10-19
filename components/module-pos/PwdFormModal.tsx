@@ -260,23 +260,6 @@ export default function PwdFormModal({
               </div>
             </div>
 
-            <div className="sm:col-span-2">
-              <Label>Street <span className="text-destructive">*</span></Label>
-              <Input
-                maxLength={100}
-                placeholder="123 Maple St."
-                value={pwdStreet}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
-                  setPwdStreet(cleaned);
-                  if (errors.pwdStreet) setErrors((prev) => { const { pwdStreet, ...rest } = prev; return rest; });
-                }}
-                onBlur={() => setPwdStreet(toTitleCase(pwdStreet))}
-                className={cn(errors.pwdStreet && "border-destructive")}
-              />
-              {errors.pwdStreet && <p className="text-xs text-destructive mt-1">{errors.pwdStreet}</p>}
-            </div>
-
             <LocationSelects
               province={pwdProvince}
               setProvince={setPwdProvince}
@@ -301,6 +284,23 @@ export default function PwdFormModal({
                 className={cn(errors.pwdZipCode && "border-destructive")}
               />
               {errors.pwdZipCode && <p className="text-xs text-destructive mt-1">{errors.pwdZipCode}</p>}
+            </div>
+
+            <div className="sm:col-span-2">
+              <Label>Street <span className="text-destructive">*</span></Label>
+              <Input
+                maxLength={100}
+                placeholder="123 Maple St."
+                value={pwdStreet}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9\s.\-,\/#]/g, "");
+                  setPwdStreet(cleaned);
+                  if (errors.pwdStreet) setErrors((prev) => { const { pwdStreet, ...rest } = prev; return rest; });
+                }}
+                onBlur={() => setPwdStreet(toTitleCase(pwdStreet))}
+                className={cn(errors.pwdStreet && "border-destructive")}
+              />
+              {errors.pwdStreet && <p className="text-xs text-destructive mt-1">{errors.pwdStreet}</p>}
             </div>
           </div>
         </div>

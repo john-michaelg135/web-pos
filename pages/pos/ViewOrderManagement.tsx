@@ -41,7 +41,6 @@ const LEGACY_COLORS = {
 export default function ViewOrderManagement() {
   const { data: session } = useSession();
   const token = (session as any)?.accessToken;
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
   const { user: authUser, isLoading: authLoading, can, canRead } = useAuth();
   const { scope, locations: myLocations } = useMyLocations();
 
@@ -66,6 +65,15 @@ export default function ViewOrderManagement() {
     () => myLocations.find((l) => l.isPrimary) ?? myLocations[0] ?? null,
     [myLocations]
   );
+
+  const headers = useMemo<Record<string, string>>(() => {
+    const h: Record<string, string> = {};
+    if (token) h.Authorization = `Bearer ${token}`;
+    if (assignedLocation?.locationId) {
+      h["X-Location-Id"] = String(assignedLocation.locationId);
+    }
+    return h;
+  }, [token, assignedLocation?.locationId]);
 
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "completed" | "refunds" | "voids" | "cancelled">("pending");
   const [showManagerPinDialog, setShowManagerPinDialog] = useState(false);
@@ -140,10 +148,16 @@ export default function ViewOrderManagement() {
       : [],
   });
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (targetLocId?: number) => {
     try {
       setIsLoading(true);
-      const { data } = await apiClient.apiPos.orderManagementOrdersList(undefined, { headers });
+      const locId = targetLocId ?? assignedLocation?.locationId;
+      const reqHeaders = {
+        ...headers,
+        ...(locId ? { "X-Location-Id": String(locId) } : {}),
+      };
+      const queryParams = !canSwitchLocation && locId ? { LocationId: locId } : undefined;
+      const { data } = await apiClient.apiPos.orderManagementOrdersList(queryParams, { headers: reqHeaders });
       setOrders(data.map(mapToFrontendOrder));
     } catch (error) {
       console.error("Failed to fetch orders:", error);
@@ -154,6 +168,13 @@ export default function ViewOrderManagement() {
   };
 
   useEffect(() => { setIsMounted(true); fetchOrders(); }, []);
+
+  // When assigned location loads or updates for a cashier/staff, re-fetch orders so the list is populated
+  useEffect(() => {
+    if (assignedLocation?.locationId) {
+      fetchOrders(assignedLocation.locationId);
+    }
+  }, [assignedLocation?.locationId]);
 
   // Pin non-super users to their assigned branch. Super users ("all" scope)
   // keep the "All" default and may switch freely via the filters.
@@ -197,8 +218,11 @@ export default function ViewOrderManagement() {
       if (channelTab === "web" && !isWebOrder) return false;
       if (searchQuery && !o.id.toLowerCase().includes(searchQuery.toLowerCase()) && !o.customer.toLowerCase().includes(searchQuery.toLowerCase()) && !(o.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase())) && !(o.date?.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
       if (filterType !== "All" && o.type.toLowerCase() !== filterType.toLowerCase()) return false;
-      if (filterStatus !== "All" && o.status.toLowerCase() !== filterStatus.toLowerCase()) return false;
-      if (filterLocation !== "All" && o.location.toLowerCase() !== filterLocation.toLowerCase()) return false;
+      if (filterLocation !== "All") {
+        const matchesName = o.location && o.location.toLowerCase() === filterLocation.toLowerCase();
+        const matchesAssigned = assignedLocation?.locationId != null && o.locationId === assignedLocation.locationId;
+        if (!matchesName && !matchesAssigned) return false;
+      }
       return true;
     });
   }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation, isCashierLevel, assignedLocation]);
