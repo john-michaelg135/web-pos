@@ -383,6 +383,9 @@ export default function ViewSalesProcessing() {
       } else if (!/^\d{4}$/.test(zipCode.trim())) {
         newErrors.zipCode = "Zip Code must be a 4-digit number";
       }
+      if (!notes.trim()) {
+        newErrors.notes = "Please input Notes / Customization";
+      }
     }
     if (isSeniorPWD) {
       const trimmedId = idNumber.trim();
@@ -450,7 +453,8 @@ export default function ViewSalesProcessing() {
           !city.trim() ||
           !province.trim() ||
           !zipCode.trim() ||
-          !/^\d{4}$/.test(zipCode.trim());
+          !/^\d{4}$/.test(zipCode.trim()) ||
+          !notes.trim();
         if (hasInstitutionalErrors) {
           setShowInstitutionalModal(true);
         }
@@ -1471,15 +1475,19 @@ export default function ViewSalesProcessing() {
               </div>
 
               <div className="sm:col-span-2">
-                <Label>Notes / Customization</Label>
+                <Label>Notes / Customization <span className="text-destructive">*</span></Label>
                 <Textarea
-                  placeholder="Optional notes..."
+                  placeholder="Enter notes / customization..."
                   maxLength={500}
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => {
+                    setNotes(e.target.value);
+                    if (errors.notes) setErrors(prev => { const { notes, ...rest } = prev; return rest; });
+                  }}
                   rows={4}
-                  className="resize-none"
+                  className={cn("resize-none", errors.notes && "border-destructive")}
                 />
+                {errors.notes && <p className="text-xs text-destructive mt-1">{errors.notes}</p>}
               </div>
             </div>
           </div>
@@ -1526,6 +1534,7 @@ export default function ViewSalesProcessing() {
                 if (!city.trim()) { newErrors.city = "Required"; isValid = false; }
                 if (!province.trim()) { newErrors.province = "Required"; isValid = false; }
                 if (!zipCode.trim()) { newErrors.zipCode = "Required"; isValid = false; }
+                if (!notes.trim()) { newErrors.notes = "Required"; isValid = false; }
 
                 if (!isValid) {
                   setErrors(newErrors);
