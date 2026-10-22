@@ -1166,6 +1166,8 @@ export default function ViewSalesProcessing() {
                     </div>
                   )}
 
+                  {/* Print Receipt UI - hidden for now */}
+                  {/*
                   <div className="flex items-center justify-between px-2 mt-2">
                     <span className="text-sm font-bold text-foreground/80">Print Receipt</span>
                     <input
@@ -1175,6 +1177,7 @@ export default function ViewSalesProcessing() {
                       className="w-5 h-5 cursor-pointer accent-foreground rounded border-border"
                     />
                   </div>
+                  */}
 
                   {isSeniorPWD && (
                     <div className="flex flex-col gap-2 border-t border-border pt-4 mt-2">
