@@ -1,30 +1,31 @@
 "use client";
 
-import React from "react";
-import { MoreVertical, User, Shield, Activity, LogOut } from "lucide-react";
+import React, { useState } from "react";
+import { Loader2, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 
+const LOGOUT_PATH = "/api/portal/logout";
+
 export function SidebarProfileFooter() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  if (!user) {
-    return (
-      <div className="flex items-center gap-2 p-2 rounded-xl text-xs text-muted-foreground animate-pulse">
-        Loading session...
-      </div>
-    );
-  }
+  if (!user) return null;
 
-  const { name, email, role } = user;
+  const { name, role } = user;
   const initials = name
     .split(" ")
     .map((n) => n[0])
@@ -33,68 +34,54 @@ export function SidebarProfileFooter() {
     .toUpperCase();
 
   return (
-    <div className="w-full">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <div className="flex items-center gap-2 p-2 rounded-xl hover:bg-sidebar-accent transition-colors cursor-pointer group">
-            <div className="relative shrink-0">
-              <Avatar className="w-11 h-11 border-2 border-border shadow-sm">
-                <AvatarFallback className="text-sm bg-primary text-primary-foreground font-bold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-success rounded-full border-2 border-sidebar" title="Online" />
-            </div>
-            <div className="flex-1 overflow-hidden space-y-0.5">
-              <p className="text-sm font-bold truncate text-sidebar-foreground leading-tight">{name}</p>
-              <p className="text-xs font-medium text-muted-foreground truncate leading-tight">{role}</p>
-            </div>
-            <MoreVertical className="w-4 h-4 text-muted-foreground shrink-0 group-hover:text-sidebar-foreground transition-colors" />
-          </div>
-        </DropdownMenuTrigger>
+    <div className="w-full space-y-3">
+      <div className="flex items-center gap-3 rounded-xl border border-sidebar-border bg-background p-3 shadow-xs">
+        <Avatar className="size-11 shrink-0">
+          <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="truncate text-sm font-bold leading-tight text-foreground">{name}</p>
+          <Badge variant="secondary" className="mt-1 w-fit px-2 py-0 text-[11px] font-semibold">
+            {role}
+          </Badge>
+        </div>
+      </div>
 
-        <DropdownMenuContent className="w-64 bg-popover border-border text-popover-foreground z-[99999] shadow-xl p-2" side="top" align="start">
-          <div className="p-2 bg-muted/40 rounded-lg border border-border mb-2 flex items-center gap-2">
-            <Avatar className="w-10 h-10 border border-border shrink-0">
-              <AvatarFallback className="text-xs bg-primary text-primary-foreground font-bold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col min-w-0 overflow-hidden">
-              <span className="text-xs font-bold text-foreground truncate">{name}</span>
-              <span className="text-[11px] text-muted-foreground truncate">{email}</span>
-              <Badge variant="outline" className="text-[9px] w-fit mt-1 px-1.5 py-0 font-semibold">
-                {role}
-              </Badge>
-            </div>
-          </div>
-
-          <DropdownMenuSeparator className="bg-border" />
-
-          <DropdownMenuItem className="cursor-pointer text-xs font-medium gap-2 p-2 hover:bg-accent">
-            <User className="w-3.5 h-3.5 text-muted-foreground" />
-            <span>Profile Settings</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="cursor-pointer text-xs font-medium gap-2 p-2 hover:bg-accent">
-            <Shield className="w-3.5 h-3.5 text-muted-foreground" />
-            <span>Security Options</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="cursor-pointer text-xs font-medium gap-2 p-2 hover:bg-accent">
-            <Activity className="w-3.5 h-3.5 text-muted-foreground" />
-            <span>Activity Logs</span>
-          </DropdownMenuItem>
-
-          <DropdownMenuSeparator className="bg-border" />
-
-          <DropdownMenuItem
-            onClick={logout}
-            className="cursor-pointer text-xs font-medium gap-2 p-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign out</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* The dialog's button submits this form; disabling a button in its own onClick would cancel the submission. */}
+      <form id="logout-form" action={LOGOUT_PATH} method="post" onSubmit={() => setLoggingOut(true)} />
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button type="button" variant="outline" className="w-full">
+            <LogOut aria-hidden />
+            Log out
+          </Button>
+        </DialogTrigger>
+        <DialogContent
+          onEscapeKeyDown={(event) => loggingOut && event.preventDefault()}
+          onInteractOutside={(event) => loggingOut && event.preventDefault()}
+          className="max-w-110"
+        >
+          <DialogHeader>
+            <DialogTitle>Log out?</DialogTitle>
+            <DialogDescription>
+              You will be signed out of the Enterprise Portal and every system you opened.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={loggingOut}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button type="submit" form="logout-form" disabled={loggingOut}>
+              {loggingOut && <Loader2 aria-hidden className="size-4 animate-spin" />}
+              {loggingOut ? "Signing out…" : "Log out"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
