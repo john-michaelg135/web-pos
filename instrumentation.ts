@@ -1,4 +1,9 @@
+import { devBypassEnabled } from "@/lib/portal/dev-bypass";
+
 export async function register() {
+  // An unsafe local bypass stops POS from starting at all.
+  devBypassEnabled();
+
   // Only trust the local mkcert CA during local development.
   // In production the auth service uses a real public certificate,
   // and the mkcert binary is not present on the host.
