@@ -38,8 +38,8 @@ const post = (path: string, body: unknown, secret = FAKE_SECRET) =>
     body: JSON.stringify(body),
   });
 
-/** Runs authorize then exchange over HTTP and returns the opaque handle. */
-async function handoff(): Promise<string> {
+/** Asks the fake to authorize and returns the one-time code it redirects back with. */
+async function authorizeCode(): Promise<string> {
   const authorize = new URL(`${FAKE_PORTAL_URL}/api/integrations/authorize`);
   authorize.search = new URLSearchParams({
     system: FAKE_SYSTEM,
@@ -50,14 +50,21 @@ async function handoff(): Promise<string> {
   }).toString();
 
   const granted = new URL((await fetch(authorize, { redirect: "manual" })).headers.get("location")!);
-  const exchange = await post("/api/integrations/exchange", {
-    code: granted.searchParams.get("code"),
+
+  return granted.searchParams.get("code")!;
+}
+
+const exchange = (code: string, verifier = VERIFIER) =>
+  post("/api/integrations/exchange", {
+    code,
     state: "s",
-    code_verifier: VERIFIER,
+    code_verifier: verifier,
     redirect_uri: FAKE_CALLBACK,
   });
 
-  return (await exchange.json()).handle;
+/** Runs authorize then exchange over HTTP and returns the opaque handle. */
+async function handoff(): Promise<string> {
+  return (await (await exchange(await authorizeCode())).json()).handle;
 }
 
 const validate = (handle: string, module: string) =>
@@ -117,25 +124,9 @@ describe("fake Enterprise Portal", () => {
   });
 
   it("spends a code once and rejects a wrong PKCE proof", async () => {
-    const authorize = new URL(`${FAKE_PORTAL_URL}/api/integrations/authorize`);
-    authorize.search = new URLSearchParams({
-      system: FAKE_SYSTEM,
-      redirect_uri: FAKE_CALLBACK,
-      state: "s",
-      code_challenge: createHash("sha256").update(VERIFIER).digest("base64url"),
-      code_challenge_method: "S256",
-    }).toString();
-    const code = new URL((await fetch(authorize, { redirect: "manual" })).headers.get("location")!)
-      .searchParams.get("code");
-    const exchange = (verifier: string) =>
-      post("/api/integrations/exchange", {
-        code,
-        state: "s",
-        code_verifier: verifier,
-        redirect_uri: FAKE_CALLBACK,
-      });
+    const code = await authorizeCode();
 
-    expect((await exchange("x".repeat(43))).status).toBe(400);
-    expect((await exchange(VERIFIER)).status).toBe(400);
+    expect((await exchange(code, "x".repeat(43))).status).toBe(400);
+    expect((await exchange(code)).status).toBe(400);
   });
 });
