@@ -1,5 +1,18 @@
 import { portalConfig } from "./config";
 
+export type Staff = {
+  name: string;
+  username: string;
+  email: string;
+  role: string;
+};
+
+export type Validation =
+  | { decision: "allowed"; staff: Staff }
+  | { decision: "invalid" }
+  | { decision: "denied" }
+  | { decision: "unavailable" };
+
 export type ExchangeResult =
   | { ok: true; sessionHandle: string; expiresAt: Date }
   | { ok: false; reason: "rejected" | "denied" | "unavailable" };
@@ -60,4 +73,37 @@ export async function exchangeCode(input: {
     sessionHandle: body.handle,
     expiresAt: new Date(Date.now() + body.expires_in * 1000),
   };
+}
+
+/** Asks the Enterprise Portal whether the handle may use a Module right now. */
+export async function validateSession(
+  sessionHandle: string,
+  module: string,
+): Promise<Validation> {
+  const response = await postJson("/api/integrations/validate", {
+    handle: sessionHandle,
+    module,
+  });
+
+  if (!response) {
+    return { decision: "unavailable" };
+  }
+
+  if (response.status === 401) {
+    const body = (await response.json().catch(() => null)) as { error?: string } | null;
+
+    return { decision: body?.error === "invalid_handle" ? "invalid" : "unavailable" };
+  }
+
+  if (response.status === 403) {
+    return { decision: "denied" };
+  }
+
+  const body = response.ok
+    ? ((await response.json().catch(() => null)) as { active?: boolean; staff?: Staff } | null)
+    : null;
+
+  return body?.active === true && body.staff
+    ? { decision: "allowed", staff: body.staff }
+    : { decision: "unavailable" };
 }
