@@ -89,10 +89,10 @@ describe("profile footer", () => {
 });
 
 describe("header", () => {
-  it("has the sidebar trigger and no notification bell", () => {
+  it("has the sidebar trigger and the notification bell", () => {
     shell(<Header />);
 
     expect(screen.getByRole("button", { name: /toggle sidebar/i })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /notification/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /notifications/i })).toBeTruthy();
   });
 });
