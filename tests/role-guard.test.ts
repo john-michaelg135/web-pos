@@ -131,6 +131,6 @@ describe("role guard", () => {
     await signInAda("Manager");
     portal.unavailable = true;
 
-    expect(await visit(LOCATIONS)).toBe("/unavailable");
+    expect(await visit(LOCATIONS)).toBe("/unavailable?returnTo=%2Fadmin%2Flocations");
   });
 });
