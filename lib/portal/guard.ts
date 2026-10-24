@@ -9,7 +9,7 @@ import {
   SIGN_IN_ERROR_PATH,
   UNAVAILABLE_PATH,
 } from "./config";
-import { MODULES, isOutsideEveryModule, moduleForPath } from "./modules";
+import { MODULES, moduleForPath, rolesForPath } from "./modules";
 
 const OPEN_PAGES = [NO_ACCESS_PATH, UNAVAILABLE_PATH, SIGN_IN_ERROR_PATH, SIGNING_IN_PATH];
 
@@ -35,9 +35,19 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   const signIn = () => to(`${LOGIN_PATH}?returnTo=${encodeURIComponent(`${pathname}${search}`)}`);
   const access = accessFor(request.cookies.get(SESSION_COOKIE)?.value);
 
-  if (isOutsideEveryModule(pathname)) {
-    // Held closed until the Role guard decides these pages.
-    return to(NO_ACCESS_PATH);
+  const redirectFor = (decision: Validation["decision"]) =>
+    decision === "unavailable" ? to(UNAVAILABLE_PATH) : decision === "invalid" ? signIn() : null;
+
+  const roles = rolesForPath(pathname);
+
+  if (roles) {
+    const found = await access.role();
+
+    if (found.decision === "allowed" && roles.includes(found.role)) {
+      return NextResponse.next();
+    }
+
+    return redirectFor(found.decision) ?? to(NO_ACCESS_PATH);
   }
 
   const module = moduleForPath(pathname);
@@ -45,9 +55,6 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   if (!module) {
     return NextResponse.next(); // not a POS page; the app's own 404 handles it
   }
-
-  const redirectFor = (decision: Validation["decision"]) =>
-    decision === "unavailable" ? to(UNAVAILABLE_PATH) : decision === "invalid" ? signIn() : null;
 
   const asked = await access.check(module);
 

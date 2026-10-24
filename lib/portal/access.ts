@@ -1,4 +1,5 @@
 import { validateSession, type Validation } from "./client";
+import { MODULES } from "./modules";
 import { DEV_STAFF, devBypassEnabled } from "./dev-bypass";
 
 /**
@@ -30,5 +31,23 @@ export function accessFor(
     return answer;
   }
 
-  return { check };
+  /**
+   * The Enterprise Portal returns the Role only with a positive answer for a Module, so it
+   * is read from the first Module in sidebar order the Staff member holds. Staff holding
+   * none have no readable Role.
+   */
+  async function role(): Promise<
+    { decision: "allowed"; role: string } | Exclude<Validation, { decision: "allowed" }>
+  > {
+    for (const { name } of MODULES) {
+      const answer = await check(name);
+
+      if (answer.decision === "allowed") return { decision: "allowed", role: answer.staff.role };
+      if (answer.decision !== "denied") return answer;
+    }
+
+    return { decision: "denied" };
+  }
+
+  return { check, role };
 }
