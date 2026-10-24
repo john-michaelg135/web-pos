@@ -9,7 +9,16 @@ export const MODULES = [
 ] as const;
 
 /** Starting Cash and Locations belong to no Module; the Role guard owns them. */
-const OUTSIDE_EVERY_MODULE = ["/manager/starting-cash", "/admin/locations"];
+const STARTING_CASH = "/manager/starting-cash";
+const LOCATIONS = "/admin/locations";
+
+const SUPER_ROLES = ["Super Admin", "CEO"];
+
+/** The Roles that open each page outside every Module. */
+const ROLES_FOR_PAGE: Record<string, string[]> = {
+  [STARTING_CASH]: ["Cashier", "Manager", ...SUPER_ROLES],
+  [LOCATIONS]: ["Manager", ...SUPER_ROLES],
+};
 
 const under = (pathname: string, base: string) =>
   pathname === base || pathname.startsWith(`${base}/`);
@@ -20,6 +29,9 @@ export function moduleForPath(pathname: string): string | null {
   return MODULES.find((m) => (m.path === "/" ? pathname === "/" : under(pathname, m.path)))?.name ?? null;
 }
 
-export function isOutsideEveryModule(pathname: string): boolean {
-  return OUTSIDE_EVERY_MODULE.some((base) => under(pathname, base));
+/** The Roles that may open a page outside every Module, or null for any other page. */
+export function rolesForPath(pathname: string): string[] | null {
+  const base = Object.keys(ROLES_FOR_PAGE).find((b) => under(pathname, b));
+
+  return base ? ROLES_FOR_PAGE[base] : null;
 }
