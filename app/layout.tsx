@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk, Geist_Mono } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
 import "@/app/globals.css";
 import LayoutProvider from "@/providers/LayoutProvider";
-// TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
-import { isDemoAuth } from "@/lib/demoAuthFlag";
-import { DemoAuthProvider } from "@/lib/demoAuth";
+import { headers } from "next/headers";
+import { StaffProvider } from "@/context/AuthContext";
+import { staffFromHeaders } from "@/lib/portal/staff-header";
 
 const hankenGrotesk = Hanken_Grotesk({
   variable: "--font-hanken-grotesk",
@@ -22,11 +21,13 @@ export const metadata: Metadata = {
   description: "Manufacturing Industry Capstone Project",
 };
 
-const RootLayout = ({
+const RootLayout = async ({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) => {
+  const validated = staffFromHeaders(await headers());
+
   return (
     <html
       lang="en"
@@ -34,16 +35,9 @@ const RootLayout = ({
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
-        {/* DEMO AUTH: mock session provider when the flag is on; real one otherwise. */}
-        {isDemoAuth() ? (
-          <DemoAuthProvider>
-            <LayoutProvider>{children}</LayoutProvider>
-          </DemoAuthProvider>
-        ) : (
-          <SessionProvider>
-            <LayoutProvider>{children}</LayoutProvider>
-          </SessionProvider>
-        )}
+        <StaffProvider staff={validated?.staff ?? null} modules={validated?.modules ?? []}>
+          <LayoutProvider>{children}</LayoutProvider>
+        </StaffProvider>
       </body>
     </html>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Loader2, Plus, MapPin, Users, Building2, Trash2, Pencil } from "lucide-react";
 
@@ -159,10 +159,10 @@ function ModalShell({
 }
 
 export default function ViewLocationsManagement() {
-  const { data: session, status } = useSession();
+  const { user } = useAuth();
   const router = useRouter();
 
-  const isSuperUser = !!session?.isSuperUser;
+  const isSuperUser = !!user?.isSuperUser;
 
   const [locations, setLocations] = useState<LocationResponseDto[]>([]);
   const [users, setUsers] = useState<PosUserRow[]>([]);
@@ -184,11 +184,10 @@ export default function ViewLocationsManagement() {
 
   // ── Access guard: super admins only ──
   useEffect(() => {
-    if (status === "loading") return;
     if (!isSuperUser) {
       router.replace("/access-denied");
     }
-  }, [status, isSuperUser, router]);
+  }, [isSuperUser, router]);
 
   const loadLocations = useCallback(async () => {
     try {
@@ -349,7 +348,7 @@ export default function ViewLocationsManagement() {
     }
   };
 
-  if (status === "loading" || !isSuperUser) {
+  if (!isSuperUser) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />

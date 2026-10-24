@@ -10,6 +10,7 @@ import {
   UNAVAILABLE_PATH,
 } from "./config";
 import { MODULES, isOutsideEveryModule, moduleForPath } from "./modules";
+import { MODULE_HEADER, STAFF_HEADER, encodeStaff } from "./staff-header";
 
 const OPEN_PAGES = [NO_ACCESS_PATH, UNAVAILABLE_PATH, SIGN_IN_ERROR_PATH, SIGNING_IN_PATH];
 
@@ -27,8 +28,15 @@ const isOpen = (pathname: string) =>
 export async function guard(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
 
+  // The page learns who the Staff member is from these headers, so a browser must never set them.
+  const forwarded = new Headers(request.headers);
+  forwarded.delete(STAFF_HEADER);
+  forwarded.delete(MODULE_HEADER);
+
+  const pass = () => NextResponse.next({ request: { headers: forwarded } });
+
   if (isOpen(pathname)) {
-    return NextResponse.next();
+    return pass();
   }
 
   const to = (path: string) => NextResponse.redirect(new URL(path, request.url));
@@ -45,7 +53,7 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   const module = moduleForPath(pathname);
 
   if (!module) {
-    return NextResponse.next(); // not a POS page; the app's own 404 handles it
+    return pass(); // not a POS page; the app's own 404 handles it
   }
 
   const redirectFor = (decision: Validation["decision"]) =>
@@ -54,7 +62,10 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   const asked = await access.check(module);
 
   if (asked.decision === "allowed") {
-    return NextResponse.next();
+    forwarded.set(STAFF_HEADER, encodeStaff(asked.staff));
+    forwarded.set(MODULE_HEADER, module);
+
+    return pass();
   }
 
   const stop = redirectFor(asked.decision);

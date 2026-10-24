@@ -1,12 +1,9 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import { Loader2, Clock, LogOut, RefreshCw } from "lucide-react";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { Button } from "@/components/ui/button";
-
-// Portal launcher — where the user manages their suite session (incl. sign out).
-const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "https://localhost:3000";
 
 /**
  * Global location gate.
@@ -19,8 +16,8 @@ const PORTAL_URL = process.env.NEXT_PUBLIC_PORTAL_URL || "https://localhost:3000
  * Super users bypass entirely (they are scoped to all locations).
  */
 export function LocationGate({ children }: { children: React.ReactNode }) {
-  const { data: session } = useSession();
-  const isSuperUser = !!session?.isSuperUser;
+  const { user, logout } = useAuth();
+  const isSuperUser = !!user?.isSuperUser;
 
   const { isLoading, isUnassigned } = useMyLocations();
 
@@ -73,13 +70,7 @@ export function LocationGate({ children }: { children: React.ReactNode }) {
             </Button>
             <Button
               variant="ghost"
-              onClick={async () => {
-                // Clear the local NextAuth session before leaving so a stale
-                // token can't silently restore this account, then return to the
-                // portal to sign in fresh.
-                await signOut({ redirect: false });
-                window.location.href = PORTAL_URL;
-              }}
+              onClick={logout}
               className="gap-2 text-muted-foreground"
             >
               <LogOut className="h-4 w-4" />

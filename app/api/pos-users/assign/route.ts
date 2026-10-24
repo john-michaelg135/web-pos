@@ -40,12 +40,6 @@ interface ExistingAssignment {
  * the "two branches on one name" state the UI can't represent.
  */
 export async function POST(request: NextRequest) {
-  // TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
-  // No real backend/token in demo mode; accept the assignment as a visual no-op.
-  if (process.env.NEXT_PUBLIC_DEMO_AUTH === "true") {
-    return NextResponse.json({ success: true, demo: true }, { status: 201 });
-  }
-
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 
@@ -136,11 +130,6 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  // TEMPORARY DEMO AUTH — remove after br-auth integration. See lib/demoAuth.tsx.
-  if (process.env.NEXT_PUBLIC_DEMO_AUTH === "true") {
-    return NextResponse.json({ success: true, demo: true });
-  }
-
   const { session, error } = await requireSuperAdmin();
   if (error) return error;
 

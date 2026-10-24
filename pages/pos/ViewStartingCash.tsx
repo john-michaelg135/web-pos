@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Banknote, Loader2, Plus, RefreshCw } from "lucide-react";
 import { apiClient } from "@/components/module-pos/api";
 import { useAuth } from "@/context/AuthContext";
 import { useMyLocations } from "@/lib/useMyLocations";
-import { POS_MODULES } from "@/lib/permissions";
+import { isManager as isManagerRole } from "@/lib/portal/roles";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -44,14 +43,12 @@ export function ViewStartingCash({
   dateTo: propDateTo,
   onRecordsChange,
 }: ViewStartingCashProps = {}) {
-  const { data: session } = useSession();
-  const token = (session as any)?.accessToken;
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const { user: authUser, isLoading: authLoading, can } = useAuth();
+  const headers = {};
+  const { user: authUser, isLoading: authLoading } = useAuth();
   const { scope: locScope, locations: myLocations } = useMyLocations();
   const router = useRouter();
 
-  const hasAccess = !!authUser && can(POS_MODULES.ORDER_MANAGEMENT, "approve");
+  const hasAccess = !!authUser && (authUser.isSuperUser || isManagerRole(authUser.role));
 
   // Determine effective location: managers are pinned to their assigned branch
   const assignedLocationId = locScope === "assigned" && myLocations.length > 0 ? myLocations[0].locationId : undefined;
@@ -127,7 +124,7 @@ export function ViewStartingCash({
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDateFrom, activeDateTo, effectiveLocationId, token]);
+  }, [activeDateFrom, activeDateTo, effectiveLocationId]);
 
   useEffect(() => {
     if (hasAccess) fetchRecords();
@@ -163,7 +160,7 @@ export function ViewStartingCash({
     }
     setIsSubmitting(true);
     try {
-      const managerName = authUser?.username || session?.user?.name || "Manager";
+      const managerName = authUser?.username || "Manager";
       await apiClient.instance.post(
         "/api-pos/starting-cash",
         {
