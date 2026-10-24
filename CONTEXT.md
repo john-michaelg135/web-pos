@@ -13,9 +13,9 @@ The central sign-in site that Staff sign in through and are sent into POS from. 
 _Avoid_: Portal (on its own), Auth app, login site
 
 **Module**:
-A feature area of POS that the Enterprise Portal grants or revokes per Staff member. The six are Dashboard, Sales Processing, Order Management, Product Management, Stock Management and Sales Reports. Each POS page belongs to exactly one Module, and a Staff member without a Module cannot open its pages or any page beneath them. Starting Cash and Locations belong to no Module.
+A feature area of POS that the Enterprise Portal grants or revokes per Staff member. The seven are Dashboard, Sales Processing, Order Management, Product Management, Stock Management, Sales Reports and Location Management. Each POS page belongs to exactly one Module, and a Staff member without a Module cannot open its pages or any page beneath them. Starting Cash belongs to no Module.
 _Avoid_: Permission, feature, role
 
 **Role**:
-The label the Enterprise Portal returns for a Staff member, such as Cashier, Manager or Super Admin. For most Roles it never decides Module access; only the Modules granted to that Staff member do. Super Admin and CEO are the exception: they open every Module and every page, whatever the Enterprise Portal granted. The two pages outside every Module are also decided by Role: Starting Cash opens for Cashier and Manager, and Locations for Manager only, and Super Admin and CEO open both.
+The label the Enterprise Portal returns for a Staff member, such as Cashier, Manager or Super Admin. For most Roles it never decides Module access; only the Modules granted to that Staff member do. Super Admin and CEO are the exception: they open every Module and every page, whatever the Enterprise Portal granted. The one page outside every Module, Starting Cash, is also decided by Role: it opens for Cashier, Manager, Super Admin and CEO.
 _Avoid_: Permission group, access level

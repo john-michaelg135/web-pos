@@ -12,8 +12,8 @@ import { FAKE_PORTAL_URL, FAKE_SECRET, FAKE_SYSTEM, FakePortal, portalFetch } fr
 vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 
 const APP = "https://localhost:3002";
-const ALL = ["Dashboard", "Sales Processing", "Order Management", "Product Management", "Stock Management", "Sales Reports"];
-const PATHS = ["/", "/sales-processing", "/order-management", "/product-management", "/stock-management", "/manager/reports"];
+const ALL = ["Dashboard", "Sales Processing", "Order Management", "Product Management", "Stock Management", "Sales Reports", "Location Management"];
+const PATHS = ["/", "/sales-processing", "/order-management", "/product-management", "/stock-management", "/manager/reports", "/location-management"];
 
 async function signIn(role: string, modules: string[]) {
   const portal = new FakePortal();
@@ -57,7 +57,7 @@ afterEach(() => {
 });
 
 describe("Super Admin and CEO sidebar", () => {
-  it.each(["Super Admin", "CEO"])("shows all six Modules to a %s granted only the Dashboard, and every page opens", async (role) => {
+  it.each(["Super Admin", "CEO"])("shows all seven Modules to a %s granted only the Dashboard, and every page opens", async (role) => {
     const handle = await signIn(role, ["Dashboard"]);
     const cookie = `pos_session=${handle}`;
     const forwarded = (response: Response) =>

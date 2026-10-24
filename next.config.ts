@@ -5,6 +5,12 @@ import type { NextConfig } from "next";
 const apiPosUrl = process.env.API_POS_URL || "http://localhost:5005";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: "/admin/locations", destination: "/location-management", permanent: true },
+      { source: "/admin/locations/:path*", destination: "/location-management/:path*", permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {

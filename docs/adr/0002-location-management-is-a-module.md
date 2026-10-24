@@ -1,0 +1,3 @@
+# Location Management is a Module, not a Role-gated page
+
+Locations used to belong to no Module and opened for Manager by Role, while the Enterprise Portal already seeded a "Location/Branch Management" Module that POS ignored. Keeping two sources of truth let the Portal's grants and POS's access drift apart, so Locations is now the seventh Module, **Location Management**, at `/location-management`, granted by the Enterprise Portal like the other six. The trade-off is a one-off migration in the Enterprise Portal: the Module is renamed in place so existing grants carry over, and every Manager is granted it so none loses the access they had by Role. `/admin/locations` redirects permanently to the new path. Starting Cash remains the only page outside every Module.

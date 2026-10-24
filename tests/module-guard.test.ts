@@ -1,3 +1,4 @@
+import nextConfig from "../next.config";
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { guard } from "@/lib/portal/guard";
@@ -18,6 +19,7 @@ const ALL = [
   "Product Management",
   "Stock Management",
   "Sales Reports",
+  "Location Management",
 ];
 
 let portal: FakePortal;
@@ -95,6 +97,19 @@ const visit = async (path: string, withSession = true) => {
 };
 
 describe("module guard", () => {
+  it("turns away a Manager without Location Management, whatever the Role", async () => {
+    await signInAda(["Dashboard"], "Manager");
+
+    expect(await visit("/location-management")).toBe("/");
+  });
+
+  it("redirects /admin/locations permanently to /location-management", async () => {
+    const redirects = await nextConfig.redirects!();
+    const old = redirects.find((r) => r.source === "/admin/locations");
+
+    expect(old).toMatchObject({ destination: "/location-management", permanent: true });
+  });
+
   it.each([
     ["/", "Dashboard"],
     ["/sales-processing", "Sales Processing"],
@@ -102,6 +117,7 @@ describe("module guard", () => {
     ["/product-management", "Product Management"],
     ["/stock-management", "Stock Management"],
     ["/manager/reports", "Sales Reports"],
+    ["/location-management", "Location Management"],
   ])("opens %s only with the %s Module, and its child paths follow", async (path, module) => {
     await signInAda([module]);
     expect(await visit(path)).toBe("pass");
