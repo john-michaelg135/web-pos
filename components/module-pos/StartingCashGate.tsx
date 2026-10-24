@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { isManager as isManagerRole } from "@/lib/portal/roles";
+import { startingCashRule } from "@/lib/portal/roles";
 import { apiClient } from "@/components/module-pos/api";
 import { Button } from "@/components/ui/button";
 
@@ -25,8 +25,6 @@ interface StartingCashGateProps {
   locationId: number;
   /** Tells the parent whether today's starting cash is recorded (gates selling). */
   onChange?: (declared: boolean) => void;
-  /** Where to send the user if they decline to enter starting cash. */
-  backHref?: string;
 }
 
 const peso = (n: number) =>
@@ -52,57 +50,38 @@ const errorMessage = (err: any, fallback: string) => {
  * shows a slim status bar.
  *
  * Rules:
- * - Super admin: never prompted; selling is never blocked.
- * - Manager: prompted initially once daily when starting cash is undeclared, but
- *   has a "Not now" button to dismiss and proceed.
- * - Cashier: mandatory daily prompt (no "Not now"); selling is blocked until declared.
+ * The Role the Enterprise Portal returns decides (see startingCashRule):
+ * - Super Admin and CEO: never prompted; selling is never blocked.
+ * - Cashier, Manager and any unknown Role: mandatory daily prompt with no way to
+ *   dismiss it; selling is blocked until declared.
  */
 export default function StartingCashGate({ locationId, onChange }: StartingCashGateProps) {
   const { user: authUser, isLoading: authLoading } = useAuth();
   const headers = {};
 
-  const isSuperUser = !!authUser?.isSuperUser;
-
-  const isManager = !isSuperUser && isManagerRole(authUser?.role);
+  const isSuperUser = startingCashRule(authUser?.role) === "exempt";
 
   const currentCashierName = authUser?.username || authUser?.email || "";
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [entry, setEntry] = useState<StartingCashEntry | null>(null);
-  const [dismissed, setDismissed] = useState(false);
   const [amount, setAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  // Super users never need starting cash; managers who chose "Not now" today are unblocked
+  // Super Admin and CEO never need starting cash
   useEffect(() => {
-    if (isSuperUser) {
-      onChange?.(true);
-      return;
-    }
-    if (isManager && locationId) {
-      try {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        if (sessionStorage.getItem(`starting_cash_dismissed_${locationId}_${todayStr}`) === "true") {
-          setDismissed(true);
-          onChange?.(true);
-        }
-      } catch {}
-    }
-  }, [isSuperUser, isManager, locationId, onChange]);
+    if (isSuperUser) onChange?.(true);
+  }, [isSuperUser, onChange]);
 
   const apply = useCallback(
     (next: StartingCashEntry | null) => {
       setEntry(next);
-      if (next || isSuperUser || dismissed) {
-        onChange?.(true);
-      } else {
-        onChange?.(false);
-      }
+      onChange?.(!!next || isSuperUser);
     },
-    [onChange, isSuperUser, dismissed]
+    [onChange, isSuperUser]
   );
 
   const fetchToday = useCallback(async () => {
@@ -129,15 +108,6 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
   useEffect(() => {
     fetchToday();
   }, [fetchToday]);
-
-  const handleManagerSkip = () => {
-    setDismissed(true);
-    onChange?.(true);
-    try {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      sessionStorage.setItem(`starting_cash_dismissed_${locationId}_${todayStr}`, "true");
-    } catch {}
-  };
 
   const handleSave = async () => {
     const value = parseFloat(amount);
@@ -176,8 +146,7 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
     !authLoading &&
     !loading &&
     !entry &&
-    !isSuperUser &&
-    !dismissed;
+    !isSuperUser;
 
   const prompt = showPrompt
     ? createPortal(
@@ -268,7 +237,7 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
                   padding: "12px 24px",
                   borderTop: "1px solid #e4e4e7",
                   display: "flex",
-                  justifyContent: isManager ? "space-between" : "flex-end",
+                  justifyContent: "flex-end",
                   alignItems: "center",
                   gap: 8,
                   backgroundColor: "#fafafa",
@@ -276,11 +245,6 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
                   flexShrink: 0,
                 }}
               >
-                {isManager && (
-                  <Button variant="outline" onClick={handleManagerSkip}>
-                    Not now
-                  </Button>
-                )}
                 <Button
                   onClick={handleSave}
                   disabled={isSaving || amount === "" || amount === "."}
@@ -309,19 +273,6 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
           <span className="text-muted-foreground">
             At {new Date(entry.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
-        </div>
-      )}
-      {isManager && dismissed && !entry && (
-        <div className="shrink-0 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-muted bg-muted/30 px-4 py-2 text-sm">
-          <span className="text-muted-foreground">Starting cash not yet declared for this shift.</span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs"
-            onClick={() => setDismissed(false)}
-          >
-            Add starting cash
-          </Button>
         </div>
       )}
       {prompt}
