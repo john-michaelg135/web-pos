@@ -89,7 +89,7 @@ export function canAccessPath(
 ): boolean {
   if (isSuperUser) return true;
   const moduleName = moduleForPath(pathname);
-  if (!moduleName) return true; // unmapped route (e.g. /access-denied, /signin)
+  if (!moduleName) return true; // unmapped route (e.g. /no-access)
   return canRead(permissions, moduleName);
 }
 

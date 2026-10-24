@@ -395,7 +395,7 @@ export default function ViewOrderManagement() {
 
   const hasAccess = !!authUser && canViewOrders;
 
-  useEffect(() => { if (!authLoading && !hasAccess) router.replace("/access-denied"); }, [authUser, authLoading, hasAccess, router]);
+  useEffect(() => { if (!authLoading && !hasAccess) router.replace("/no-access"); }, [authUser, authLoading, hasAccess, router]);
 
   if (authLoading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   if (!hasAccess || !isMounted) return null;

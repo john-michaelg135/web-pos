@@ -71,7 +71,7 @@ export function ViewStartingCash({
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!embedded && !authLoading && !hasAccess) router.replace("/access-denied");
+    if (!embedded && !authLoading && !hasAccess) router.replace("/no-access");
   }, [embedded, authLoading, hasAccess, router]);
 
   // Sync selectedBranchId if effectiveLocationId is resolved
