@@ -103,6 +103,12 @@ describe("module guard", () => {
     expect(await visit("/location-management")).toBe("/");
   });
 
+  it("turns away a Cashier without Location Management from /location-management", async () => {
+    await signInAda(["Dashboard"], "Cashier");
+
+    expect(await visit("/location-management")).not.toBe("pass");
+  });
+
   it("redirects /admin/locations permanently to /location-management", async () => {
     const redirects = await nextConfig.redirects!();
     const old = redirects.find((r) => r.source === "/admin/locations");
