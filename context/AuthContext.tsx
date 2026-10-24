@@ -6,7 +6,7 @@ import type { Staff } from "@/lib/portal/client";
 import { canUse, isSuperUser } from "@/lib/portal/roles";
 
 type User = Staff & {
-  /** Kept so existing callers that read a user id keep compiling; the Portal sends no numeric id. */
+  /** Kept so existing callers that read a user id keep compiling; the Enterprise Portal sends no numeric id. */
   id: string;
   /** Super Admin and CEO. */
   isSuperUser: boolean;

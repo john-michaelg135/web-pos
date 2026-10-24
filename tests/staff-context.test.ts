@@ -15,7 +15,7 @@ describe("can()", () => {
 });
 
 describe("Role-name checks", () => {
-  it("reads Manager and Super Admin from the Portal role", () => {
+  it("reads Manager and Super Admin from the Enterprise Portal role", () => {
     expect(isManager("Manager")).toBe(true);
     expect(isManager("Cashier")).toBe(false);
     expect(isSuperUser("Super Admin")).toBe(true);
