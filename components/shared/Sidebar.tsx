@@ -25,17 +25,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { mainNavItems, settingsNavItem, systems } from "./SidebarNav";
+import { absoluteUrl, navItemsFor, systems } from "./SidebarNav";
+import { ReturningToPortalCard } from "./ReturningToPortalCard";
 import { SidebarProfileFooter } from "./SidebarProfileFooter";
 import { useAuth } from "@/context/AuthContext";
-import { isManager } from "@/lib/portal/roles";
+import { MODULES } from "@/lib/portal/modules";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { can } = useAuth();
   const { open, openMobile, setOpenMobile, toggleSidebar, isMobile } =
     useSidebar();
   const [mounted, setMounted] = useState(false);
+  const [returning, setReturning] = useState<string | null>(null);
 
   React.useEffect(() => {
     setMounted(true);
@@ -53,17 +55,11 @@ export function Sidebar() {
     return null;
   }
 
-  const SettingsIcon = settingsNavItem.icon;
-  const isSettingsActive = pathname === settingsNavItem.href;
-
-  // The module guard keeps Staff off pages they may not open; narrowing the
-  // sidebar to the allowed Modules comes with the new sidebar.
-  const visibleNavItems = mainNavItems;
-
-  const showSettings = !!user && (user.isSuperUser || isManager(user.role));
+  const visibleNavItems = navItemsFor(MODULES.map((m) => m.name).filter((name) => can(name)));
 
   return (
     <>
+      {returning && <ReturningToPortalCard portalUrl={returning} />}
       {isMobile && (
         <div
           onClick={toggleSidebar}
@@ -82,7 +78,7 @@ export function Sidebar() {
                         Bren Raphael&apos;s
                       </h1>
                       <button className="text-xs font-semibold bg-violet-500 text-white px-2 py-0.5 rounded truncate mt-0.5">
-                        Point of Sale
+                        POS
                       </button>
                     </div>
                     <ChevronsUpDown className="w-4 h-4 text-muted-foreground shrink-0 group-hover:text-sidebar-foreground transition-colors" />
@@ -94,7 +90,7 @@ export function Sidebar() {
                   side="bottom"
                 >
                   <DropdownMenuLabel className="text-xs text-muted-foreground font-semibold">
-                    Select Enterprise Module
+                    Switch system
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border" />
                   {systems.map((sys) => {
@@ -102,6 +98,12 @@ export function Sidebar() {
                     return (
                       <DropdownMenuItem
                         key={sys.fullName}
+                        onSelect={() => {
+                          if (sys.active || !sys.url) return;
+                          const url = absoluteUrl(sys.url);
+                          if (sys.isPortal) setReturning(url);
+                          else window.location.assign(url);
+                        }}
                         className="cursor-pointer text-xs flex items-center justify-between py-2 px-2 hover:bg-accent font-medium"
                       >
                         <div className="flex items-center gap-2 overflow-hidden">
@@ -165,23 +167,6 @@ export function Sidebar() {
         </SidebarContent>
 
         <SidebarFooter className="p-2 border-t border-border space-y-2">
-          {showSettings && (
-            <SidebarMenu>
-              <SidebarMenuItem key={settingsNavItem.name}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isSettingsActive}
-                  className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition-colors"
-                >
-                  <Link href={settingsNavItem.href} onClick={handleNavClick}>
-                    <SettingsIcon className="w-4 h-4 shrink-0" />
-                    <span>{settingsNavItem.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          )}
-
           <div className="pt-2 border-t border-border">
             <SidebarProfileFooter />
           </div>
