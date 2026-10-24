@@ -3,7 +3,6 @@ export const HANDOFF_COOKIE = "pos_handoff";
 export const CALLBACK_PATH = "/api/portal/callback";
 export const LOGIN_PATH = "/api/portal/login";
 export const SIGNING_IN_PATH = "/signing-in";
-export const LOGOUT_PATH = "/api/portal/logout";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -16,7 +15,11 @@ function required(name: string): string {
 }
 
 export function portalConfig() {
-  const appUrl = (process.env.POS_APP_URL ?? "https://localhost:3002").replace(/\/$/, "");
+  const appUrl = (
+    process.env.NODE_ENV === "production"
+      ? required("POS_APP_URL")
+      : (process.env.POS_APP_URL ?? "https://localhost:3002")
+  ).replace(/\/$/, "");
 
   const portalUrl = required("PORTAL_URL").replace(/\/$/, "");
 
