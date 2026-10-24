@@ -14,6 +14,11 @@ function required(name: string): string {
   return value;
 }
 
+/** The Enterprise Portal's address, for pages that only link back to it. */
+export function portalUrl(): string {
+  return required("PORTAL_URL").replace(/\/$/, "");
+}
+
 export function portalConfig() {
   const appUrl = (
     process.env.NODE_ENV === "production"

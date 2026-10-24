@@ -32,7 +32,9 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   }
 
   const to = (path: string) => NextResponse.redirect(new URL(path, request.url));
-  const signIn = () => to(`${LOGIN_PATH}?returnTo=${encodeURIComponent(`${pathname}${search}`)}`);
+  const returnTo = encodeURIComponent(`${pathname}${search}`);
+  const signIn = () => to(`${LOGIN_PATH}?returnTo=${returnTo}`);
+  const unavailable = () => to(`${UNAVAILABLE_PATH}?returnTo=${returnTo}`);
   const access = accessFor(request.cookies.get(SESSION_COOKIE)?.value);
 
   if (isOutsideEveryModule(pathname)) {
@@ -47,7 +49,7 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   }
 
   const redirectFor = (decision: Validation["decision"]) =>
-    decision === "unavailable" ? to(UNAVAILABLE_PATH) : decision === "invalid" ? signIn() : null;
+    decision === "unavailable" ? unavailable() : decision === "invalid" ? signIn() : null;
 
   const asked = await access.check(module);
 
