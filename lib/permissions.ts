@@ -9,7 +9,7 @@
  * br-auth POS module names (from the auth service seeder):
  *   "Dashboard", "Sales Processing", "Order Management",
  *   "Product Management/Price Configuration", "Sales Report Analytics",
- *   "Location/Branch Management", "Stock Management"
+ *   "Stock Management"
  */
 
 export type PosAction = "read" | "write" | "update" | "delete" | "approve" | "export";
@@ -30,7 +30,6 @@ export const POS_MODULES = {
   ORDER_MANAGEMENT: "Order Management",
   PRODUCT_MANAGEMENT: "Product Management",
   SALES_REPORTS: "Sales Reports",
-  LOCATIONS: "Location/Branch Management",
   STOCK_MANAGEMENT: "Stock Management",
 } as const;
 
@@ -45,7 +44,6 @@ const ROUTE_MODULE_MAP: { prefix: string; module: string }[] = [
   { prefix: "/stock-management", module: POS_MODULES.STOCK_MANAGEMENT },
   { prefix: "/manager/reports", module: POS_MODULES.SALES_REPORTS },
   { prefix: "/manager/starting-cash", module: POS_MODULES.ORDER_MANAGEMENT },
-  { prefix: "/admin/locations", module: POS_MODULES.LOCATIONS },
   { prefix: "/", module: POS_MODULES.DASHBOARD },
 ];
 
@@ -104,7 +102,6 @@ const LANDING_ORDER: { path: string; module: string }[] = [
   { path: "/product-management", module: POS_MODULES.PRODUCT_MANAGEMENT },
   { path: "/stock-management", module: POS_MODULES.STOCK_MANAGEMENT },
   { path: "/manager/reports", module: POS_MODULES.SALES_REPORTS },
-  { path: "/admin/locations", module: POS_MODULES.LOCATIONS },
 ];
 
 /**

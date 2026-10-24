@@ -39,12 +39,28 @@ describe("sidebar", () => {
     ]);
   });
 
-  it("shows all six Modules when all are allowed, and no Admin item", () => {
-    const html = render(navItemsFor(["Dashboard", "Sales Processing", "Order Management", "Product Management", "Stock Management", "Sales Reports"]).map((i) => i.name));
+  it("shows Location Management under an ADMIN group at the bottom, highlighted on its page", () => {
+    pathname = "/location-management";
+    const html = render(["Dashboard", "Sales Reports", "Location Management"]);
+    const labels = [...html.matchAll(/<li aria-hidden="true" class="[^"]*">([A-Z]+)<\/li>/g)].map((m) => m[1]);
 
-    expect(linkTexts(html)).toHaveLength(6);
-    expect(html).not.toContain("Admin");
-    expect(html).not.toContain("/admin/locations");
+    expect(linkTexts(html)).toEqual(["Dashboard", "Sales Reports", "Location Management"]);
+    expect(labels).toEqual(["INSIGHTS", "ADMIN"]);
+    expect(html).toContain('href="/location-management"');
+    expect(activeLinks(html)).toEqual(["Location Management"]);
+  });
+
+  it("hides Location Management and its ADMIN heading from Staff without the Module", () => {
+    const html = render(["Dashboard", "Sales Reports"]);
+
+    expect(html).not.toContain("Location Management");
+    expect(html).not.toContain("ADMIN");
+  });
+
+  it("shows all seven Modules when all are allowed", () => {
+    const names = ["Dashboard", "Sales Processing", "Order Management", "Product Management", "Stock Management", "Sales Reports", "Location Management"];
+
+    expect(linkTexts(render(names))).toEqual(names);
   });
 
   it("groups the Modules under SALES, CATALOG and INSIGHTS, with Dashboard alone on top", () => {

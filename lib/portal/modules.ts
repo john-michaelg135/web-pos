@@ -1,4 +1,4 @@
-/** The six Modules, named as the Enterprise Portal seeds them, in sidebar order. */
+/** The seven Modules, named as the Enterprise Portal seeds them, in sidebar order. */
 export const MODULES = [
   { name: "Dashboard", path: "/" },
   { name: "Sales Processing", path: "/sales-processing" },
@@ -6,18 +6,17 @@ export const MODULES = [
   { name: "Product Management", path: "/product-management" },
   { name: "Stock Management", path: "/stock-management" },
   { name: "Sales Reports", path: "/manager/reports" },
+  { name: "Location Management", path: "/location-management" },
 ] as const;
 
-/** Starting Cash and Locations belong to no Module; the Role guard owns them. */
+/** Starting Cash belongs to no Module; the Role guard owns it. */
 const STARTING_CASH = "/manager/starting-cash";
-const LOCATIONS = "/admin/locations";
 
 const SUPER_ROLES = ["Super Admin", "CEO"];
 
 /** The Roles that open each page outside every Module. */
 const ROLES_FOR_PAGE: Record<string, string[]> = {
   [STARTING_CASH]: ["Cashier", "Manager", ...SUPER_ROLES],
-  [LOCATIONS]: ["Manager", ...SUPER_ROLES],
 };
 
 const under = (pathname: string, base: string) =>
