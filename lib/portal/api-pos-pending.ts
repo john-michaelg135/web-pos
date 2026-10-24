@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
  * api-pos accepts Enterprise Portal authentication:
  *
  * - GET  /api/my-locations       (location scope of the current Staff)
- * - GET  /api/pos-users          (employee list merged with location assignments)
+ * - GET  /api/pos-users          (Staff list merged with location assignments)
  * - POST /api/pos-users/assign   (assign or unassign a location)
  * - Order management data        (api-pos reads made with the Bearer token)
  * - Starting cash data           (api-pos reads made with the Bearer token)

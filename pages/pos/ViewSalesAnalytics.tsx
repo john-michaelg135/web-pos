@@ -164,7 +164,7 @@ export function ViewSalesAnalytics() {
   const hasAccess = !!authUser && canRead(POS_MODULES.SALES_REPORTS);
 
   useEffect(() => {
-    if (!authLoading && !hasAccess) router.replace("/access-denied");
+    if (!authLoading && !hasAccess) router.replace("/no-access");
   }, [authUser, authLoading, hasAccess, router]);
 
   if (authLoading || locLoading)

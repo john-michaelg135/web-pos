@@ -202,7 +202,7 @@ export function ViewStockManagement() {
   const hasAccess = !!authUser && canRead(POS_MODULES.STOCK_MANAGEMENT);
 
   useEffect(() => {
-    if (!authLoading && !hasAccess) router.replace("/access-denied");
+    if (!authLoading && !hasAccess) router.replace("/no-access");
   }, [authUser, authLoading, hasAccess, router]);
 
   if (authLoading) {

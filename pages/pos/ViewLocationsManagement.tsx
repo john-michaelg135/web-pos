@@ -185,7 +185,7 @@ export default function ViewLocationsManagement() {
   // ── Access guard: super admins only ──
   useEffect(() => {
     if (!isSuperUser) {
-      router.replace("/access-denied");
+      router.replace("/no-access");
     }
   }, [isSuperUser, router]);
 

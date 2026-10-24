@@ -893,7 +893,7 @@ export default function ViewSalesProcessing() {
 
   useEffect(() => {
     if (!authLoading && !hasAccess) {
-      router.replace("/access-denied");
+      router.replace("/no-access");
     }
   }, [authUser, authLoading, hasAccess, router]);
 
