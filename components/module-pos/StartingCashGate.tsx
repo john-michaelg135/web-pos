@@ -85,6 +85,10 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
   );
 
   const fetchToday = useCallback(async () => {
+    if (isSuperUser) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await apiClient.instance.get("/api-pos/starting-cash/today", {
@@ -103,7 +107,7 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationId, currentCashierName, apply]);
+  }, [locationId, currentCashierName, apply, isSuperUser]);
 
   useEffect(() => {
     fetchToday();
