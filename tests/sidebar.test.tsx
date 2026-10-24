@@ -55,6 +55,25 @@ describe("sidebar", () => {
     expect(html.indexOf("Dashboard")).toBeLessThan(html.indexOf("SALES"));
   });
 
+  it("leaves out a group label when the Staff member holds none of its Modules", () => {
+    const html = render(["Dashboard", "Sales Processing", "Sales Reports"]);
+    const labels = [...html.matchAll(/<li aria-hidden="true" class="[^"]*">([A-Z]+)<\/li>/g)].map((m) => m[1]);
+
+    expect(labels).toEqual(["SALES", "INSIGHTS"]);
+  });
+
+  it("sets items in 15px medium text with 18px icons", () => {
+    const html = render(["Dashboard"]);
+
+    expect(html).toContain("text-[15px]");
+    expect(html).toContain("font-medium");
+    expect(html).toContain("size-[18px]");
+  });
+
+  it("is 288px wide", () => {
+    expect(render(["Dashboard"])).toContain("w-72");
+  });
+
   it("shows the Point of Sale badge and the brand logo", () => {
     const html = render(["Dashboard"]);
 

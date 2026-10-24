@@ -16,7 +16,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
-  const marginClass = !mounted || open ? "md:ml-64" : "md:ml-0";
+  const marginClass = !mounted || open ? "md:ml-72" : "md:ml-0";
 
   return (
     <div
