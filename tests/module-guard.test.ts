@@ -158,6 +158,18 @@ describe("module guard", () => {
     expect(await visit("/")).toBe("/unavailable");
   });
 
+  it("shows unavailable when the Enterprise Portal fails while looking for another page", async () => {
+    await signInAda(["Stock Management"]);
+    const working = fetch;
+    let calls = 0;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (++calls > 1) throw new Error("network down");
+      return working(input, init);
+    });
+
+    expect(await visit("/order-management")).toBe("/unavailable");
+  });
+
   it.each(["/no-access", "/unavailable", "/sign-in-error", "/signing-in", "/api/portal/login", "/api/portal/logout", "/api-pos/orders", "/api/my-locations"])(
     "does not guard %s",
     async (path) => {

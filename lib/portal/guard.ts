@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { accessFor } from "./access";
+import type { Validation } from "./client";
 import {
   LOGIN_PATH,
   NO_ACCESS_PATH,
@@ -45,19 +46,18 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
     return NextResponse.next(); // not a POS page; the app's own 404 handles it
   }
 
+  const redirectFor = (decision: Validation["decision"]) =>
+    decision === "unavailable" ? to(UNAVAILABLE_PATH) : decision === "invalid" ? signIn() : null;
+
   const asked = await access.check(module);
 
   if (asked.decision === "allowed") {
     return NextResponse.next();
   }
 
-  if (asked.decision === "unavailable") {
-    return to(UNAVAILABLE_PATH);
-  }
+  const stop = redirectFor(asked.decision);
 
-  if (asked.decision === "invalid") {
-    return signIn();
-  }
+  if (stop) return stop;
 
   for (const candidate of MODULES) {
     if (candidate.name === module) continue;
@@ -65,8 +65,10 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
     const found = await access.check(candidate.name);
 
     if (found.decision === "allowed") return to(candidate.path);
-    if (found.decision === "unavailable") return to(UNAVAILABLE_PATH);
-    if (found.decision === "invalid") return signIn();
+
+    const halted = redirectFor(found.decision);
+
+    if (halted) return halted;
   }
 
   return to(NO_ACCESS_PATH);
