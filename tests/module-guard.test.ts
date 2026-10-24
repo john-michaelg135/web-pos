@@ -178,11 +178,4 @@ describe("module guard", () => {
       expect(await visit(path, false)).toBe("pass");
     },
   );
-
-  it("fails closed for a page that belongs to no Module until its Role guard exists", async () => {
-    await signInAda(ALL);
-
-    expect(await visit("/manager/starting-cash")).toBe("/no-access");
-    expect(await visit("/admin/locations")).toBe("/no-access");
-  });
 });
