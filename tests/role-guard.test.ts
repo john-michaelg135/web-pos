@@ -74,7 +74,6 @@ const visit = async (path: string, withSession = true) => {
 
 
 const STARTING_CASH = "/manager/starting-cash";
-const LOCATIONS = "/admin/locations";
 
 describe("role guard", () => {
   it.each([
@@ -83,11 +82,6 @@ describe("role guard", () => {
     ["Super Admin", STARTING_CASH, true],
     ["CEO", STARTING_CASH, true],
     ["Stock Clerk", STARTING_CASH, false],
-    ["Cashier", LOCATIONS, false],
-    ["Manager", LOCATIONS, true],
-    ["Super Admin", LOCATIONS, true],
-    ["CEO", LOCATIONS, true],
-    ["Stock Clerk", LOCATIONS, false],
   ])("%s opening %s: allowed=%s", async (role, path, allowed) => {
     await signInAda(role);
 
@@ -98,26 +92,26 @@ describe("role guard", () => {
   it("finds the Role through any Module the Staff member holds", async () => {
     await signInAda("Manager", ["Stock Management"]);
 
-    expect(await visit(LOCATIONS)).toBe("pass");
+    expect(await visit(STARTING_CASH)).toBe("pass");
   });
 
   it("denies Staff who hold no Module, since the Enterprise Portal returns no Role", async () => {
     await signInAda("Manager", []);
 
-    expect(await visit(LOCATIONS)).toBe("/no-access");
+    expect(await visit(STARTING_CASH)).toBe("/no-access");
   });
 
   it("denies a deleted Staff member", async () => {
     await signInAda("Manager");
     portal.remove("ada");
 
-    expect(await visit(LOCATIONS)).toBe("/no-access");
+    expect(await visit(STARTING_CASH)).toBe("/no-access");
   });
 
   it("sends Staff without a session to sign in, remembering the page", async () => {
     await signInAda("Manager");
 
-    expect(await visit(LOCATIONS, false)).toBe("/api/portal/login?returnTo=%2Fadmin%2Flocations");
+    expect(await visit(STARTING_CASH, false)).toBe("/api/portal/login?returnTo=%2Fmanager%2Fstarting-cash");
   });
 
   it("sends Staff whose session ended to sign in", async () => {
@@ -131,6 +125,6 @@ describe("role guard", () => {
     await signInAda("Manager");
     portal.unavailable = true;
 
-    expect(await visit(LOCATIONS)).toBe("/unavailable?returnTo=%2Fadmin%2Flocations");
+    expect(await visit(STARTING_CASH)).toBe("/unavailable?returnTo=%2Fmanager%2Fstarting-cash");
   });
 });

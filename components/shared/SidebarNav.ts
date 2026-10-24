@@ -9,6 +9,7 @@ import {
   Users2,
   CreditCard,
   Boxes,
+  MapPin,
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -41,6 +42,7 @@ const ICONS: Record<(typeof MODULES)[number]["name"], LucideIcon> = {
   "Product Management": BoxesIcon,
   "Stock Management": Package,
   "Sales Reports": BarChart3,
+  "Location Management": MapPin,
 };
 
 const GROUPS: Record<(typeof MODULES)[number]["name"], string> = {
@@ -50,9 +52,10 @@ const GROUPS: Record<(typeof MODULES)[number]["name"], string> = {
   "Product Management": "CATALOG",
   "Stock Management": "CATALOG",
   "Sales Reports": "INSIGHTS",
+  "Location Management": "ADMIN",
 };
 
-/** The six Modules in sidebar order. There is no Admin item. */
+/** The seven Modules in sidebar order. */
 export const mainNavItems: NavItem[] = MODULES.map(({ name, path }) => ({
   group: GROUPS[name],
   name,
