@@ -1,4 +1,4 @@
-import { validateSession, type Validation } from "./client";
+import { validateSession, type Staff, type Validation } from "./client";
 import { MODULES } from "./modules";
 import { DEV_STAFF, devBypassEnabled } from "./dev-bypass";
 
@@ -37,12 +37,12 @@ export function accessFor(
    * none have no readable Role.
    */
   async function role(): Promise<
-    { decision: "allowed"; role: string } | Exclude<Validation, { decision: "allowed" }>
+    { decision: "allowed"; role: string; staff: Staff } | Exclude<Validation, { decision: "allowed" }>
   > {
     for (const { name } of MODULES) {
       const answer = await check(name);
 
-      if (answer.decision === "allowed") return { decision: "allowed", role: answer.staff.role };
+      if (answer.decision === "allowed") return { decision: "allowed", role: answer.staff.role, staff: answer.staff };
       if (answer.decision !== "denied") return answer;
     }
 

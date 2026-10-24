@@ -10,6 +10,7 @@ import {
   UNAVAILABLE_PATH,
 } from "./config";
 import { MODULES, moduleForPath, rolesForPath } from "./modules";
+import { MODULE_HEADER, STAFF_HEADER, encodeStaff } from "./staff-header";
 
 const OPEN_PAGES = [NO_ACCESS_PATH, UNAVAILABLE_PATH, SIGN_IN_ERROR_PATH, SIGNING_IN_PATH];
 
@@ -27,16 +28,25 @@ const isOpen = (pathname: string) =>
 export async function guard(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
 
+  // The page learns who the Staff member is from these headers, so a browser must never set them.
+  const forwarded = new Headers(request.headers);
+  forwarded.delete(STAFF_HEADER);
+  forwarded.delete(MODULE_HEADER);
+
+  const pass = () => NextResponse.next({ request: { headers: forwarded } });
+
   if (isOpen(pathname)) {
-    return NextResponse.next();
+    return pass();
   }
 
   const to = (path: string) => NextResponse.redirect(new URL(path, request.url));
-  const signIn = () => to(`${LOGIN_PATH}?returnTo=${encodeURIComponent(`${pathname}${search}`)}`);
+  const returnTo = encodeURIComponent(`${pathname}${search}`);
+  const signIn = () => to(`${LOGIN_PATH}?returnTo=${returnTo}`);
+  const unavailable = () => to(`${UNAVAILABLE_PATH}?returnTo=${returnTo}`);
   const access = accessFor(request.cookies.get(SESSION_COOKIE)?.value);
 
   const redirectFor = (decision: Validation["decision"]) =>
-    decision === "unavailable" ? to(UNAVAILABLE_PATH) : decision === "invalid" ? signIn() : null;
+    decision === "unavailable" ? unavailable() : decision === "invalid" ? signIn() : null;
 
   const roles = rolesForPath(pathname);
 
@@ -44,7 +54,9 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
     const found = await access.role();
 
     if (found.decision === "allowed" && roles.includes(found.role)) {
-      return NextResponse.next();
+      forwarded.set(STAFF_HEADER, encodeStaff(found.staff));
+
+      return pass();
     }
 
     return redirectFor(found.decision) ?? to(NO_ACCESS_PATH);
@@ -53,13 +65,16 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   const module = moduleForPath(pathname);
 
   if (!module) {
-    return NextResponse.next(); // not a POS page; the app's own 404 handles it
+    return pass(); // not a POS page; the app's own 404 handles it
   }
 
   const asked = await access.check(module);
 
   if (asked.decision === "allowed") {
-    return NextResponse.next();
+    forwarded.set(STAFF_HEADER, encodeStaff(asked.staff));
+    forwarded.set(MODULE_HEADER, module);
+
+    return pass();
   }
 
   const stop = redirectFor(asked.decision);

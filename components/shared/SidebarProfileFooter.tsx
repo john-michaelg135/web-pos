@@ -11,12 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 
 export function SidebarProfileFooter() {
-  const { data: session } = useSession();
+  const { user, logout } = useAuth();
 
-  if (!session?.user) {
+  if (!user) {
     return (
       <div className="flex items-center gap-2 p-2 rounded-xl text-xs text-muted-foreground animate-pulse">
         Loading session...
@@ -24,9 +24,7 @@ export function SidebarProfileFooter() {
     );
   }
 
-  const name = session.user.name ?? "User";
-  const email = session.user.email ?? "";
-  const role = session.role ?? "Staff/Employee";
+  const { name, email, role } = user;
   const initials = name
     .split(" ")
     .map((n) => n[0])
@@ -89,10 +87,7 @@ export function SidebarProfileFooter() {
           <DropdownMenuSeparator className="bg-border" />
 
           <DropdownMenuItem
-            onClick={async () => {
-              await signOut({ redirect: false });
-              window.location.href = "/signin";
-            }}
+            onClick={logout}
             className="cursor-pointer text-xs font-medium gap-2 p-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             <LogOut className="w-3.5 h-3.5" />

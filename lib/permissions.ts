@@ -28,8 +28,8 @@ export const POS_MODULES = {
   DASHBOARD: "Dashboard",
   SALES_PROCESSING: "Sales Processing",
   ORDER_MANAGEMENT: "Order Management",
-  PRODUCT_MANAGEMENT: "Product Management/Price Configuration",
-  SALES_REPORTS: "Sales Report Analytics",
+  PRODUCT_MANAGEMENT: "Product Management",
+  SALES_REPORTS: "Sales Reports",
   LOCATIONS: "Location/Branch Management",
   STOCK_MANAGEMENT: "Stock Management",
 } as const;

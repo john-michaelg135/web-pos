@@ -146,7 +146,7 @@ describe("module guard", () => {
     await signInAda(ALL);
     portal.unavailable = true;
 
-    expect(await visit("/")).toBe("/unavailable");
+    expect(await visit("/")).toBe("/unavailable?returnTo=%2F");
   });
 
   it("shows unavailable when the Enterprise Portal cannot be reached", async () => {
@@ -155,7 +155,7 @@ describe("module guard", () => {
       throw new Error("network down");
     });
 
-    expect(await visit("/")).toBe("/unavailable");
+    expect(await visit("/")).toBe("/unavailable?returnTo=%2F");
   });
 
   it("shows unavailable when the Enterprise Portal fails while looking for another page", async () => {
@@ -167,7 +167,7 @@ describe("module guard", () => {
       return working(input, init);
     });
 
-    expect(await visit("/order-management")).toBe("/unavailable");
+    expect(await visit("/order-management")).toBe("/unavailable?returnTo=%2Forder-management");
   });
 
   it.each(["/no-access", "/unavailable", "/sign-in-error", "/signing-in", "/api/portal/login", "/api/portal/logout", "/api-pos/orders", "/api/my-locations"])(

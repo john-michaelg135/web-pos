@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsUpDown, Check, X } from "lucide-react";
-import { useSession } from "next-auth/react";
 import {
   SidebarHeader,
   SidebarContent,
@@ -28,11 +27,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { mainNavItems, settingsNavItem, systems } from "./SidebarNav";
 import { SidebarProfileFooter } from "./SidebarProfileFooter";
-import { can, canRead } from "@/lib/permissions";
+import { useAuth } from "@/context/AuthContext";
+import { isManager } from "@/lib/portal/roles";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const { open, openMobile, setOpenMobile, toggleSidebar, isMobile } =
     useSidebar();
   const [mounted, setMounted] = useState(false);
@@ -56,18 +56,11 @@ export function Sidebar() {
   const SettingsIcon = settingsNavItem.icon;
   const isSettingsActive = pathname === settingsNavItem.href;
 
-  // Granular RBAC: super users see all nav items; everyone else sees only the
-  // modules they have read access to (from the compact session.permissions map).
-  const isSuperUser = !!session?.isSuperUser;
-  const permissions = session?.permissions;
-  const visibleNavItems = isSuperUser
-    ? mainNavItems
-    : mainNavItems.filter((item) => can(permissions, item.module, item.action ?? "read"));
+  // The module guard keeps Staff off pages they may not open; narrowing the
+  // sidebar to the allowed Modules comes with the new sidebar.
+  const visibleNavItems = mainNavItems;
 
-  const showSettings =
-    isSuperUser ||
-    session?.role === "Administrator" ||
-    canRead(permissions, settingsNavItem.module);
+  const showSettings = !!user && (user.isSuperUser || isManager(user.role));
 
   return (
     <>

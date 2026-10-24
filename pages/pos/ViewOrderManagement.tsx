@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 // Legacy color props for child components that haven't been rewritten yet
@@ -39,8 +38,6 @@ const LEGACY_COLORS = {
 };
 
 export default function ViewOrderManagement() {
-  const { data: session } = useSession();
-  const token = (session as any)?.accessToken;
   const { user: authUser, isLoading: authLoading, can, canRead } = useAuth();
   const { scope, locations: myLocations } = useMyLocations();
 
@@ -68,12 +65,11 @@ export default function ViewOrderManagement() {
 
   const headers = useMemo<Record<string, string>>(() => {
     const h: Record<string, string> = {};
-    if (token) h.Authorization = `Bearer ${token}`;
     if (assignedLocation?.locationId) {
       h["X-Location-Id"] = String(assignedLocation.locationId);
     }
     return h;
-  }, [token, assignedLocation?.locationId]);
+  }, [assignedLocation?.locationId]);
 
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "completed" | "refunds" | "voids" | "cancelled">("pending");
   const [showManagerPinDialog, setShowManagerPinDialog] = useState(false);

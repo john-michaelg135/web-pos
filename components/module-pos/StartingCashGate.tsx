@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { POS_MODULES } from "@/lib/permissions";
+import { isManager as isManagerRole } from "@/lib/portal/roles";
 import { apiClient } from "@/components/module-pos/api";
 import { Button } from "@/components/ui/button";
 
@@ -59,31 +58,14 @@ const errorMessage = (err: any, fallback: string) => {
  * - Cashier: mandatory daily prompt (no "Not now"); selling is blocked until declared.
  */
 export default function StartingCashGate({ locationId, onChange }: StartingCashGateProps) {
-  const { data: session, status: sessionStatus } = useSession();
-  const { user: authUser, can, isLoading: authLoading } = useAuth();
-  const token = (session as any)?.accessToken;
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const { user: authUser, isLoading: authLoading } = useAuth();
+  const headers = {};
 
-  const isSuperUser = !!(
-    authUser?.isSuperUser ||
-    (session as any)?.isSuperUser ||
-    authUser?.role === "Super Admin" ||
-    (session as any)?.role === "Super Admin"
-  );
+  const isSuperUser = !!authUser?.isSuperUser;
 
-  const isManager =
-    !isSuperUser &&
-    (can(POS_MODULES.ORDER_MANAGEMENT, "approve") ||
-      authUser?.role === "Manager" ||
-      (session as any)?.role === "Manager" ||
-      (session as any)?.subRole === "Manager");
+  const isManager = !isSuperUser && isManagerRole(authUser?.role);
 
-  const currentCashierName =
-    authUser?.username ||
-    session?.user?.name ||
-    (session?.user as any)?.username ||
-    session?.user?.email ||
-    "";
+  const currentCashierName = authUser?.username || authUser?.email || "";
 
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -142,7 +124,7 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationId, token, currentCashierName, apply]);
+  }, [locationId, currentCashierName, apply]);
 
   useEffect(() => {
     fetchToday();
@@ -192,7 +174,6 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
   const showPrompt =
     mounted &&
     !authLoading &&
-    sessionStatus !== "loading" &&
     !loading &&
     !entry &&
     !isSuperUser &&

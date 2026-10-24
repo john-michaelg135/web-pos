@@ -14,6 +14,11 @@ function required(name: string): string {
   return value;
 }
 
+/** The Enterprise Portal's address, for pages that only link back to it. */
+export function portalUrl(): string {
+  return required("PORTAL_URL").replace(/\/$/, "");
+}
+
 export function portalConfig() {
   const appUrl = (
     process.env.NODE_ENV === "production"
@@ -21,13 +26,13 @@ export function portalConfig() {
       : (process.env.POS_APP_URL ?? "https://localhost:3002")
   ).replace(/\/$/, "");
 
-  const portalUrl = required("PORTAL_URL").replace(/\/$/, "");
+  const portal = portalUrl();
 
   return {
-    portalUrl,
+    portalUrl: portal,
     systemName: process.env.PORTAL_SYSTEM_NAME ?? "POS",
     systemSecret: required("PORTAL_SYSTEM_SECRET"),
-    logoutUrl: `${portalUrl}/logout`,
+    logoutUrl: `${portal}/logout`,
     callbackUrl: `${appUrl}${CALLBACK_PATH}`,
   };
 }
