@@ -15,6 +15,8 @@ import type { LucideIcon } from "lucide-react";
 import { MODULES } from "@/lib/portal/modules";
 
 export interface NavItem {
+  /** The label above its section of the sidebar; empty for the Dashboard, which sits alone on top. */
+  group: string;
   /** The Module's name, as the Enterprise Portal seeds it. */
   name: string;
   href: string;
@@ -41,8 +43,18 @@ const ICONS: Record<(typeof MODULES)[number]["name"], LucideIcon> = {
   "Sales Reports": BarChart3,
 };
 
+const GROUPS: Record<(typeof MODULES)[number]["name"], string> = {
+  Dashboard: "",
+  "Sales Processing": "SALES",
+  "Order Management": "SALES",
+  "Product Management": "CATALOG",
+  "Stock Management": "CATALOG",
+  "Sales Reports": "INSIGHTS",
+};
+
 /** The six Modules in sidebar order. There is no Admin item. */
 export const mainNavItems: NavItem[] = MODULES.map(({ name, path }) => ({
+  group: GROUPS[name],
   name,
   href: path,
   icon: ICONS[name],
@@ -90,6 +102,17 @@ export const systems: SystemItem[] = [
     active: false,
   },
 ];
+
+/** The items under their group label, groups in order of first appearance. */
+export const groupNavItems = (items: readonly NavItem[]): { label: string; items: NavItem[] }[] =>
+  items.reduce<{ label: string; items: NavItem[] }[]>((groups, item) => {
+    const group = groups.find((g) => g.label === item.group);
+
+    if (group) group.items.push(item);
+    else groups.push({ label: item.group, items: [item] });
+
+    return groups;
+  }, []);
 
 /** A bare host in an env var still has to open as an absolute address. */
 export const absoluteUrl = (url: string) => (/^https?:\/\//.test(url) ? url : `https://${url}`);
