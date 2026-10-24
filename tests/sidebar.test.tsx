@@ -1,12 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Sidebar } from "@/components/shared/Sidebar";
 import { ReturningToPortalCard } from "@/components/shared/ReturningToPortalCard";
 import { navItemsFor, systems } from "@/components/shared/SidebarNav";
 import { StaffProvider } from "@/context/AuthContext";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+let pathname = "/";
+vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
 
 const ada = { name: "Ada Okafor", username: "ada.okafor", email: "ada@brenraphaels.test", role: "Manager" };
 
@@ -22,7 +23,14 @@ const render = (modules: string[]) =>
 const linkTexts = (html: string) =>
   [...html.matchAll(/<a [^>]*href="([^"]+)"[^>]*>.*?<span>([^<]+)<\/span>/g)].map((m) => m[2]);
 
+const activeLinks = (html: string) =>
+  [...html.matchAll(/<a [^>]*data-active="true"[^>]*>.*?<span>([^<]+)<\/span>/g)].map((m) => m[1]);
+
 describe("sidebar", () => {
+  beforeEach(() => {
+    pathname = "/";
+  });
+
   it("shows only the allowed Modules, in sidebar order", () => {
     expect(linkTexts(render(["Stock Management", "Dashboard", "Sales Reports"]))).toEqual([
       "Dashboard",
@@ -37,6 +45,21 @@ describe("sidebar", () => {
     expect(linkTexts(html)).toHaveLength(6);
     expect(html).not.toContain("Admin");
     expect(html).not.toContain("/admin/locations");
+  });
+
+  it("groups the Modules under SALES, CATALOG and INSIGHTS, with Dashboard alone on top", () => {
+    const html = render(navItemsFor(["Dashboard", "Sales Processing", "Order Management", "Product Management", "Stock Management", "Sales Reports"]).map((i) => i.name));
+    const labels = [...html.matchAll(/<li aria-hidden="true" class="[^"]*">([A-Z]+)<\/li>/g)].map((m) => m[1]);
+
+    expect(labels).toEqual(["SALES", "CATALOG", "INSIGHTS"]);
+    expect(html.indexOf("Dashboard")).toBeLessThan(html.indexOf("SALES"));
+  });
+
+  it("shows the Point of Sale badge and the brand logo", () => {
+    const html = render(["Dashboard"]);
+
+    expect(html).toContain("Point of Sale");
+    expect(html).toContain("bren-raphaels-logo.svg");
   });
 
   it("shows no items when no Module is allowed", () => {
@@ -66,5 +89,25 @@ describe("returning card", () => {
     expect(renderToStaticMarkup(<ReturningToPortalCard portalUrl="https://portal.test" navigate={() => {}} />)).toContain(
       "Returning to the Enterprise Portal",
     );
+  });
+
+  it("highlights the Dashboard on the root only", () => {
+    const all = navItemsFor(["Dashboard", "Sales Processing"]).map((i) => i.name);
+
+    expect(activeLinks(render(all))).toEqual(["Dashboard"]);
+
+    pathname = "/sales-processing";
+    expect(activeLinks(render(all))).not.toContain("Dashboard");
+  });
+
+  it("highlights the current page and the pages beneath it", () => {
+    const all = navItemsFor(["Dashboard", "Sales Processing"]).map((i) => i.name);
+    const sales = navItemsFor(["Sales Processing"])[0].href;
+
+    pathname = sales;
+    expect(activeLinks(render(all))).toEqual(["Sales Processing"]);
+
+    pathname = `${sales}/42`;
+    expect(activeLinks(render(all))).toEqual(["Sales Processing"]);
   });
 });

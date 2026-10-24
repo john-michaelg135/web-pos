@@ -55,7 +55,7 @@ describe("system switcher, rendered", () => {
       "POS",
       "IMS",
     ]);
-    expect(items.filter((i) => i.querySelector("svg.text-primary")).map((i) => i.textContent)).toEqual([
+    expect(items.filter((i) => i.querySelector("svg.lucide-check")).map((i) => i.textContent)).toEqual([
       expect.stringContaining("POS"),
     ]);
     expect(menu.textContent).not.toContain("E-Commerce");

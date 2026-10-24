@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Hanken_Grotesk, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import "@/app/globals.css";
 import LayoutProvider from "@/providers/LayoutProvider";
 import { headers } from "next/headers";
 import { StaffProvider } from "@/context/AuthContext";
 import { staffFromHeaders } from "@/lib/portal/staff-header";
 
-const hankenGrotesk = Hanken_Grotesk({
-  variable: "--font-hanken-grotesk",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -31,7 +31,7 @@ const RootLayout = async ({
   return (
     <html
       lang="en"
-      className={`${hankenGrotesk.variable} ${geistMono.variable}`}
+      className={`${inter.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
