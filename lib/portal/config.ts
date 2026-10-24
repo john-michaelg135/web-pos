@@ -31,3 +31,6 @@ export function portalConfig() {
     callbackUrl: `${appUrl}${CALLBACK_PATH}`,
   };
 }
+export const NO_ACCESS_PATH = "/no-access";
+export const UNAVAILABLE_PATH = "/unavailable";
+export const SIGN_IN_ERROR_PATH = "/sign-in-error";
