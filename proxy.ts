@@ -1,4 +1,4 @@
-export { auth as proxy } from "@/auth";
+export { guard as proxy } from "@/lib/portal/guard";
 
 export const config = {
   matcher: [
