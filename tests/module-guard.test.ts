@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { guard } from "@/lib/portal/guard";
+import { MODULE_HEADER, STAFF_HEADER, staffFromHeaders } from "@/lib/portal/staff-header";
 import { FAKE_PORTAL_URL, FAKE_SECRET, FAKE_SYSTEM, FakePortal, portalFetch } from "./fake-portal";
 
 const APP = "https://localhost:3002";
@@ -23,9 +24,9 @@ let portal: FakePortal;
 
 let handle: string;
 
-async function signInAda(modules: string[]) {
+async function signInAda(modules: string[], role = ada.role) {
   portal = new FakePortal();
-  portal.addStaff("ada", ada, modules);
+  portal.addStaff("ada", { ...ada, role }, modules);
   portal.signIn("ada");
   vi.stubGlobal("fetch", portalFetch(portal));
   const { createHash } = await import("node:crypto");
@@ -69,6 +70,19 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+const forwardedModules = async (path: string) => {
+  const response = await guard(
+    new NextRequest(`${APP}${path}`, { headers: { cookie: `pos_session=${handle}` } }),
+  );
+
+  return staffFromHeaders(
+    new Headers({
+      [STAFF_HEADER]: response.headers.get(`x-middleware-request-${STAFF_HEADER}`) ?? "",
+      [MODULE_HEADER]: response.headers.get(`x-middleware-request-${MODULE_HEADER}`) ?? "",
+    }),
+  )?.modules;
+};
+
 const visit = async (path: string, withSession = true) => {
   const response = await guard(
     new NextRequest(`${APP}${path}`, {
@@ -96,6 +110,74 @@ describe("module guard", () => {
     await signInAda(ALL.filter((m) => m !== module));
     expect(await visit(path)).not.toBe("pass");
     if (path !== "/") expect(await visit(`${path}/details/1`)).not.toBe("pass");
+  });
+
+  it("forwards every allowed Module, not just the page's, for the sidebar", async () => {
+    await signInAda(["Dashboard", "Stock Management", "Sales Reports"]);
+
+    expect(await forwardedModules("/stock-management")).toEqual([
+      "Dashboard",
+      "Stock Management",
+      "Sales Reports",
+    ]);
+  });
+
+  it("forwards a Module list that shrinks on the next load once a Module is revoked", async () => {
+    await signInAda(["Dashboard", "Stock Management", "Sales Reports"]);
+    portal.revoke("ada", "Sales Reports");
+
+    expect(await forwardedModules("/stock-management")).toEqual(["Dashboard", "Stock Management"]);
+  });
+
+  it("forwards the full list on a Role-gated page too", async () => {
+    await signInAda(["Dashboard", "Stock Management"], "Manager");
+
+    expect(await forwardedModules("/manager/starting-cash")).toEqual(["Dashboard", "Stock Management"]);
+  });
+
+  it("replaces a Module list sent by the browser on an allowed page", async () => {
+    await signInAda(["Stock Management"]);
+    const response = await guard(
+      new NextRequest(`${APP}/stock-management`, {
+        headers: { cookie: `pos_session=${handle}`, [MODULE_HEADER]: ALL.join(","), [STAFF_HEADER]: "forged" },
+      }),
+    );
+    const seen = new Headers({
+      [STAFF_HEADER]: response.headers.get(`x-middleware-request-${STAFF_HEADER}`) ?? "",
+      [MODULE_HEADER]: response.headers.get(`x-middleware-request-${MODULE_HEADER}`) ?? "",
+    });
+
+    expect(staffFromHeaders(seen)).toEqual({
+      staff: expect.objectContaining({ username: "ada.okafor" }),
+      modules: ["Stock Management"],
+    });
+  });
+
+  it("shows unavailable when the Enterprise Portal fails on a Module other than the page's", async () => {
+    await signInAda(["Stock Management"]);
+    const working = fetch;
+    let calls = 0;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (++calls > 1) throw new Error("network down");
+      return working(input, init);
+    });
+
+    expect(await visit("/stock-management")).toBe("/unavailable?returnTo=%2Fstock-management");
+  });
+
+  it.each(["Super Admin", "CEO"])("opens every Module for %s whatever the Enterprise Portal granted", async (role) => {
+    await signInAda(["Dashboard"], role);
+
+    for (const path of ["/", "/sales-processing", "/order-management", "/product-management/new", "/stock-management", "/manager/reports"]) {
+      expect(await visit(path)).toBe("pass");
+    }
+    expect(await forwardedModules("/stock-management")).toEqual(ALL);
+  });
+
+  it("still sends a Super Admin who holds no Module to no-access", async () => {
+    await signInAda([], "Super Admin");
+
+    expect(await visit("/sales-processing")).toBe("/no-access");
   });
 
   it("lands on the first allowed page in sidebar order when the asked-for Module is missing", async () => {

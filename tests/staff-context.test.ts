@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { guard } from "@/lib/portal/guard";
 import { MODULE_HEADER, STAFF_HEADER, staffFromHeaders } from "@/lib/portal/staff-header";
+import { MODULES } from "@/lib/portal/modules";
 import { canUse, isManager, isSuperUser } from "@/lib/portal/roles";
 
 const ada = { name: "Ada Okafor", username: "ada.okafor", email: "ada@brenraphaels.test", role: "Manager" };
@@ -34,7 +35,7 @@ describe("Staff forwarded by the guard", () => {
   const forwarded = (response: Response, name: string) =>
     response.headers.get(`x-middleware-request-${name}`);
 
-  it("hands the validated Staff and page Module to the page", async () => {
+  it("hands the validated Staff and every Module they may open to the page", async () => {
     const response = await guard(new NextRequest("https://localhost:3002/order-management"));
     const seen = new Headers({
       [STAFF_HEADER]: forwarded(response, STAFF_HEADER) ?? "",
@@ -43,7 +44,7 @@ describe("Staff forwarded by the guard", () => {
 
     expect(staffFromHeaders(seen)).toEqual({
       staff: expect.objectContaining({ username: "dev.staff" }),
-      modules: ["Order Management"],
+      modules: MODULES.map((m) => m.name),
     });
   });
 
