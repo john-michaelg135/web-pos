@@ -11,8 +11,8 @@ export default function NoAccessPage() {
         </a>
       }
     >
-      Your account has not been granted the Module this page belongs to. Ask an administrator to
-      grant it to you at the Enterprise Portal.
+      Staff need the Module this page belongs to, and yours has not been granted it. Ask an
+      administrator to grant it to you at the Enterprise Portal.
     </AuthStatePage>
   );
 }

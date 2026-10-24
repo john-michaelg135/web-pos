@@ -50,6 +50,22 @@ describe("sign-in error page", () => {
   });
 });
 
+describe("copy on every page", () => {
+  it("uses Staff and Enterprise Portal, never bare Portal or User", async () => {
+    const pages = [
+      await html(() => NoAccessPage()),
+      await html(() => UnavailablePage({ searchParams: Promise.resolve({}) })),
+      await errorPage("denied"),
+    ].map((page) => page.replace(/href="[^"]*"/g, ""));
+
+    for (const page of pages) {
+      expect(page.replace(/Enterprise Portal/g, "")).not.toMatch(/Portal|User|Auth/);
+    }
+    expect(pages[0]).toContain("Staff");
+    expect(pages[2]).toContain("Staff");
+  });
+});
+
 describe("no-access page", () => {
   it("can be left by returning to the Enterprise Portal", async () => {
     const page = await html(() => NoAccessPage());
@@ -88,4 +104,3 @@ describe("signing-in page", () => {
     expect(element.props.loginUrl).toBe("/api/portal/login?returnTo=%2F");
   });
 });
-

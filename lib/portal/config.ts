@@ -26,13 +26,13 @@ export function portalConfig() {
       : (process.env.POS_APP_URL ?? "https://localhost:3002")
   ).replace(/\/$/, "");
 
-  const portalUrl = required("PORTAL_URL").replace(/\/$/, "");
+  const portal = portalUrl();
 
   return {
-    portalUrl,
+    portalUrl: portal,
     systemName: process.env.PORTAL_SYSTEM_NAME ?? "POS",
     systemSecret: required("PORTAL_SYSTEM_SECRET"),
-    logoutUrl: `${portalUrl}/logout`,
+    logoutUrl: `${portal}/logout`,
     callbackUrl: `${appUrl}${CALLBACK_PATH}`,
   };
 }

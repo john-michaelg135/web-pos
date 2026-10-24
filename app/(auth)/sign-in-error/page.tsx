@@ -4,7 +4,7 @@ import { LOGIN_PATH } from "@/lib/portal/config";
 const MESSAGES: Record<string, { title: string; body: string }> = {
   denied: {
     title: "You don't have access to POS",
-    body: "The Enterprise Portal did not grant you access. Ask for a POS Module to be granted to you at the Enterprise Portal.",
+    body: "The Enterprise Portal did not grant you access. Staff need a POS Module granted at the Enterprise Portal.",
   },
   unavailable: {
     title: "Sign-in is temporarily unavailable",
