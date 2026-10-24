@@ -70,3 +70,24 @@ describe("system switcher, rendered", () => {
     expect((await screen.findByRole("status")).textContent).toContain("Returning to the Enterprise Portal");
   });
 });
+
+describe("brand block, rendered", () => {
+  it("is 96px tall with a 44px logo, the title and the Point of Sale badge", () => {
+    render(
+      <StaffProvider staff={ada} modules={["Dashboard"]}>
+        <SidebarProvider>
+          <Sidebar />
+        </SidebarProvider>
+      </StaffProvider>,
+    );
+
+    const title = screen.getByText("Bren Raphael's");
+    const block = title.closest("[data-sidebar='header']");
+    expect(block?.className).toContain("h-24");
+
+    const logo = block?.querySelector("img");
+    expect(logo?.getAttribute("width")).toBe("44");
+    expect(logo?.getAttribute("height")).toBe("44");
+    expect(screen.getByText("Point of Sale")).toBeTruthy();
+  });
+});
