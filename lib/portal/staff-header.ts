@@ -4,6 +4,9 @@ import type { Staff } from "./client";
 export const STAFF_HEADER = "x-pos-staff";
 export const MODULE_HEADER = "x-pos-module";
 
+/** Module names carry no commas, so a comma-separated list is enough. */
+export const encodeModules = (modules: readonly string[]): string => modules.join(",");
+
 export function encodeStaff(staff: Staff): string {
   return Buffer.from(JSON.stringify(staff)).toString("base64url");
 }
@@ -20,7 +23,7 @@ export function staffFromHeaders(headers: Headers): { staff: Staff; modules: str
 
     const allowed = headers.get(MODULE_HEADER);
 
-    return { staff, modules: allowed ? [allowed] : [] };
+    return { staff, modules: allowed ? allowed.split(",") : [] };
   } catch {
     return null;
   }
