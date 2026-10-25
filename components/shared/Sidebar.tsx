@@ -194,7 +194,7 @@ export function Sidebar() {
                             isActive={isActive}
                             className="h-auto w-full flex items-center gap-3 px-2.5 py-[9px] rounded-lg text-[15px] font-medium text-sidebar-foreground transition-colors data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground"
                           >
-                            <Link href={item.href} onClick={handleNavClick}>
+                            <Link href={item.href} onClick={handleNavClick} prefetch={false}>
                               <Icon className="size-[18px] shrink-0" />
                               <span>{item.name}</span>
                             </Link>

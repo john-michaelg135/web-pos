@@ -7,7 +7,7 @@ const DEFAULT_API_POS_URL = "http://localhost:5005";
 export async function proxyApiPos(
   request: NextRequest,
   path: string,
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE",
 ) {
   const handle = request.cookies.get(SESSION_COOKIE)?.value;
   if (!handle) {
@@ -19,8 +19,10 @@ export async function proxyApiPos(
     cookie: `${SESSION_COOKIE}=${encodeURIComponent(handle)}`,
   });
   let body: string | undefined;
+  const timeoutSignal = AbortSignal.timeout(20_000);
+  const signal = AbortSignal.any([request.signal, timeoutSignal]);
 
-  if (method === "POST") {
+  if (method === "POST" || method === "PUT") {
     headers.set("content-type", request.headers.get("content-type") ?? "application/json");
     body = await request.text();
   }
@@ -31,7 +33,7 @@ export async function proxyApiPos(
       headers,
       body,
       cache: "no-store",
-      signal: request.signal,
+      signal,
     });
     const responseHeaders = new Headers({
       "cache-control": "no-store",
@@ -45,9 +47,15 @@ export async function proxyApiPos(
     });
   } catch (error) {
     console.error(
-      "api-pos location request failed:",
+      "api-pos proxy request failed:",
       error instanceof Error ? error.name : "unknown error",
     );
+    if (timeoutSignal.aborted) {
+      return NextResponse.json(
+        { message: "The POS API did not respond in time. Please try again." },
+        { status: 504 },
+      );
+    }
     return NextResponse.json(
       { message: "The POS API is temporarily unavailable." },
       { status: 503 },

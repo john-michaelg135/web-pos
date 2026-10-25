@@ -5,7 +5,8 @@ export function canUse(allowedModules: readonly string[], module: string): boole
   return allowedModules.includes(module);
 }
 
-export const isManager = (role: string | undefined) => role === "Manager";
+export const isManager = (role: string | undefined) =>
+  role === "Manager" || role === "POS Manager";
 
 /** Super Admin and CEO open every page outside a Module and see every location. */
 export const isSuperUser = (role: string | undefined) => !!role && SUPER_ROLES.includes(role);

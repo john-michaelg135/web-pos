@@ -9,7 +9,14 @@ import {
   SIGN_IN_ERROR_PATH,
   UNAVAILABLE_PATH,
 } from "./config";
-import { MODULES, moduleForPath, rolesForPath } from "./modules";
+import {
+  firstModulePathForRole,
+  MODULES,
+  moduleForPath,
+  modulesForRole,
+  roleMayUseModule,
+  rolesForPath,
+} from "./modules";
 import { isSuperUser } from "./roles";
 import { MODULE_HEADER, STAFF_HEADER, encodeModules, encodeStaff } from "./staff-header";
 
@@ -51,9 +58,11 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
 
   /** Every Module the Staff member may open, for the sidebar; Super Admin and CEO open all of them. */
   const holdings = async (staff: Staff): Promise<{ modules: string[] } | { stop: NextResponse }> => {
+    const roleModules = new Set(modulesForRole(staff.role));
     if (isSuperUser(staff.role)) return { modules: MODULES.map((m) => m.name) };
 
-    const answers = await Promise.all(MODULES.map((m) => access.check(m.name)));
+    const eligibleModules = MODULES.filter((module) => roleModules.has(module.name));
+    const answers = await Promise.all(eligibleModules.map((module) => access.check(module.name)));
 
     for (const answer of answers) {
       const stop = redirectFor(answer.decision);
@@ -61,7 +70,11 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
       if (stop) return { stop };
     }
 
-    return { modules: MODULES.filter((_, i) => answers[i].decision === "allowed").map((m) => m.name) };
+    return {
+      modules: eligibleModules
+        .filter((_, i) => answers[i].decision === "allowed")
+        .map((module) => module.name),
+    };
   };
 
   const roles = rolesForPath(pathname);
@@ -92,6 +105,11 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   const asked = await access.check(module);
 
   if (asked.decision === "allowed") {
+    const requestedModule = moduleForPath(pathname);
+    if (requestedModule && !roleMayUseModule(asked.staff.role, requestedModule)) {
+      return to(firstModulePathForRole(asked.staff.role) ?? NO_ACCESS_PATH);
+    }
+
     const held = await holdings(asked.staff);
 
     if ("stop" in held) return held.stop;

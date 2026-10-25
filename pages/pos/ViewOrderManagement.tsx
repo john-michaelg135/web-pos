@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
 import { Search, Filter, Loader2, LayoutGrid, List } from "lucide-react";
@@ -39,7 +39,7 @@ const LEGACY_COLORS = {
 
 export default function ViewOrderManagement() {
   const { user: authUser, isLoading: authLoading, can, canRead } = useAuth();
-  const { scope, locations: myLocations } = useMyLocations();
+  const { scope, locations: myLocations, isLoading: locationsLoading } = useMyLocations();
 
   // Granular RBAC (br-auth "Order Management" module).
   //   read    → may open the Order Management page at all
@@ -62,7 +62,6 @@ export default function ViewOrderManagement() {
     () => myLocations.find((l) => l.isPrimary) ?? myLocations[0] ?? null,
     [myLocations]
   );
-
   const headers = useMemo<Record<string, string>>(() => {
     const h: Record<string, string> = {};
     if (assignedLocation?.locationId) {
@@ -74,7 +73,9 @@ export default function ViewOrderManagement() {
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "completed" | "refunds" | "voids" | "cancelled">("pending");
   const [showManagerPinDialog, setShowManagerPinDialog] = useState(false);
   const [managerPin, setManagerPin] = useState<string | null>(null);
+  const [managerPinError, setManagerPinError] = useState<string | null>(null);
   const [isLoadingPin, setIsLoadingPin] = useState(false);
+  const pinRequestInFlight = useRef(false);
   const [refundSubTab, setRefundSubTab] = useState<"requested" | "refunded" | "rejected">("requested");
   const [voidSubTab, setVoidSubTab] = useState<"requested" | "voided" | "rejected">("requested");
   const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("pos"); // Soft-delete: default to pos
@@ -85,6 +86,19 @@ export default function ViewOrderManagement() {
   const [filterType, setFilterType] = useState<string>("All");
   const [filterStatus, setFilterStatus] = useState<string>("All");
   const [filterLocation, setFilterLocation] = useState<string>("All");
+  const locationIndicator = locationsLoading
+    ? "Loading location..."
+    : canSwitchLocation
+      ? filterLocation === "All"
+        ? "All Locations"
+        : filterLocation.toLowerCase().startsWith("store")
+          ? filterLocation
+          : `Store - ${filterLocation}`
+      : assignedLocation
+        ? assignedLocation.locationName.toLowerCase().startsWith("store")
+          ? assignedLocation.locationName
+          : `Store - ${assignedLocation.locationName}`
+        : "No location assigned";
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [remarks, setRemarks] = useState("");
@@ -144,7 +158,7 @@ export default function ViewOrderManagement() {
       : [],
   });
 
-  const fetchOrders = async (targetLocId?: number) => {
+  const fetchOrders = useCallback(async (targetLocId?: number) => {
     try {
       setIsLoading(true);
       const locId = targetLocId ?? assignedLocation?.locationId;
@@ -161,16 +175,58 @@ export default function ViewOrderManagement() {
     } finally {
       setIsLoading(false);
     }
+  }, [assignedLocation?.locationId, canSwitchLocation, headers]);
+
+  const requestManagerEndpoint = async (path: string, body?: unknown) => {
+    const response = await fetch(`/api/pos/${path}`, {
+      method: body === undefined ? "GET" : "PUT",
+      headers: body === undefined ? undefined : { "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+      credentials: "same-origin",
+      signal: AbortSignal.timeout(25_000),
+    });
+    const responseBody = await response.text();
+    let data: { message?: string } | null = null;
+    try {
+      data = JSON.parse(responseBody) as { message?: string };
+    } catch {
+      data = null;
+    }
+    if (!response.ok) {
+      throw new Error(
+        typeof data?.message === "string"
+          ? data.message
+          : responseBody.trim() || `Request failed (${response.status}).`,
+      );
+    }
+    if (!responseBody) return null;
+    try {
+      return JSON.parse(responseBody) as unknown;
+    } catch {
+      throw new Error("The POS API returned an invalid response.");
+    }
   };
 
-  useEffect(() => { setIsMounted(true); fetchOrders(); }, []);
+  useEffect(() => { setIsMounted(true); }, []);
 
-  // When assigned location loads or updates for a cashier/staff, re-fetch orders so the list is populated
+  // Wait for location scope before fetching so an unscoped initial response
+  // cannot be replaced by a narrower branch response after it renders.
   useEffect(() => {
-    if (assignedLocation?.locationId) {
-      fetchOrders(assignedLocation.locationId);
+    if (locationsLoading) return;
+    if (!canSwitchLocation && !assignedLocation?.locationId) {
+      setOrders([]);
+      setIsLoading(false);
+      return;
     }
-  }, [assignedLocation?.locationId]);
+
+    void fetchOrders(assignedLocation?.locationId);
+  }, [
+    assignedLocation?.locationId,
+    canSwitchLocation,
+    fetchOrders,
+    locationsLoading,
+  ]);
 
   // Pin non-super users to their assigned branch. Super users ("all" scope)
   // keep the "All" default and may switch freely via the filters.
@@ -229,28 +285,43 @@ export default function ViewOrderManagement() {
     if (!orderToApproveVoid) return;
     try {
       const managerId = Number(authUser?.id) || 1;
-      await apiClient.instance.put(`/api-pos/order-management/orders/${orderToApproveVoid.id}/approve-void`, { approvedBy: managerId, pinCode: pin }, { headers });
+      await requestManagerEndpoint(`order-management/orders/${orderToApproveVoid.id}/approve-void`, { approvedBy: managerId, pinCode: pin });
       toast.success("Void approved successfully!");
       fetchOrders();
       setShowApproveVoidDialog(false);
       setOrderToApproveVoid(null);
     } catch (err: any) { 
       console.warn("Failed to approve void:", err?.message || "Unknown error"); 
-      const msg = err.response?.data || "Failed to approve void. Check PIN.";
-      toast.error(typeof msg === "string" ? msg : "Failed to approve void."); 
+      toast.error(err instanceof Error ? err.message : "Failed to approve void. Check PIN.");
     }
   };
 
   const handleViewManagerPin = async () => {
+    if (pinRequestInFlight.current) return;
+    pinRequestInFlight.current = true;
+    setManagerPin(null);
+    setManagerPinError(null);
     setShowManagerPinDialog(true);
     setIsLoadingPin(true);
     try {
-      const res = await apiClient.instance.get("/api-pos/user-pin", { headers });
-      setManagerPin(res.data.pinCode);
+      const res = await requestManagerEndpoint("user-pin");
+      if (
+        typeof res !== "object" ||
+        res === null ||
+        !("pinCode" in res) ||
+        typeof res.pinCode !== "string" ||
+        !res.pinCode
+      ) {
+        throw new Error("The API returned an invalid manager PIN response.");
+      }
+      setManagerPin(res.pinCode);
     } catch (err) {
       console.error("Failed to fetch manager PIN:", err);
-      toast.error("Failed to fetch manager PIN");
+      const message = err instanceof Error ? err.message : "Failed to fetch manager PIN.";
+      setManagerPinError(message);
+      toast.error(message);
     } finally {
+      pinRequestInFlight.current = false;
       setIsLoadingPin(false);
     }
   };
@@ -261,28 +332,26 @@ export default function ViewOrderManagement() {
     if (!orderToRejectVoid) return;
     try {
       const managerId = Number(authUser?.id) || 1;
-      await apiClient.instance.put(`/api-pos/order-management/orders/${orderToRejectVoid.id}/reject-void`, { rejectedBy: managerId, rejectionRemarks: reason, pinCode: pin }, { headers });
+      await requestManagerEndpoint(`order-management/orders/${orderToRejectVoid.id}/reject-void`, { rejectedBy: managerId, rejectionRemarks: reason, pinCode: pin });
       toast.success("Void request rejected.");
       fetchOrders();
       setShowRejectVoidDialog(false); 
       setOrderToRejectVoid(null);
     } catch (err: any) { 
       console.warn("Failed to reject void:", err?.message || "Unknown error"); 
-      const msg = err.response?.data || "Failed to reject void.";
-      toast.error(typeof msg === "string" ? msg : "Failed to reject void."); 
+      toast.error(err instanceof Error ? err.message : "Failed to reject void.");
     }
   };
 
   const handleRequestVoidSubmit = async () => {
     if (!selectedOrder || !voidReason.trim()) return;
     try {
-      await apiClient.instance.put(`/api-pos/order-management/orders/${selectedOrder.id}/request-void`, { reason: voidReason }, { headers });
+      await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-void`, { reason: voidReason });
       toast.success("Void requested successfully.");
       fetchOrders();
     } catch (err: any) { 
       console.warn("Failed to request void:", err?.message || "Unknown error"); 
-      const msg = err.response?.data || "Failed to request void.";
-      toast.error(typeof msg === "string" ? msg : "Failed to request void."); 
+      toast.error(err instanceof Error ? err.message : "Failed to request void.");
     }
     setShowVoidDialog(false); setVoidReason("");
   };
@@ -293,7 +362,7 @@ export default function ViewOrderManagement() {
     if (!orderToApprove) return;
     try {
       const managerId = Number(authUser?.id) || 1;
-      await apiClient.instance.put(`/api-pos/order-management/orders/${orderToApprove.id}/approve-refund`, { approvedBy: managerId, pinCode: pin }, { headers });
+      await requestManagerEndpoint(`order-management/orders/${orderToApprove.id}/approve-refund`, { approvedBy: managerId, pinCode: pin });
       toast.success(
         <div className="flex flex-col gap-1 text-emerald-800 dark:text-emerald-200">
           <div className="font-bold">Refund approved!</div>
@@ -315,8 +384,7 @@ export default function ViewOrderManagement() {
       setOrderToApprove(null);
     } catch (err: any) { 
       console.warn("Failed to approve refund:", err?.message || "Unknown error"); 
-      const msg = err.response?.data || "Failed to approve refund. Check PIN.";
-      toast.error(typeof msg === "string" ? msg : "Failed to approve refund."); 
+      toast.error(err instanceof Error ? err.message : "Failed to approve refund. Check PIN.");
     }
   };
 
@@ -329,15 +397,14 @@ export default function ViewOrderManagement() {
     if (/[<>]/.test(reason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
     try {
       const managerId = Number(authUser?.id) || 1;
-      await apiClient.instance.put(`/api-pos/order-management/orders/${orderToReject.id}/reject-refund`, { rejectedBy: managerId, rejectionRemarks: reason.trim(), pinCode: pin }, { headers });
+      await requestManagerEndpoint(`order-management/orders/${orderToReject.id}/reject-refund`, { rejectedBy: managerId, rejectionRemarks: reason.trim(), pinCode: pin });
       toast.success(`Refund request for Order ${orderToReject.orderNumber || `#${orderToReject.id}`} has been rejected.`);
       fetchOrders();
       setShowRejectDialog(false);
       setOrderToReject(null);
     } catch (err: any) { 
       console.warn("Failed to reject refund:", err?.message || "Unknown error"); 
-      const msg = err.response?.data || "Failed to reject refund. Check PIN.";
-      toast.error(typeof msg === "string" ? msg : "Failed to reject refund."); 
+      toast.error(err instanceof Error ? err.message : "Failed to reject refund. Check PIN.");
     }
   };
 
@@ -346,7 +413,7 @@ export default function ViewOrderManagement() {
     if (refundReason.trim().length > 500) { toast.error("Reason must not exceed 500 characters."); return; }
     if (/[<>]/.test(refundReason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
     try {
-      await apiClient.apiPos.orderManagementOrdersRequestRefundUpdate(Number(selectedOrder.id), { reason: refundReason }, { headers });
+      await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-refund`, { reason: refundReason });
       toast.success(`Refund requested successfully for Order ${selectedOrder.orderNumber || `#${selectedOrder.id}`}.`);
       fetchOrders();
     } catch (err) { console.error("Failed to request refund:", err); toast.error("Failed to request refund."); }
@@ -357,7 +424,7 @@ export default function ViewOrderManagement() {
     try {
       const statusMap: Record<string, string> = { pending: "Pending", awaiting_stock: "Awaiting Stock", processing: "Processing", ready_for_delivery: "Processing", shipped: "Shipped", delivered: "Delivered", completed: "Completed", rejected: "Cancelled", cancelled: "Cancelled", refund_requested: "Refund Requested", refunded: "Refunded" };
       const backendStatus = statusMap[newStatus] || newStatus;
-      await apiClient.instance.put(`/api-pos/order-management/orders/${orderId}/status`, { status: backendStatus, updatedBy: 1 }, { headers });
+      await requestManagerEndpoint(`order-management/orders/${orderId}/status`, { status: backendStatus, updatedBy: 1 });
       const order = orders.find(o => o.id === orderId);
       if ((newStatus === "cancelled" || backendStatus === "Cancelled" || newStatus === "refunded" || backendStatus === "Refunded") && order) {
         toast.success(
@@ -421,7 +488,7 @@ export default function ViewOrderManagement() {
             <p className="text-sm text-muted-foreground">Track and manage all orders</p>
             <span className="text-muted-foreground font-bold">&middot;</span>
             <Badge variant="secondary" className="bg-primary/10 text-primary text-xs font-bold">
-              {filterLocation === "All" ? "All Locations" : (filterLocation.toLowerCase().startsWith("store") ? filterLocation : `Store - ${filterLocation}`)}
+              {locationIndicator}
             </Badge>
           </div>
         </div>
@@ -429,6 +496,7 @@ export default function ViewOrderManagement() {
           {!isCashierLevel && (
             <button 
               onClick={handleViewManagerPin}
+              disabled={isLoadingPin}
               className="px-3 py-2 shrink-0 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -642,6 +710,8 @@ export default function ViewOrderManagement() {
                   <div className="h-8 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
                   </div>
+                ) : managerPinError ? (
+                  <p className="text-sm text-red-600" role="alert">{managerPinError}</p>
                 ) : (
                   <span className="text-3xl font-mono font-bold tracking-[0.2em] text-gray-900 dark:text-white">
                     {managerPin}
@@ -669,4 +739,3 @@ export default function ViewOrderManagement() {
     </div>
   );
 }
-

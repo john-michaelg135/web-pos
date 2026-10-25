@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
+import { isManager } from "@/lib/portal/roles";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { apiClient } from "@/components/module-pos/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
@@ -50,7 +51,9 @@ export function ViewSalesAnalytics() {
   const [locations, setLocations] = useState<{ id: number; name: string }[]>([]);
   const [moneyAuditRecords, setMoneyAuditRecords] = useState<StartingCashRecord[]>([]);
 
-  const canMoneyAudit = !!authUser && (authUser.isSuperUser || can(POS_MODULES.ORDER_MANAGEMENT, "approve"));
+  const isManagerUser = isManager(authUser?.role);
+  const canMoneyAudit = !!authUser &&
+    (authUser.isSuperUser || isManagerUser || can(POS_MODULES.ORDER_MANAGEMENT, "approve"));
   const [activeTab, setActiveTab] = useState<"analytics" | "money-audit">("analytics");
 
   useEffect(() => {
@@ -196,7 +199,10 @@ export function ViewSalesAnalytics() {
   const canPickAll = locScope === "all";
   const showLocationSelector = canPickAll || (locScope === "assigned" && myLocations.length > 1);
 
-  const locationLabel = isLocked
+  const auditLocation = isManagerUser && locScope === "assigned" ? myLocations[0] : undefined;
+  const locationLabel = activeTab === "money-audit" && auditLocation
+    ? `Store - ${auditLocation.locationName || "Unknown"}`
+    : isLocked
     ? `Store - ${locationName ?? myLocations[0]?.locationName ?? "Unknown"}`
     : filterLocation
       ? `Store - ${locations.find((l) => l.id === filterLocation)?.name || "Unknown"}`
@@ -254,7 +260,7 @@ export function ViewSalesAnalytics() {
             <Badge variant="secondary" className="text-xs font-bold truncate max-w-[200px]">
               {locationLabel}
             </Badge>
-            {showLocationSelector && (
+            {showLocationSelector && !(activeTab === "money-audit" && isManagerUser) && (
               <div className="w-48 ml-1 shrink-0 print:hidden">
                 <CustomSelect
                   value={filterLocation ? String(filterLocation) : "All"}
@@ -395,7 +401,9 @@ export function ViewSalesAnalytics() {
       <TabsContent value="money-audit" className="space-y-6 mt-0">
         <ViewStartingCash
           embedded
-          locationId={filterLocation ?? (locScope === "assigned" && myLocations.length > 0 ? myLocations[0].locationId : undefined)}
+          locationId={isManagerUser && locScope === "assigned"
+            ? myLocations[0]?.locationId
+            : filterLocation ?? (locScope === "assigned" && myLocations.length > 0 ? myLocations[0].locationId : undefined)}
           dateFrom={dateFrom}
           dateTo={dateTo}
           onRecordsChange={setMoneyAuditRecords}

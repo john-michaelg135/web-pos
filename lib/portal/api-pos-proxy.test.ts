@@ -72,4 +72,38 @@ describe("proxyApiPos", () => {
       }),
     );
   });
+
+  it("forwards manager action PUT bodies with only the POS session cookie", async () => {
+    vi.stubEnv("API_POS_URL", "https://api-pos.example.test");
+    const fetch = vi.fn().mockResolvedValue(Response.json({ success: true }));
+    vi.stubGlobal("fetch", fetch);
+    const body = JSON.stringify({ approvedBy: 23, pinCode: "123456" });
+    const request = new NextRequest("https://localhost:3002/api/pos/order-management/orders/42/approve-refund", {
+      method: "PUT",
+      headers: {
+        cookie: "pos_session=opaque-handle; unrelated=secret",
+        "content-type": "application/json",
+      },
+      body,
+    });
+
+    const response = await proxyApiPos(
+      request,
+      "/api-pos/order-management/orders/42/approve-refund",
+      "PUT",
+    );
+
+    expect(response.status).toBe(200);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api-pos.example.test/api-pos/order-management/orders/42/approve-refund",
+      expect.objectContaining({
+        method: "PUT",
+        body,
+        headers: new Headers({
+          cookie: "pos_session=opaque-handle",
+          "content-type": "application/json",
+        }),
+      }),
+    );
+  });
 });

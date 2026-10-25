@@ -3,7 +3,8 @@
 import React, { createContext, useCallback, useContext, useMemo } from "react";
 import type { PosAction } from "@/lib/permissions";
 import type { Staff } from "@/lib/portal/client";
-import { canUse, isSuperUser } from "@/lib/portal/roles";
+import { isSuperUser } from "@/lib/portal/roles";
+import { mayPerformAction, roleMayUseModule } from "@/lib/portal/modules";
 
 type User = Staff & {
   /** Kept so existing callers that read a user id keep compiling; the Enterprise Portal sends no numeric id. */
@@ -56,7 +57,11 @@ export const useAuth = (): AuthContextType => {
   );
 
   const can = useCallback(
-    (moduleName: string) => !!staff && canUse(modules, moduleName),
+    (moduleName: string, action: PosAction = "read") =>
+      !!staff &&
+      modules.includes(moduleName) &&
+      roleMayUseModule(staff.role, moduleName) &&
+      mayPerformAction(staff.role, moduleName, action),
     [staff, modules],
   );
 
