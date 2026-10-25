@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { startingCashRule } from "@/lib/portal/roles";
+import { isManager, isSuperUser, startingCashRule } from "@/lib/portal/roles";
 import { apiClient } from "@/components/module-pos/api";
 import { Button } from "@/components/ui/button";
 
@@ -51,15 +51,18 @@ const errorMessage = (err: any, fallback: string) => {
  *
  * Rules:
  * The Role the Enterprise Portal returns decides (see startingCashRule):
+ * - Managers: prompted but may cancel; selling is not blocked.
  * - Super Admin and CEO: never prompted; selling is never blocked.
- * - Cashier, Manager and any unknown Role: mandatory daily prompt with no way to
- *   dismiss it; selling is blocked until declared.
+ * - Cashier and any unknown Role: mandatory daily prompt with no way to dismiss
+ *   it; selling is blocked until declared.
  */
 export default function StartingCashGate({ locationId, onChange }: StartingCashGateProps) {
   const { user: authUser, isLoading: authLoading } = useAuth();
   const headers = {};
 
-  const isSuperUser = startingCashRule(authUser?.role) === "exempt";
+  const isOptional = isManager(authUser?.role);
+  const isExempt = isSuperUser(authUser?.role);
+  const isRequired = startingCashRule(authUser?.role) === "mandatory";
 
   const currentCashierName = authUser?.username || authUser?.email || "";
 
@@ -68,24 +71,25 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
   const [entry, setEntry] = useState<StartingCashEntry | null>(null);
   const [amount, setAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  // Super Admin and CEO never need starting cash
+  // Administrators never need starting cash; managers may skip it.
   useEffect(() => {
-    if (isSuperUser) onChange?.(true);
-  }, [isSuperUser, onChange]);
+    if (isExempt || (isOptional && !isRequired && isDismissed)) onChange?.(true);
+  }, [isDismissed, isExempt, isOptional, isRequired, onChange]);
 
   const apply = useCallback(
     (next: StartingCashEntry | null) => {
       setEntry(next);
-      onChange?.(!!next || isSuperUser);
+      onChange?.(!!next || isExempt || (isOptional && !isRequired && isDismissed));
     },
-    [onChange, isSuperUser]
+    [isDismissed, isExempt, isOptional, isRequired, onChange]
   );
 
   const fetchToday = useCallback(async () => {
-    if (isSuperUser) {
+    if (isExempt) {
       setLoading(false);
       return;
     }
@@ -107,7 +111,7 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationId, currentCashierName, apply, isSuperUser]);
+  }, [locationId, currentCashierName, apply, isExempt]);
 
   useEffect(() => {
     fetchToday();
@@ -142,6 +146,11 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
     }
   };
 
+  const handleCancel = () => {
+    setIsDismissed(true);
+    onChange?.(true);
+  };
+
   const inputClass =
     "w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40";
 
@@ -150,7 +159,8 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
     !authLoading &&
     !loading &&
     !entry &&
-    !isSuperUser;
+    !isExempt &&
+    !(isOptional && isDismissed);
 
   const prompt = showPrompt
     ? createPortal(
@@ -249,6 +259,11 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
                   flexShrink: 0,
                 }}
               >
+                {isOptional && (
+                  <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+                    Cancel
+                  </Button>
+                )}
                 <Button
                   onClick={handleSave}
                   disabled={isSaving || amount === "" || amount === "."}
