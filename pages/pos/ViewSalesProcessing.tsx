@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
 import {
@@ -71,6 +71,7 @@ export default function ViewSalesProcessing() {
   const [isMounted, setIsMounted] = useState(false);
   // True once today's starting cash is recorded. Selling is blocked until then.
   const [startingCashDeclared, setStartingCashDeclared] = useState(false);
+  const [shiftClosed, setShiftClosed] = useState(false);
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [locationName, setLocationName] = useState<string>("");
   const [locationType, setLocationType] = useState<string>("");
@@ -216,8 +217,23 @@ export default function ViewSalesProcessing() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [catalogView, setCatalogView] = useState<"grid" | "list">("grid");
+  const handleStartingCashChange = useCallback((declared: boolean, isClosed: boolean) => {
+    if (isClosed) {
+      setShowCheckoutDialog(false);
+      setShowInstitutionalModal(false);
+      setShowPwdModal(false);
+      setShowMobileCart(false);
+      setItemToRemove(null);
+    }
+    setStartingCashDeclared(declared);
+    setShiftClosed(isClosed);
+  }, []);
 
   const addToCart = (product: Product) => {
+    if (shiftClosed) {
+      toast.error("This shift has ended. Sales are disabled.");
+      return;
+    }
     if (product.stock === 0) {
       toast.error("Alert: There are no more stocks left.");
       return;
@@ -433,6 +449,10 @@ export default function ViewSalesProcessing() {
   };
 
   const handleCheckout = () => {
+    if (shiftClosed) {
+      toast.error("This shift has ended. Sales are disabled.");
+      return;
+    }
     if (!startingCashDeclared) {
       toast.error("Enter your starting cash before selling.");
       return;
@@ -463,6 +483,10 @@ export default function ViewSalesProcessing() {
   };
 
   const confirmSale = async () => {
+    if (shiftClosed) {
+      toast.error("This shift has ended. Sales are disabled.");
+      return;
+    }
     if (cart.length === 0 || total <= 0) {
       toast.error("Error: There is no product item selected.");
       return;
@@ -599,8 +623,18 @@ export default function ViewSalesProcessing() {
             return;
           }
         }
-      } catch (err) {
-        console.error("Checkout failed, continuing offline mode for demo:", err);
+      } catch (err: unknown) {
+        console.error("Checkout failed:", err);
+        const data = axios.isAxiosError(err) ? err.response?.data : undefined;
+        const message =
+          (typeof data === "string" && data.trim()) ||
+          (typeof data?.message === "string" && data.message) ||
+          "The sale could not be submitted. Please try again.";
+        if (message.toLowerCase().includes("shift has ended")) {
+          setShiftClosed(true);
+        }
+        toast.error(message);
+        return;
       }
 
       if (isPrintingReceipt) {
@@ -637,6 +671,7 @@ export default function ViewSalesProcessing() {
       setTimeout(() => setLastOrder(null), 5000);
     } catch (error) {
       console.error("Checkout failed:", error);
+      toast.error("The sale could not be completed. Please try again.");
     }
   };
 
@@ -848,6 +883,7 @@ export default function ViewSalesProcessing() {
             <Button
               size="sm"
               variant={isSeniorPWD ? "outline" : "default"}
+              disabled={shiftClosed}
               className={cn("text-xs font-bold rounded-lg h-6 px-2.5", isSeniorPWD && "text-primary border-primary/20 bg-primary/10 hover:bg-primary/20")}
               onClick={() => setShowPwdModal(true)}
             >
@@ -881,11 +917,11 @@ export default function ViewSalesProcessing() {
         </div>
 
         <Button
-          disabled={cart.length === 0}
+          disabled={cart.length === 0 || shiftClosed}
           onClick={handleCheckout}
           className="w-full h-10 rounded-xl text-sm font-bold uppercase tracking-[0.1em]"
         >
-          Complete Sale
+          {shiftClosed ? "Shift Over" : "Complete Sale"}
         </Button>
       </div>
     </Card>
@@ -928,9 +964,15 @@ export default function ViewSalesProcessing() {
         </div>
       </div>
 
-      <StartingCashGate locationId={effectiveLocationId} onChange={setStartingCashDeclared} />
+      <StartingCashGate locationId={effectiveLocationId} onChange={handleStartingCashChange} />
 
-      <div className={cn("flex-1 min-h-0 grid gap-6", isMobile ? "grid-cols-1 pb-28" : "grid-cols-[1fr_420px]")}>
+      <div
+        inert={shiftClosed}
+        className={cn(
+        "flex-1 min-h-0 grid gap-6",
+        isMobile ? "grid-cols-1 pb-28" : "grid-cols-[1fr_420px]",
+        shiftClosed && "pointer-events-none select-none opacity-50 grayscale"
+      )}>
         {/* Product Catalog */}
         <Card className={cn("shadow-none border-border overflow-hidden rounded-2xl", !isMobile && "flex flex-col min-h-0")}>
           <CardHeader className={cn("border-b border-border flex flex-row items-center justify-between shrink-0", isMobile ? "px-3.5 py-3" : "px-5 py-4")}>
@@ -1033,8 +1075,11 @@ export default function ViewSalesProcessing() {
       {/* Mobile Floating Cart Button */}
       {isMobile && !showMobileCart && (
         <div
-          onClick={() => setShowMobileCart(true)}
-          className="fixed bottom-6 left-6 right-6 bg-primary text-primary-foreground px-6 py-4 rounded-[20px] flex justify-between items-center shadow-2xl z-40 cursor-pointer"
+          onClick={() => !shiftClosed && setShowMobileCart(true)}
+          className={cn(
+            "fixed bottom-6 left-6 right-6 bg-primary text-primary-foreground px-6 py-4 rounded-[20px] flex justify-between items-center shadow-2xl z-40 cursor-pointer",
+            shiftClosed && "pointer-events-none opacity-50 grayscale"
+          )}
         >
           <div className="flex items-center gap-4">
             <div className="relative mr-2">
@@ -1054,7 +1099,10 @@ export default function ViewSalesProcessing() {
       {/* Mobile Cart Modal */}
       {isMobile && showMobileCart && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-end animate-in fade-in duration-300">
-          <div className="w-full h-[85vh] flex flex-col">
+          <div
+            inert={shiftClosed}
+            className={cn("w-full h-[85vh] flex flex-col", shiftClosed && "pointer-events-none opacity-50 grayscale")}
+          >
             {renderCart}
           </div>
         </div>
@@ -1069,7 +1117,7 @@ export default function ViewSalesProcessing() {
       />
 
       {/* Checkout Dialog */}
-      {showCheckoutDialog && typeof document !== "undefined" && createPortal(
+      {showCheckoutDialog && !shiftClosed && typeof document !== "undefined" && createPortal(
         <>
           <div
             onClick={() => setShowCheckoutDialog(false)}
@@ -1265,7 +1313,7 @@ export default function ViewSalesProcessing() {
       )}
 
       {/* Institutional Details Modal */}
-      <Dialog open={showInstitutionalModal} onOpenChange={setShowInstitutionalModal}>
+      <Dialog open={showInstitutionalModal && !shiftClosed} onOpenChange={setShowInstitutionalModal}>
         <DialogContent className="max-w-4xl max-h-[96vh] flex flex-col p-0 gap-0 rounded-2xl overflow-hidden">
           <DialogHeader className="px-5 py-3 sm:px-6 sm:py-4 border-b border-border sticky top-0 bg-background z-10">
             <DialogTitle className="text-base sm:text-lg font-bold">
@@ -1560,7 +1608,7 @@ export default function ViewSalesProcessing() {
 
       {/* Senior/PWD Modal */}
       <PwdFormModal
-        show={showPwdModal}
+        show={showPwdModal && !shiftClosed}
         onClose={() => setShowPwdModal(false)}
         onProceed={() => { setIsSeniorPWD(true); setShowPwdModal(false); }}
         idNumber={idNumber}

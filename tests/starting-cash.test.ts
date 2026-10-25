@@ -6,7 +6,11 @@ describe("starting cash rule by Role", () => {
     expect(startingCashRule(role)).toBe("mandatory");
   });
 
-  it.each(["Manager", "POS Manager", "Super Admin", "CEO"])("%s may skip starting cash", (role) => {
+  it.each(["Manager", "POS Manager"])("%s is prompted but may skip starting cash", (role) => {
+    expect(startingCashRule(role)).toBe("optional");
+  });
+
+  it.each(["Super Admin", "CEO"])("%s is exempt from the starting cash prompt", (role) => {
     expect(startingCashRule(role)).toBe("exempt");
   });
 });

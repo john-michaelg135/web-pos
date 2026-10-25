@@ -22,6 +22,14 @@ export interface StartingCashRecord {
   businessDate: string;
   amount: number;
   createdAt: string;
+  endShiftAmount?: number | null;
+  endShiftAt?: string | null;
+  endShiftCashierName?: string | null;
+  successfulSalesAmount?: number | null;
+  approvedRefundAmount?: number | null;
+  expectedCash?: number | null;
+  cashVariance?: number | null;
+  cashShortage?: number | null;
 }
 
 const peso = (n: number) =>
@@ -256,9 +264,9 @@ export function ViewStartingCash({
           <div className="w-full sm:w-72 p-5 bg-card border border-border rounded-xl shadow-none flex items-center justify-between">
             <div className="flex flex-col gap-1">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Starting Cash</span>
-              <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{peso(total)}</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-primary">{peso(total)}</span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Banknote className="w-6 h-6" />
             </div>
           </div>
@@ -272,7 +280,7 @@ export function ViewStartingCash({
           {!hasDeclaredForShift && (
             <Button
               size="sm"
-              className="rounded-lg gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+              className="rounded-lg gap-1.5"
               onClick={() => {
                 setModalAmount("");
                 setShowAddModal(true);
@@ -299,42 +307,95 @@ export function ViewStartingCash({
       {/* Records Table */}
       <div className="border border-border rounded-xl bg-card overflow-hidden shadow-none print:border print:border-gray-300 print:rounded-lg print:overflow-hidden print:bg-white print:mt-4 print:shadow-none">
         <div className="overflow-x-auto print:overflow-hidden">
-          <table className="w-full text-sm print:text-xs print:border-collapse">
+          <table className="w-full min-w-[900px] text-sm print:min-w-0 print:text-xs print:border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground print:bg-gray-100 print:border-b-2 print:border-gray-300 print:text-gray-700">
-                <th className="text-left font-bold px-5 py-3.5 whitespace-nowrap print:px-4 print:py-2.5 print:text-[11px] print:font-bold print:w-[15%]">Date</th>
-                <th className="text-left font-bold px-5 py-3.5 whitespace-nowrap print:px-4 print:py-2.5 print:text-[11px] print:font-bold print:w-[22%]">Cashier</th>
-                <th className="text-left font-bold px-5 py-3.5 whitespace-nowrap print:px-4 print:py-2.5 print:text-[11px] print:font-bold print:w-[35%]">Branch</th>
-                <th className="text-left font-bold px-5 py-3.5 whitespace-nowrap print:px-4 print:py-2.5 print:text-[11px] print:font-bold print:w-[14%]">Recorded At</th>
-                <th className="text-left font-bold px-5 py-3.5 whitespace-nowrap print:px-4 print:py-2.5 print:text-[11px] print:font-bold print:w-[14%]">Starting Cash</th>
+                <th className="px-5 py-3.5 text-left font-bold print:px-2 print:py-2">Date &amp; Time</th>
+                <th className="px-5 py-3.5 text-left font-bold print:px-2 print:py-2">Cashier</th>
+                <th className="px-5 py-3.5 text-left font-bold print:px-2 print:py-2">Branch</th>
+                <th className="px-5 py-3.5 text-left font-bold print:px-2 print:py-2">Cash Summary</th>
+                <th className="px-5 py-3.5 text-left font-bold print:px-2 print:py-2">Closed By</th>
+                <th className="px-5 py-3.5 text-left font-bold print:px-2 print:py-2">Closing Summary</th>
+                <th className="px-5 py-3.5 text-left font-bold print:px-2 print:py-2">Status</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />
                     Loading records...
                   </td>
                 </tr>
               ) : visible.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground print:py-8 print:text-gray-500">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground print:py-8 print:text-gray-500">
                     No starting cash records found.
                   </td>
                 </tr>
               ) : (
                 visible.map((r) => (
                   <tr key={r.id} className="border-b border-border/60 last:border-0 hover:bg-muted/30 transition-colors print:border-b print:border-gray-200 print:hover:bg-transparent">
-                    <td className="px-5 py-3.5 whitespace-nowrap font-medium text-foreground print:px-4 print:py-2.5 print:text-xs print:text-gray-900">
-                      {new Date(`${r.businessDate}T00:00:00`).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}
+                    <td className="px-5 py-3.5 font-medium text-foreground print:px-2 print:py-2 print:text-gray-900">
+                      <div>{new Date(`${r.businessDate}T00:00:00`).toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" })}</div>
+                      <div className="mt-1 text-xs font-normal text-muted-foreground">
+                        {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
                     </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap text-foreground print:px-4 print:py-2.5 print:text-xs print:text-gray-900">{r.cashierName}</td>
-                    <td className="px-5 py-3.5 whitespace-nowrap text-muted-foreground print:px-4 print:py-2.5 print:text-xs print:text-gray-700">{r.locationName || `Branch ${r.locationId}`}</td>
-                    <td className="px-5 py-3.5 whitespace-nowrap text-xs text-muted-foreground print:px-4 print:py-2.5 print:text-xs print:text-gray-600">
-                      {new Date(r.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    <td className="px-5 py-3.5 text-foreground print:px-2 print:py-2">{r.cashierName}</td>
+                    <td className="max-w-[220px] px-5 py-3.5 text-muted-foreground print:px-2 print:py-2 print:text-gray-700">
+                      {r.locationName || `Branch ${r.locationId}`}
                     </td>
-                    <td className="px-5 py-3.5 text-left whitespace-nowrap font-bold text-foreground print:px-4 print:py-2.5 print:text-xs print:font-bold print:text-gray-900">{peso(r.amount)}</td>
+                    <td className="px-5 py-3.5 print:px-2 print:py-2">
+                      <div className="space-y-1.5">
+                        <div><span className="text-muted-foreground">Starting:</span> <span className="font-semibold text-foreground">{peso(r.amount)}</span></div>
+                        <div><span className="text-muted-foreground">Sales:</span> <span className="text-foreground">{r.successfulSalesAmount == null ? "—" : peso(r.successfulSalesAmount)}</span></div>
+                        <div><span className="text-muted-foreground">Refunds:</span> <span className="text-foreground">{r.approvedRefundAmount == null ? "—" : peso(r.approvedRefundAmount)}</span></div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-foreground print:px-2 print:py-2">
+                      {r.endShiftCashierName || "—"}
+                    </td>
+                    <td className="px-5 py-3.5 print:px-2 print:py-2">
+                      <div className="space-y-1.5">
+                        <div><span className="text-muted-foreground">End:</span> <span className="font-semibold text-foreground">{r.endShiftAmount == null ? "—" : peso(r.endShiftAmount)}</span></div>
+                        <div><span className="text-muted-foreground">Expected:</span> <span className="text-foreground">{r.expectedCash == null ? "—" : peso(r.expectedCash)}</span></div>
+                        <div>
+                          <span className="text-muted-foreground">Variance:</span>{" "}
+                          <span className={cn(
+                            "font-medium",
+                            r.cashVariance == null ? "text-muted-foreground" : r.cashVariance < 0 ? "text-destructive" : r.cashVariance > 0 ? "text-primary" : "text-foreground"
+                          )}>
+                            {r.cashVariance == null
+                              ? "—"
+                              : `${r.cashVariance > 0 ? "+" : ""}${peso(r.cashVariance)}`}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 print:px-2 print:py-2">
+                      {r.endShiftAmount == null ? (
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-amber-600 dark:text-amber-400">
+                          <span className="h-2 w-2 rounded-full bg-amber-400" />
+                          Not Closed
+                        </span>
+                      ) : r.cashVariance != null && r.cashVariance < 0 ? (
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-destructive">
+                          <span className="h-2 w-2 rounded-full bg-destructive" />
+                          Short {peso(r.cashShortage ?? Math.abs(r.cashVariance))}
+                        </span>
+                      ) : r.cashVariance != null && r.cashVariance > 0 ? (
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-primary">
+                          <span className="h-2 w-2 rounded-full bg-primary" />
+                          Over {peso(r.cashVariance)}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-foreground">
+                          <span className="h-2 w-2 rounded-full bg-foreground" />
+                          Balanced
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}

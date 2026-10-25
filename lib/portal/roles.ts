@@ -11,6 +11,8 @@ export const isManager = (role: string | undefined) =>
 /** Super Admin and CEO open every page outside a Module and see every location. */
 export const isSuperUser = (role: string | undefined) => !!role && SUPER_ROLES.includes(role);
 
-/** Managers and administrators may skip starting cash; Cashiers and unknown roles must declare it daily. */
-export const startingCashRule = (role: string | undefined): "mandatory" | "exempt" =>
-  isSuperUser(role) || isManager(role) ? "exempt" : "mandatory";
+/** Managers are prompted but may skip; administrators are exempt; others must declare daily. */
+export const startingCashRule = (
+  role: string | undefined,
+): "mandatory" | "optional" | "exempt" =>
+  isSuperUser(role) ? "exempt" : isManager(role) ? "optional" : "mandatory";

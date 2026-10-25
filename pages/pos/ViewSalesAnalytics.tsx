@@ -223,11 +223,11 @@ export function ViewSalesAnalytics() {
 
   const handleDownloadMoneyAuditCsv = () => {
     const csvContent =
-      "data:text/csv;charset=utf-8,Date,Cashier,Branch,Recorded At,Starting Cash\n" +
+      "data:text/csv;charset=utf-8,Date,Cashier,Branch,Recorded At,Starting Cash,Successful Sales,Approved Refunds,Closed By,End Shift Cash,Expected Cash,Shortage\n" +
       moneyAuditRecords
         .map(
           (r) =>
-            `"${r.businessDate}","${r.cashierName}","${r.locationName || `Branch ${r.locationId}`}","${new Date(r.createdAt).toLocaleString()}","${r.amount}"`
+            `"${r.businessDate}","${r.cashierName}","${r.locationName || `Branch ${r.locationId}`}","${new Date(r.createdAt).toLocaleString()}","${r.amount}","${r.successfulSalesAmount ?? ""}","${r.approvedRefundAmount ?? ""}","${r.endShiftCashierName ?? ""}","${r.endShiftAmount ?? ""}","${r.expectedCash ?? ""}","${r.cashShortage ?? ""}"`
         )
         .join("\n");
     const link = document.createElement("a");
