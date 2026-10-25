@@ -468,7 +468,7 @@ export default function ViewSalesProcessing() {
       return;
     }
 
-    if (!isInstitutional) {
+    if (paymentMethod === "cash") {
       const parsedAmount = parseFloat(amountPaid) || 0;
       if (amountPaid.trim() === "" || parsedAmount < total) {
         toast.error("Error: Amount paid is not enough.");
@@ -526,14 +526,16 @@ export default function ViewSalesProcessing() {
           const resolvedContact = isOrg
             ? (orgName.trim() || contactPerson)
             : ([contactFirstName, contactMiddleName, contactLastName, contactSuffix].filter(Boolean).join(" ") || contactPerson);
-          const { data: response } = await apiClient.apiPos.orderEntryOrdersInstitutionalCreate({
+          const { data: response } = await (apiClient.apiPos.orderEntryOrdersInstitutionalCreate as any)({
             locationId: locationIdVal,
             deliveryAddress: `${street}, ${barangay}, ${city}, ${province} ${zipCode}`,
             contactPerson: resolvedContact,
             customVariationNotes: notes,
-            paymentMethod: "COD",
+            paymentMethod: paymentMethod === "cash" ? "Cash" : "GCash",
             submittedBy: 1,
-            items: items
+            items: items,
+            amountTendered: paymentMethod === "cash" && amountPaid.trim() !== "" ? parseFloat(amountPaid) : null,
+            changeAmount: paymentMethod === "cash" && amountPaid.trim() !== "" ? Math.max(0, parseFloat(amountPaid) - total) : null,
           });
           if (response && response.orderNumber) orderId = response.orderNumber;
         } else {
@@ -1134,37 +1136,35 @@ export default function ViewSalesProcessing() {
                     </div>
                   )}
 
-                  {!isInstitutional && (
-                    <div>
-                      <Label>Payment Method</Label>
-                      <div className="grid grid-cols-2 gap-3 mt-2">
-                        <button
-                          onClick={() => setPaymentMethod("cash")}
-                          className={cn(
-                            "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
-                            paymentMethod === "cash"
-                              ? "border-foreground bg-foreground/5 text-foreground"
-                              : "border-border text-muted-foreground hover:border-muted-foreground/30"
-                          )}
-                        >
-                          <DollarSign className="h-5 w-5" />
-                          <span className="text-xs font-bold uppercase">Cash</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled
-                          title="QRPH is not available yet — company QRPH account pending setup."
-                          className={cn(
-                            "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
-                            "border-border text-muted-foreground/50 bg-muted/30 cursor-not-allowed opacity-60"
-                          )}
-                        >
-                          <Package className="h-5 w-5" />
-                          <span className="text-xs font-bold uppercase">QRPH</span>
-                        </button>
-                      </div>
+                  <div>
+                    <Label>Payment Method</Label>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <button
+                        onClick={() => setPaymentMethod("cash")}
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
+                          paymentMethod === "cash"
+                            ? "border-foreground bg-foreground/5 text-foreground"
+                            : "border-border text-muted-foreground hover:border-muted-foreground/30"
+                        )}
+                      >
+                        <DollarSign className="h-5 w-5" />
+                        <span className="text-xs font-bold uppercase">Cash</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled
+                        title="QRPH is not available yet — company QRPH account pending setup."
+                        className={cn(
+                          "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
+                          "border-border text-muted-foreground/50 bg-muted/30 cursor-not-allowed opacity-60"
+                        )}
+                      >
+                        <Package className="h-5 w-5" />
+                        <span className="text-xs font-bold uppercase">QRPH</span>
+                      </button>
                     </div>
-                  )}
+                  </div>
 
                   {/* Print Receipt UI - hidden for now */}
                   {/*
