@@ -42,7 +42,7 @@ import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import PwdFormModal from "@/components/module-pos/PwdFormModal";
 import StartingCashGate from "@/components/module-pos/StartingCashGate";
 import { cn } from "@/lib/utils";
-import { probeRoleFor } from "@/lib/portal/roles";
+import { isSuperUser, probeRoleFor } from "@/lib/portal/roles";
 
 type Product = {
   id: string;
@@ -74,6 +74,9 @@ export default function ViewSalesProcessing() {
   // True once today's starting cash is recorded. Selling is blocked until then.
   const [startingCashDeclared, setStartingCashDeclared] = useState(false);
   const [shiftClosed, setShiftClosed] = useState(false);
+  // The owner opens POS-PROBE from here but doesn't ring up sales, so selling is locked for them.
+  const ownerOnly = isSuperUser(authUser?.role);
+  const salesLocked = shiftClosed || ownerOnly;
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [locationName, setLocationName] = useState<string>("");
   const [locationType, setLocationType] = useState<string>("");
@@ -893,7 +896,7 @@ export default function ViewSalesProcessing() {
             <Button
               size="sm"
               variant={isSeniorPWD ? "outline" : "default"}
-              disabled={shiftClosed}
+              disabled={salesLocked}
               className={cn(
                 "text-xs font-semibold rounded-md h-7 px-3 shadow-none text-primary bg-primary/10 hover:bg-primary/20",
                 isSeniorPWD && "border-primary/20"
@@ -930,7 +933,7 @@ export default function ViewSalesProcessing() {
         </div>
 
         <Button
-          disabled={cart.length === 0 || shiftClosed}
+          disabled={cart.length === 0 || salesLocked}
           onClick={handleCheckout}
           className="w-full h-10 rounded-xl text-sm font-bold uppercase tracking-[0.1em]"
         >
@@ -991,14 +994,22 @@ export default function ViewSalesProcessing() {
         )}
       </div>
 
-      <StartingCashGate locationId={effectiveLocationId} onChange={handleStartingCashChange} />
+      {ownerOnly && (
+        <div className="shrink-0 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          Sales are rung up by cashiers and managers, so selling is turned off for the owner. Use{" "}
+          <span className="font-semibold text-primary">Open Probe</span> to check the predicted demand of the products.
+        </div>
+      )}
+
+      {/* The owner doesn't run a cash drawer, so there's no starting cash to show them. */}
+      {!ownerOnly && <StartingCashGate locationId={effectiveLocationId} onChange={handleStartingCashChange} />}
 
       <div
-        inert={shiftClosed}
+        inert={salesLocked}
         className={cn(
         "flex-1 min-h-0 grid gap-6",
         isMobile ? "grid-cols-1 pb-28" : "grid-cols-[1fr_420px]",
-        shiftClosed && "pointer-events-none select-none opacity-50 grayscale"
+        salesLocked && "pointer-events-none select-none opacity-50 grayscale"
       )}>
         {/* Product Catalog */}
         <Card className={cn("shadow-none border-border overflow-hidden rounded-2xl", !isMobile && "flex flex-col min-h-0")}>
@@ -1102,10 +1113,10 @@ export default function ViewSalesProcessing() {
       {/* Mobile Floating Cart Button */}
       {isMobile && !showMobileCart && (
         <div
-          onClick={() => !shiftClosed && setShowMobileCart(true)}
+          onClick={() => !salesLocked && setShowMobileCart(true)}
           className={cn(
             "fixed bottom-20 left-4 right-4 bg-primary text-primary-foreground px-6 py-4 rounded-[20px] flex justify-between items-center shadow-2xl z-40 cursor-pointer",
-            shiftClosed && "pointer-events-none opacity-50 grayscale"
+            salesLocked && "pointer-events-none opacity-50 grayscale"
           )}
         >
           <div className="flex items-center gap-4">
@@ -1127,8 +1138,8 @@ export default function ViewSalesProcessing() {
       {isMobile && showMobileCart && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-end animate-in fade-in duration-300">
           <div
-            inert={shiftClosed}
-            className={cn("w-full h-[85vh] flex flex-col", shiftClosed && "pointer-events-none opacity-50 grayscale")}
+            inert={salesLocked}
+            className={cn("w-full h-[85vh] flex flex-col", salesLocked && "pointer-events-none opacity-50 grayscale")}
           >
             {renderCart}
           </div>
@@ -1144,7 +1155,7 @@ export default function ViewSalesProcessing() {
       />
 
       {/* Checkout Dialog */}
-      {showCheckoutDialog && !shiftClosed && typeof document !== "undefined" && createPortal(
+      {showCheckoutDialog && !salesLocked && typeof document !== "undefined" && createPortal(
         <>
           <div
             onClick={() => setShowCheckoutDialog(false)}
@@ -1443,7 +1454,7 @@ export default function ViewSalesProcessing() {
       )}
 
       {/* Institutional Details Modal */}
-      <Dialog open={showInstitutionalModal && !shiftClosed} onOpenChange={setShowInstitutionalModal}>
+      <Dialog open={showInstitutionalModal && !salesLocked} onOpenChange={setShowInstitutionalModal}>
         <DialogContent className="max-w-4xl max-h-[96vh] flex flex-col p-0 gap-0 rounded-2xl overflow-hidden">
           <DialogHeader className="px-5 py-3 sm:px-6 sm:py-4 border-b border-border sticky top-0 bg-background z-10">
             <DialogTitle className="text-base sm:text-lg font-bold">
@@ -1738,7 +1749,7 @@ export default function ViewSalesProcessing() {
 
       {/* Senior/PWD Modal */}
       <PwdFormModal
-        show={showPwdModal && !shiftClosed}
+        show={showPwdModal && !salesLocked}
         onClose={() => setShowPwdModal(false)}
         onProceed={() => { setIsSeniorPWD(true); setShowPwdModal(false); }}
         idNumber={idNumber}
