@@ -22,7 +22,8 @@ function MainContent({ children }: { children: React.ReactNode }) {
     <div
       className={`flex-1 flex flex-col min-w-0 pb-16 md:pb-0 transition-[margin] duration-300 ${marginClass} print:!ml-0 print:!pb-0 print:!m-0`}
     >
-      <div className="print:hidden">
+      {/* Sticky on the wrapper: a sticky child cannot outlive a parent that is only as tall as itself. */}
+      <div className="sticky top-0 z-50 print:hidden">
         <Header />
       </div>
       <main

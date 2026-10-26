@@ -60,7 +60,7 @@ export default function StockAdjustmentFormDialog({
           left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: 99999,
-          width: "100%",
+          width: "calc(100% - 32px)",
           maxWidth: 540,
           maxHeight: "90vh",
           backgroundColor: "#ffffff",

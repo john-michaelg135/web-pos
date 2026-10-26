@@ -257,39 +257,39 @@ export default function ViewProductManagement() {
           <h1 className="text-headline-md font-bold tracking-tight text-foreground">
             Product Management
           </h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <p className="text-sm text-muted-foreground">Manage products and variations</p>
             <Badge variant="secondary" className="text-xs font-bold">
               Global Catalog
             </Badge>
           </div>
         </div>
-        <Button onClick={activeTab === "products" ? openAddProduct : openAddVariation}>
+        <Button onClick={activeTab === "products" ? openAddProduct : openAddVariation} className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-1.5" />
           {activeTab === "products" ? "Add Product" : "Add Variation"}
         </Button>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         {stats.map((s) => (
           <Card key={s.label}>
-            <CardContent className="p-5">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            <CardContent className="p-3 sm:p-5">
+              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 leading-tight">
                 {s.label}
               </div>
-              <div className={cn("text-3xl font-bold", s.color)}>{s.value}</div>
+              <div className={cn("text-2xl sm:text-3xl font-bold", s.color)}>{s.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
       {/* Tab switcher */}
-      <div className="flex items-center bg-muted p-1 rounded-xl w-fit">
+      <div className="flex items-center bg-muted p-1 rounded-xl w-full sm:w-fit">
         <button
           onClick={() => setActiveTab("products")}
           className={cn(
-            "px-6 py-2 rounded-lg text-sm font-semibold transition-all",
+            "flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all",
             activeTab === "products"
               ? "bg-background text-primary shadow-sm"
               : "text-muted-foreground hover:text-foreground"
@@ -300,7 +300,7 @@ export default function ViewProductManagement() {
         <button
           onClick={() => setActiveTab("variations")}
           className={cn(
-            "px-6 py-2 rounded-lg text-sm font-semibold transition-all",
+            "flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all",
             activeTab === "variations"
               ? "bg-background text-primary shadow-sm"
               : "text-muted-foreground hover:text-foreground"

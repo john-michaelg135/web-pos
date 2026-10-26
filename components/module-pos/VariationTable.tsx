@@ -35,13 +35,13 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
     <div className="w-full min-w-0">
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5 items-start sm:items-center">
+      <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-5 sm:items-center">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by SKU or ID…"
           maxLength={25}
-          className="w-full sm:max-w-[200px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          className="col-span-2 w-full sm:max-w-[200px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
         <CustomSelect
           value={productFilter}
@@ -65,7 +65,44 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
+      {/* Phones: one card per variation */}
+      <ul className="md:hidden flex flex-col gap-2.5 m-0 p-0 list-none">
+        {filtered.length === 0 ? (
+          <li className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">No variations found.</li>
+        ) : (
+          filtered.map((v) => (
+            <li key={v.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3.5 flex flex-col gap-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white m-0 min-w-0">{productMap.get(v.productId) ?? v.productId}</p>
+                <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                  v.isActive
+                    ? "bg-success-50 dark:bg-success-500/20 text-success-600 dark:text-success-400"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                }`}>
+                  {v.isActive ? "Active" : "Inactive"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="whitespace-nowrap font-medium px-2.5 py-0.5 rounded-full bg-blue-light-50 dark:bg-blue-light-500/20 text-blue-light-700 dark:text-blue-light-400">
+                  {v.packagingType}
+                </span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{v.size}</span>
+                <code className="whitespace-nowrap font-mono text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">{v.sku}</code>
+              </div>
+              <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-gray-100 dark:border-gray-800">
+                <span className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">₱{v.price.toLocaleString()}</span>
+                <button
+                  onClick={() => onEdit(v)}
+                  className="h-9 px-4 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Edit Price
+                </button>
+              </div>
+            </li>
+          ))
+        )}
+      </ul>
+      <div className="hidden md:block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>

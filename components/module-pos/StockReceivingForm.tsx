@@ -196,7 +196,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm flex flex-col gap-6">
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col gap-5 sm:gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pending Deliveries</h3>
@@ -204,7 +204,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
             Confirm stock arrivals sent from the commissary.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="grid grid-cols-[1fr_auto] sm:flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setShowManualDialog(true)}
             className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-xl text-white bg-foreground hover:bg-foreground/90 transition-colors shadow-sm"
@@ -391,8 +391,65 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
         />
       </div>
 
+      {/* Phones: one card per delivery */}
+      <ul className="md:hidden flex flex-col gap-2.5 m-0 p-0 list-none">
+        {isLoading ? (
+          <li className="py-12 flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-4 border-foreground border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Fetching pending deliveries from SCM...</span>
+          </li>
+        ) : filteredTransfers.length === 0 ? (
+          <li className="py-12 text-center text-sm text-gray-400 dark:text-gray-500">No pending deliveries found.</li>
+        ) : (
+          filteredTransfers.map((t) => {
+            const matchedVar = allVariations.find((v) => v.sku.toLowerCase() === t.sku.toLowerCase());
+            const destLoc = locations.find((l) => l.locationId === t.destLocationId);
+            const locationName = destLoc ? destLoc.locationName : `Location #${t.destLocationId}`;
+            return (
+              <li key={t.transferId} className="rounded-xl border border-gray-200 dark:border-gray-800 p-3.5 flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white m-0">{t.productName}</p>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <code className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">{t.sku}</code>
+                      {matchedVar ? (
+                        renderVariationBadges(matchedVar.variationName, muted, border, inputBg, true)
+                      ) : (
+                        <span className="text-[10px] font-semibold text-error-500 bg-error-50 dark:bg-error-500/10 px-2 py-0.5 rounded border border-error-200 dark:border-error-900/30">
+                          Not Synced in POS
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xl font-black leading-none text-gray-900 dark:text-white tabular-nums m-0">{t.transferQuantity}</p>
+                    <p className="text-[10px] text-gray-500 m-0 mt-1">units</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap text-[11px] text-gray-500 dark:text-gray-400">
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">To {locationName}</span>
+                  <span>·</span>
+                  <span className="font-mono">TR-{t.transferId}</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30">
+                    {t.status.toUpperCase()}
+                  </span>
+                </div>
+                {t.notes && <p className="text-xs text-gray-400 dark:text-gray-500 italic m-0">Note: {t.notes}</p>}
+                <button
+                  onClick={() => handleConfirm(t)}
+                  disabled={!matchedVar}
+                  className="w-full h-10 text-xs font-bold text-white rounded-lg bg-foreground hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
+                >
+                  Confirm Receipt
+                </button>
+              </li>
+            );
+          })
+        )}
+      </ul>
+
       {/* Table of SCM deliveries */}
-      <div className="border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+      <div className="hidden md:block border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

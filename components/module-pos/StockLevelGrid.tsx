@@ -51,7 +51,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
       try {
         setIsLoading(true);
         const { data } = await apiClient.apiPos.inventoryStockAllList();
-        
+
         const parsed = data.map(s => {
           return {
             ...s,
@@ -61,7 +61,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
             lowStockThreshold: 50 // default mock threshold as API doesn't return it in allStock
           } as ParsedStock;
         });
-        
+
         setStocks(parsed);
       } catch (err) {
         console.error("Failed to fetch stock:", err);
@@ -69,7 +69,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
         setIsLoading(false);
       }
     };
-    
+
     fetchStock();
   }, []);
 
@@ -114,6 +114,68 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
           />
         </div>
       )}
+      {/* Phones: a compact list, whatever view is picked */}
+      <ul className="md:hidden flex flex-col gap-2.5 m-0 p-0 list-none">
+        {filteredStocks.length === 0 ? (
+          <li className="py-12 text-center text-sm text-muted-foreground">No items found matching the selected filters.</li>
+        ) : (
+          filteredStocks.map((stock) => {
+            const isLowStock = stock.quantity <= stock.lowStockThreshold;
+            const stockPercent = Math.min((stock.quantity / (stock.lowStockThreshold * 2)) * 100, 100);
+            const isReadOnly = stock.locationId === 999 || stock.locationName === "Commissary";
+            return (
+              <li
+                key={stock.stockId}
+                className={`rounded-xl border bg-card p-3.5 flex flex-col gap-3 ${isLowStock ? "border-destructive/30" : "border-border"}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate m-0">
+                      {stock.locationName}
+                    </p>
+                    <p className="text-sm font-bold text-foreground leading-tight m-0 mt-0.5">{stock.productName}</p>
+                    <div className="mt-1.5">
+                      {renderVariationBadges(stock.variationName || "", muted, border, inputBg, true)}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-2xl font-black leading-none tracking-tight text-foreground tabular-nums m-0">{stock.quantity}</p>
+                    <p className="text-[10px] text-muted-foreground m-0 mt-1">units</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center gap-2 mb-1 text-[10px] font-medium text-muted-foreground">
+                      <span className={isLowStock ? "font-bold text-destructive" : ""}>{isLowStock ? "Low stock" : "In stock"}</span>
+                      <span>Threshold {stock.lowStockThreshold}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${isLowStock ? "bg-destructive" : "bg-foreground"}`}
+                        style={{ width: `${stockPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                  {isReadOnly ? (
+                    <span className="shrink-0 text-[11px] italic text-muted-foreground">Read-only</span>
+                  ) : (
+                    <button
+                      onClick={() => onAdjustStock && onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold })}
+                      className={`shrink-0 h-9 px-4 text-xs font-semibold rounded-lg transition-colors ${
+                        isLowStock ? "bg-destructive text-white" : "bg-foreground text-background"
+                      }`}
+                    >
+                      Adjust
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })
+        )}
+      </ul>
+
+      <div className="hidden md:block">
       {viewMode === "table" ? (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
           <table className="w-full text-left">
@@ -187,8 +249,8 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                             <button
                               onClick={() => onAdjustStock && onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold })}
                               className={`px-3 py-1.5 text-white text-xs font-bold rounded-lg transition-all shadow-sm ${
-                                isLowStock 
-                                  ? "bg-error-500 hover:bg-error-600 shadow-error-500/20" 
+                                isLowStock
+                                  ? "bg-error-500 hover:bg-error-600 shadow-error-500/20"
                                   : "bg-brand-500 hover:bg-brand-600 shadow-brand-500/20"
                               }`}
                             >
@@ -219,8 +281,8 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                 <div
                   key={stock.stockId}
                   className={`relative group rounded-xl border bg-card transition-all duration-300 flex flex-col overflow-hidden ${
-                    isLowStock 
-                      ? "border-destructive/20 shadow-[0_2px_0_0_rgba(239,68,68,0.15)]" 
+                    isLowStock
+                      ? "border-destructive/20 shadow-[0_2px_0_0_rgba(239,68,68,0.15)]"
                       : "border-border shadow-[0_2px_0_0_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_-8px_rgba(0,0,0,0.12)] hover:-translate-y-0.5"
                   }`}
                 >
@@ -314,8 +376,8 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                             }
                           }}
                           className={`w-full py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
-                            isLowStock 
-                              ? "bg-destructive text-white hover:bg-destructive/90 shadow-sm" 
+                            isLowStock
+                              ? "bg-destructive text-white hover:bg-destructive/90 shadow-sm"
                               : "bg-foreground text-background hover:bg-foreground/90 shadow-sm"
                           }`}
                         >
@@ -330,6 +392,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

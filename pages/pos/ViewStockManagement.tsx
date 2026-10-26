@@ -16,6 +16,7 @@ import { StockMovementTable } from "@/components/module-pos/StockMovementTable";
 import StockAdjustmentFormDialog from "@/components/module-pos/StockAdjustmentFormDialog";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
+import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import { StockLevel, StockMovement } from "@/components/module-pos/types";
 
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ export function ViewStockManagement() {
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [locations, setLocations] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   const [showAdjustmentDialog, setShowAdjustmentDialog] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockLevel | null>(null);
@@ -221,9 +223,12 @@ export function ViewStockManagement() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-headline-md font-bold tracking-tight text-foreground">Stock Management</h1>
-          <div className="flex items-center gap-2">
-            <p className="text-sm text-muted-foreground">Monitor stock levels, manage adjustments, and record new arrivals.</p>
-            <Badge variant="secondary" className="text-xs font-semibold">
+          <div className="flex items-center gap-x-2 gap-y-1.5 flex-wrap">
+            <p className="text-sm text-muted-foreground">
+              <span className="md:hidden">Stock levels, arrivals and history.</span>
+              <span className="hidden md:inline">Monitor stock levels, manage adjustments, and record new arrivals.</span>
+            </p>
+            <Badge variant="secondary" className="text-xs font-semibold whitespace-nowrap">
               {canSwitchLocation
                 ? "All Locations"
                 : assignedLocation
@@ -236,44 +241,45 @@ export function ViewStockManagement() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "levels" | "receive" | "history")} className="space-y-6">
-        <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start gap-2 p-0">
+        <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start max-md:items-end max-md:h-auto gap-1.5 md:gap-2 p-0">
           {[
-            { value: "levels", label: "Stock Levels" },
-            { value: "receive", label: "Receive Stock" },
-            { value: "history", label: "Stock History Log" },
+            { value: "levels", label: "Stock Levels", short: "Levels" },
+            { value: "receive", label: "Receive Stock", short: "Receive" },
+            { value: "history", label: "Stock History Log", short: "History" },
           ].map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
               className={cn(
-                "rounded-t-lg rounded-b-none px-4 py-2.5 text-sm font-semibold border transition-colors data-[state=active]:shadow-none",
+                "rounded-t-lg rounded-b-none px-4 py-2.5 text-sm font-semibold border transition-colors data-[state=active]:shadow-none md:shrink-0 max-md:flex-1 max-md:min-w-0 max-md:px-2",
                 "data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary",
                 "data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border"
               )}
             >
-              {tab.label}
+              <span className="md:hidden">{tab.short}</span>
+              <span className="hidden md:inline">{tab.label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
 
         {/* Stock Levels */}
         <TabsContent value="levels" className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-end gap-4 rounded-xl border border-border bg-card p-4">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location:</span>
+          <div className="flex flex-col md:flex-row md:items-center justify-end gap-4 rounded-xl border border-border bg-card p-3 md:p-4">
+            <div className="flex flex-wrap items-center gap-4 max-md:w-full">
+              <div className="flex items-center gap-2 max-md:w-full">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider max-md:sr-only">Location:</span>
                 <CustomSelect
                   value={selectedLocation}
                   onChange={(val) => { if (canSwitchLocation) setSelectedLocation(val); }}
                   disabled={!canSwitchLocation}
-                  className="w-48"
+                  className="w-full md:w-48"
                   options={[
                     ...(canSwitchLocation ? [{ value: "All", label: "All Locations" }] : []),
                     ...locations.map((loc) => ({ value: loc.locationName, label: loc.locationName })),
                   ]}
                 />
               </div>
-              <div className="flex items-center border border-border rounded-lg p-1 bg-muted/50">
+              <div className="hidden md:flex items-center border border-border rounded-lg p-1 bg-muted/50">
                 <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setViewMode("grid")} title="Grid View">
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
@@ -313,7 +319,7 @@ export function ViewStockManagement() {
         text="#101828"
         cardBg="#ffffff"
         inputBg="#ffffff"
-        isMobile={false}
+        isMobile={isMobile}
       />
 
       <DeleteConfirmDialog

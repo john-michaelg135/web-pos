@@ -28,13 +28,13 @@ export function ProductTable({ products }: ProductTableProps) {
     <div className="w-full min-w-0">
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5 items-start sm:items-center">
+      <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-5 sm:items-center">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or ID…"
           maxLength={25}
-          className="w-full sm:max-w-[200px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          className="col-span-2 w-full sm:max-w-[200px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
         <CustomSelect
           value={catFilter}
@@ -58,7 +58,31 @@ export function ProductTable({ products }: ProductTableProps) {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
+      {/* Phones: one card per product */}
+      <ul className="md:hidden flex flex-col gap-2 m-0 p-0 list-none">
+        {filtered.length === 0 ? (
+          <li className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">No products found.</li>
+        ) : (
+          filtered.map((p) => (
+            <li key={p.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white m-0">{p.name}</p>
+                <span className="inline-block mt-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400">
+                  {p.category}
+                </span>
+              </div>
+              <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                  p.isActive
+                    ? "bg-success-50 dark:bg-success-500/20 text-success-600 dark:text-success-400"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                }`}>
+                  {p.isActive ? "Active" : "Inactive"}
+                </span>
+            </li>
+          ))
+        )}
+      </ul>
+      <div className="hidden md:block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>

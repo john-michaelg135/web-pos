@@ -499,20 +499,36 @@ export default function ViewOrderManagement() {
   return (
     <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in">
       {/* Header */}
-      <div className={cn("flex justify-between gap-5", isMobile ? "flex-col items-start" : "items-center")}>
-        <div>
-          <h1 className="text-headline-md font-bold tracking-tight text-foreground">Order Management</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-muted-foreground">Track and manage all orders</p>
-            <span className="text-muted-foreground font-bold">&middot;</span>
-            <Badge variant="secondary" className="bg-primary/10 text-primary text-xs font-bold">
-              {locationIndicator}
-            </Badge>
+      <div className={cn("flex justify-between gap-5", isMobile ? "flex-col gap-4" : "items-center")}>
+        <div className="flex items-start justify-between gap-3 min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-headline-md font-bold tracking-tight text-foreground">Order Management</h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <p className="text-sm text-muted-foreground">Track and manage all orders</p>
+              <span className="text-muted-foreground font-bold">&middot;</span>
+              <Badge variant="secondary" className="bg-primary/10 text-primary text-xs font-bold">
+                {locationIndicator}
+              </Badge>
+            </div>
           </div>
+          {isMobile && !isCashierLevel && (
+            <button
+              onClick={handleViewManagerPin}
+              disabled={isLoadingPin}
+              aria-label="View my PIN"
+              className="h-10 px-3 shrink-0 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              PIN
+            </button>
+          )}
         </div>
-        <div className={cn("flex items-center gap-3", isMobile && "flex-col w-full")}>
-          {!isCashierLevel && (
-            <button 
+        <div className={cn("flex items-center gap-3", isMobile && "w-full gap-2")}>
+          {!isMobile && !isCashierLevel && (
+            <button
               onClick={handleViewManagerPin}
               disabled={isLoadingPin}
               className="px-3 py-2 shrink-0 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
@@ -524,26 +540,33 @@ export default function ViewOrderManagement() {
               View My PIN
             </button>
           )}
-          <div className="relative w-full">
+          <div className="relative w-full min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search ID or Date..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} maxLength={25} className="pl-10 h-12" />
+            <Input placeholder={isMobile ? "Search orders..." : "Search ID or Date..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} maxLength={25} className={cn("pl-10", isMobile ? "h-11" : "h-12")} />
           </div>
-          <div className="flex bg-muted/50 p-1 rounded-xl h-12 shrink-0">
-            <button 
-              onClick={() => setViewMode("grid")} 
-              className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setViewMode("list")} 
-              className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
-          <Button variant={showFilters ? "default" : "outline"} onClick={() => setShowFilters(!showFilters)} className={cn("h-12 gap-2 rounded-xl text-xs font-bold uppercase", isMobile && "w-full")}>
-            <Filter className="h-3.5 w-3.5" /> Filters
+          {!isMobile && (
+            <div className="flex bg-muted/50 p-1 rounded-xl h-12 shrink-0">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            onClick={() => setShowFilters(!showFilters)}
+            aria-label="Filters"
+            className={cn("gap-2 rounded-xl text-xs font-bold uppercase shrink-0", isMobile ? "h-11 w-11 p-0" : "h-12")}
+          >
+            <Filter className="h-3.5 w-3.5" />{!isMobile && "Filters"}
           </Button>
         </div>
       </div>
@@ -564,11 +587,14 @@ export default function ViewOrderManagement() {
       */}
 
       {/* Status Tabs */}
-      <div className="flex overflow-x-auto gap-3">
+      <div className={cn(
+        "flex overflow-x-auto gap-3",
+        isMobile && "-mx-6 px-6 gap-2 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      )}>
         {statusTabs.map(({ key, label, count, destructive }) => (
           <Button key={key} variant="outline" size="sm" onClick={() => setActiveTab(key)} className={cn(
             "rounded-xl text-xs font-bold uppercase whitespace-nowrap",
-            isMobile && "flex-1 px-0",
+            isMobile && "shrink-0 snap-start rounded-full px-3.5",
             activeTab === key && !destructive && "border-primary bg-primary/10 text-primary",
             activeTab === key && destructive && "border-destructive bg-destructive/10 text-destructive",
             activeTab !== key && "text-muted-foreground"
@@ -604,11 +630,36 @@ export default function ViewOrderManagement() {
           )}
 
           <div className={cn(
-            viewMode === "grid" 
-              ? cn("grid gap-6", isMobile ? "grid-cols-1" : "grid-cols-[repeat(auto-fill,minmax(450px,1fr))]")
+            isMobile
+              ? "flex flex-col gap-3 w-full"
+              : viewMode === "grid"
+              ? "grid gap-6 grid-cols-[repeat(auto-fill,minmax(450px,1fr))]"
               : "flex flex-col gap-4 w-full"
           )}>
-            {viewMode === "list" && currentOrders.length > 0 ? (
+            {isMobile ? (
+              currentOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  primary={LEGACY_COLORS.primary}
+                  muted={LEGACY_COLORS.muted}
+                  border={LEGACY_COLORS.border}
+                  text={LEGACY_COLORS.text}
+                  cardBg={LEGACY_COLORS.cardBg}
+                  inputBg={LEGACY_COLORS.inputBg}
+                  onRequestRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
+                  onRequestVoid={() => { setSelectedOrder(order); setShowVoidDialog(true); }}
+                  onApplyVoid={() => handleApproveVoid(order)}
+                  onRejectVoid={() => handleRejectVoid(order)}
+                  onApplyRefund={() => handleApproveRefund(order)}
+                  onRejectRefund={() => handleRejectRefund(order)}
+                  onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
+                  onCompletePayment={() => completePayment(order.id)}
+                  isMobile
+                  viewMode="compact"
+                />
+              ))
+            ) : viewMode === "list" && currentOrders.length > 0 ? (
               <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>

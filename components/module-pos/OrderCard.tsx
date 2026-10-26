@@ -26,7 +26,7 @@ onRejectVoid?: () => void;
   onApplyRefund?: () => void;
   onRejectRefund?: () => void;
   isMobile?: boolean;
-  viewMode?: "grid" | "list";
+  viewMode?: "grid" | "list" | "compact";
 }
 
 export default function OrderCard({
@@ -58,6 +58,83 @@ onRejectVoid,
   const isRejected = order.status === "rejected";
   const isCompleted = order.status === "completed" || (isWebOrder && order.status === "delivered");
   const [showViewModal, setShowViewModal] = useState(false);
+
+  const modal = (
+    <ViewOrderModal
+      isOpen={showViewModal}
+      onClose={() => setShowViewModal(false)}
+      order={order}
+      primary={primary}
+      muted={muted}
+      border={border}
+      text={text}
+      cardBg={cardBg}
+      onStatusUpdate={onStatusUpdate}
+      onCompletePayment={onCompletePayment}
+      onRequestRefund={onRequestRefund}
+      onApplyRefund={onApplyRefund}
+      onRequestVoid={onRequestVoid}
+      onApplyVoid={onApplyVoid}
+      onRejectVoid={onRejectVoid}
+      onRejectRefund={onRejectRefund}
+    />
+  );
+
+  // Phones: one tappable card per order with just what is needed to pick it out.
+  if (viewMode === "compact") {
+    const itemCount = order.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+    const statusStyle = {
+      background: isPending ? "#fafafa" : isRejected ? "#fef2f2" : isCompleted ? "#f4f4f5" : `${primary}0D`,
+      color: isPending ? "#71717a" : isRejected ? "#dc2626" : isCompleted ? "#18181b" : primary,
+      borderColor: isPending ? "#e4e4e7" : isRejected ? "#fee2e2" : isCompleted ? "#e4e4e7" : `${primary}26`,
+    };
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setShowViewModal(true)}
+          className="w-full text-left rounded-2xl border border-border bg-card p-4 flex flex-col gap-2.5 shadow-sm active:scale-[0.99] active:bg-muted/40 transition-all"
+        >
+          <span className="flex items-start justify-between gap-3 w-full">
+            <span className="text-sm font-bold text-foreground truncate min-w-0">{order.orderNumber || order.id}</span>
+            <span
+              className="inline-flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide"
+              style={statusStyle}
+            >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
+              {STATUS_LABELS[order.status]}
+            </span>
+          </span>
+          <span className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[15px] font-semibold text-foreground truncate">{order.customer}</span>
+            <span className="text-xs text-muted-foreground truncate">
+              <span className="capitalize">{order.type === "store" ? "Walk-in" : order.type}</span>
+              {order.isPreOrder && " · Pre-order"}
+              {" · "}{order.location}
+              {" · "}{order.date}
+            </span>
+          </span>
+          <span className="flex items-center justify-between gap-3 pt-2.5 border-t border-border w-full">
+            <span className="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
+              {itemCount} {itemCount === 1 ? "item" : "items"}
+              {order.paymentStatus === "partial" && (
+                <span
+                  className="px-1.5 py-0.5 rounded-md text-[10px] font-bold"
+                  style={{ background: "#f59e0b1a", color: "#b45309" }}
+                >
+                  {order.total > 0 ? Math.round(((order.amountPaid ?? 0) / order.total) * 100) : 0}% paid
+                </span>
+              )}
+            </span>
+            <span className="text-base font-bold text-foreground tabular-nums shrink-0">
+              ₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </span>
+        </button>
+        {modal}
+      </>
+    );
+  }
 
   if (viewMode === "list") {
     return (

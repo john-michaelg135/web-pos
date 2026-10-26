@@ -118,7 +118,7 @@ onRejectVoid,
       const discountedPrice = item.price;
       const originalPrice = Math.round((discountedPrice * 1.12 / 0.80) * 100) / 100;
       const vatExemptPrice = Math.round((originalPrice / 1.12) * 100) / 100;
-      
+
       const qty = item.quantity;
       originalSubtotal += originalPrice * qty;
       vatExemptTotal += (originalPrice - vatExemptPrice) * qty;
@@ -138,22 +138,25 @@ onRejectVoid,
 
   const modalContent = (
     <>
-      <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-        <div 
-          className="w-full max-w-4xl mx-4 rounded-2xl shadow-xl border flex flex-col max-h-[90vh]"
+      <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+        <div
+          className="w-full max-w-4xl sm:mx-4 rounded-t-3xl sm:rounded-2xl shadow-xl border flex flex-col h-[92dvh] sm:h-auto max-h-[92dvh] sm:max-h-[90vh] animate-in slide-in-from-bottom-8 sm:slide-in-from-bottom-0 duration-300"
         style={{ background: cardBg, borderColor: border }}
       >
         {/* Header */}
-        <div 
-          className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b sticky top-0 z-10 rounded-t-2xl"
+        <div
+          className="relative flex items-center justify-between gap-3 px-5 pt-5 pb-3 sm:px-6 sm:py-4 border-b sticky top-0 z-10 rounded-t-3xl sm:rounded-t-2xl"
           style={{ borderColor: border, background: cardBg }}
         >
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold" style={{ color: text }}>
-              Manage Order {order.orderNumber || order.id}
+          {/* Grab handle, phones only */}
+          <span aria-hidden className="sm:hidden absolute top-2 left-1/2 -translate-x-1/2 h-1 w-10 rounded-full bg-gray-300 dark:bg-gray-700" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 min-w-0">
+            <p className="sm:hidden text-[11px] font-semibold uppercase tracking-wider m-0" style={{ color: muted }}>Manage order</p>
+            <h2 className="text-base sm:text-xl font-bold truncate" style={{ color: text }}>
+              <span className="hidden sm:inline">Manage Order </span>{order.orderNumber || order.id}
             </h2>
             <span
-              className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider"
+              className="self-start sm:self-auto px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider whitespace-nowrap"
               style={{
                 background: `${primary}15`,
                 color: primary,
@@ -163,18 +166,19 @@ onRejectVoid,
               {STATUS_LABELS[order.status]}
             </span>
           </div>
-          <button 
+          <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Close"
+            className="p-2 sm:p-1.5 shrink-0 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <CloseLineIcon className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
+        <div className="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1 overscroll-contain">
           {/* Info Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
             <div className="p-4 rounded-xl border flex flex-col gap-1 min-w-0" style={{ borderColor: border, background: `${border}10` }}>
               <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: muted }}>Customer Details</p>
               <p className="text-sm font-bold break-words [overflow-wrap:anywhere]" style={{ color: text }}>{order.customer}</p>
@@ -223,13 +227,13 @@ onRejectVoid,
 
           {/* Xendit Payment Details */}
           {order.paymentUrl && (
-            <div 
-              className="p-5 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-6" 
+            <div
+              className="p-5 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-6"
               style={{ borderColor: border, background: `linear-gradient(135deg, ${primary}0A, ${primary}15)` }}
             >
               {order.paymentStatus?.toLowerCase() === "paid" ? (
                 <div className="flex items-center gap-4 w-full py-2 px-1">
-                  <div 
+                  <div
                     className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 border"
                     style={{ borderColor: `${primary}30`, background: `${primary}10`, color: primary }}
                   >
@@ -254,14 +258,14 @@ onRejectVoid,
                       Scan the QR code to pay via E-Wallet, Card, or QR PH, or copy the checkout URL to send to the customer.
                     </p>
                     <div className="flex items-center gap-3">
-                      <input 
-                        type="text" 
-                        readOnly 
-                        value={order.paymentUrl} 
-                        className="flex-1 text-xs px-3 py-2 rounded-lg border outline-none font-mono" 
+                      <input
+                        type="text"
+                        readOnly
+                        value={order.paymentUrl}
+                        className="flex-1 text-xs px-3 py-2 rounded-lg border outline-none font-mono"
                         style={{ background: cardBg, borderColor: border, color: muted }}
                       />
-                      <button 
+                      <button
                         onClick={() => {
                           if (order.paymentUrl) {
                             navigator.clipboard.writeText(order.paymentUrl);
@@ -269,24 +273,24 @@ onRejectVoid,
                           }
                         }}
                         className="px-4 py-2 text-xs font-bold uppercase rounded-lg transition-colors border active:scale-95"
-                        style={{ 
-                          borderColor: `${primary}50`, 
-                          background: `${primary}1A`, 
-                          color: primary 
+                        style={{
+                          borderColor: `${primary}50`,
+                          background: `${primary}1A`,
+                          color: primary
                         }}
                       >
                         Copy Link
                       </button>
                     </div>
                   </div>
-                  
-                  <div 
+
+                  <div
                     className="p-3 bg-white rounded-xl border flex flex-col items-center justify-center shadow-sm shrink-0"
                     style={{ borderColor: border }}
                   >
-                    <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(order.paymentUrl)}`} 
-                      alt="Cashless Payment QR Code" 
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(order.paymentUrl)}`}
+                      alt="Cashless Payment QR Code"
                       className="w-[140px] h-[140px]"
                     />
                     <span className="text-[9px] font-bold uppercase mt-2 text-gray-500 tracking-wider">
@@ -318,7 +322,7 @@ onRejectVoid,
                     : "Unpaid"}
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 text-[13px] sm:text-sm tabular-nums">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider m-0" style={{ color: muted }}>Total</p>
                   <p className="font-bold m-0" style={{ color: text }}>₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
@@ -358,7 +362,7 @@ onRejectVoid,
                 <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>Change Order Status</p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 m-0">Directly transition this order to another valid delivery status.</p>
               </div>
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <CustomSelect
                   value={tempStatus}
                   onChange={(val) => setTempStatus(val as OrderStatus)}
@@ -388,7 +392,23 @@ onRejectVoid,
           {/* Items Section */}
           <div>
             <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: muted }}>Order Items</h3>
-            <div className="rounded-xl border overflow-hidden" style={{ borderColor: border }}>
+            <ul className="sm:hidden rounded-xl border divide-y m-0 p-0 list-none" style={{ borderColor: border }}>
+              {order.items.map((item, idx) => (
+                <li key={idx} className="px-4 py-3 flex flex-col gap-1.5" style={{ borderColor: border }}>
+                  <p className="text-sm font-bold m-0 break-words" style={{ color: text }}>{item.name}</p>
+                  <div>{renderVariationBadges(item.variation, muted, border, cardBg, true)}</div>
+                  <div className="flex items-center justify-between gap-3 text-sm tabular-nums">
+                    <span style={{ color: muted }}>
+                      {item.quantity} × ₱{item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    <span className="font-bold" style={{ color: text }}>
+                      ₱{(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden sm:block rounded-xl border overflow-hidden" style={{ borderColor: border }}>
               <table className="w-full text-left" style={{ tableLayout: "fixed" }}>
                 <colgroup>
                   <col style={{ width: "auto" }} />
@@ -427,7 +447,7 @@ onRejectVoid,
                 </tbody>
               </table>
             </div>
-            
+
             {order.customVariationNotes && (
               <div
                 className="mt-4 p-3 rounded-lg border"
@@ -454,9 +474,9 @@ onRejectVoid,
                 {order.statusHistory.map((history, idx) => (
                   <div key={idx} className="relative">
                     {/* Timeline Node dot */}
-                    <div 
-                      className="absolute -left-[30px] top-1 w-2.5 h-2.5 rounded-full border bg-white dark:bg-gray-900" 
-                      style={{ borderColor: primary }} 
+                    <div
+                      className="absolute -left-[30px] top-1 w-2.5 h-2.5 rounded-full border bg-white dark:bg-gray-900"
+                      style={{ borderColor: primary }}
                     />
                     <p className="text-sm font-bold m-0" style={{ color: text }}>
                       {STATUS_LABELS[history.oldStatus.toLowerCase() as OrderStatus] || history.oldStatus} → {STATUS_LABELS[history.newStatus.toLowerCase() as OrderStatus] || history.newStatus}
@@ -521,12 +541,12 @@ onRejectVoid,
         </div>
 
         {/* Footer */}
-        <div 
-          className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6 sm:py-4 border-t sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 rounded-b-2xl no-print" 
+        <div
+          className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-2 sm:gap-3 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4 border-t sticky bottom-0 bg-gray-50 dark:bg-gray-900/50 sm:rounded-b-2xl no-print"
           style={{ borderColor: border }}
         >
           {/* Actions Left: Cancel / Refund / Review Refund */}
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 empty:hidden sm:flex sm:items-center [&>button]:w-full sm:[&>button]:w-auto [&>button]:py-2.5 sm:[&>button]:py-2 [&>button:only-child]:col-span-2">
             {/* Cancel Order Button */}
             {["pending", "awaiting_stock", "processing", "paid", "shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (
               <button
@@ -599,7 +619,7 @@ onRejectVoid,
           </div>
 
           {/* Actions Right: Waybill & Close */}
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 sm:ml-auto [&>button]:flex-1 sm:[&>button]:flex-none">
             {isWebOrder && (
               <button
                 onClick={() => window.print()}
@@ -691,7 +711,7 @@ onRejectVoid,
                 </div>
               )}
             </div>
-            
+
             <div className="w-1/2 flex flex-col items-end">
               <div className="w-full border-t border-black pt-3 flex flex-col gap-1 text-sm mb-6">
                 <div className="flex justify-between">
@@ -718,9 +738,9 @@ onRejectVoid,
 
               {order.paymentUrl && order.paymentStatus?.toLowerCase() !== "paid" && (
                 <div className="flex flex-col items-center border border-black p-3 bg-white rounded-xl shadow-sm">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(order.paymentUrl)}`} 
-                    alt="Payment QR" 
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(order.paymentUrl)}`}
+                    alt="Payment QR"
                     className="w-[120px] h-[120px]"
                   />
                   <span className="text-[8px] font-black uppercase text-black tracking-wider mt-1.5">
@@ -777,7 +797,7 @@ onRejectVoid,
               left: "50%",
               transform: "translate(-50%, -50%)",
               zIndex: 100002,
-              width: "100%",
+              width: "calc(100% - 32px)",
               maxWidth: 400,
               backgroundColor: cardBg,
               borderRadius: 12,
@@ -807,13 +827,13 @@ onRejectVoid,
                 backgroundColor: `${border}10`,
               }}
             >
-              <button 
+              <button
                 onClick={() => setStatusToConfirm(null)}
                 style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${border}`, background: cardBg, color: text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   handleStatusChange(statusToConfirm);
                   setStatusToConfirm(null);
@@ -918,7 +938,7 @@ onRejectVoid,
               left: "50%",
               transform: "translate(-50%, -50%)",
               zIndex: 100002,
-              width: "100%",
+              width: "calc(100% - 32px)",
               maxWidth: 400,
               backgroundColor: cardBg,
               borderRadius: 12,
@@ -948,13 +968,13 @@ onRejectVoid,
                 backgroundColor: `${border}10`,
               }}
             >
-              <button 
+              <button
                 onClick={() => setCancelToConfirm(false)}
                 style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${border}`, background: cardBg, color: text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Keep Order
               </button>
-              <button 
+              <button
                 onClick={() => {
                   handleStatusChange("cancelled");
                   setCancelToConfirm(false);

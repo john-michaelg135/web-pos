@@ -26,11 +26,52 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
   return (
     <div className="w-full min-w-0">
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Stock History Log</h3>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Recent stock arrivals and adjustments</p>
         </div>
-        <div className="overflow-x-auto">
+        {/* Phones: one row per movement */}
+        <ul className="md:hidden divide-y divide-gray-100 dark:divide-gray-800 m-0 p-0 list-none">
+          {movements.length === 0 ? (
+            <li className="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">No movements recorded yet.</li>
+          ) : (
+            [...movements].reverse().map((m) => {
+              const variation = MOCK_VARIATIONS.find(v => v.id === m.variationId);
+              const product = MOCK_PRODUCTS.find(p => p.id === variation?.productId);
+              const pName = m.productName || product?.name || "Unknown";
+              const vName = m.variationName || variation?.size || "";
+              const date = new Date(m.date);
+              const when = isNaN(date.getTime())
+                ? m.date
+                : date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+              return (
+                <li key={m.id} className="px-4 py-3.5 flex flex-col gap-1.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white m-0">{pName}</p>
+                      {vName && <div className="mt-1">{renderVariationBadges(vName, muted, border, inputBg, true)}</div>}
+                    </div>
+                    <span className={`shrink-0 text-base font-bold tabular-nums ${m.quantity > 0 ? "text-success-600 dark:text-success-400" : "text-error-600 dark:text-error-400"}`}>
+                      {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap text-[11px] text-gray-500 dark:text-gray-400">
+                    <span>{when}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter ${
+                      m.type === "arrival" ? "bg-success-50 dark:bg-success-500/10 text-success-600" :
+                      m.type === "sale" ? "bg-brand-50 dark:bg-brand-500/10 text-brand-600" :
+                      "bg-gray-100 dark:bg-gray-800 text-gray-500"
+                    }`}>
+                      {m.type}
+                    </span>
+                    {m.notes && <span className="min-w-0 break-words">{m.notes}</span>}
+                  </div>
+                </li>
+              );
+            })
+          )}
+        </ul>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
@@ -53,10 +94,10 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                 [...movements].reverse().map((m) => {
                   const variation = MOCK_VARIATIONS.find(v => v.id === m.variationId);
                   const product = MOCK_PRODUCTS.find(p => p.id === variation?.productId);
-                  
+
                   const pName = m.productName || product?.name || "Unknown";
                   const vName = m.variationName || variation?.size || "";
-                  
+
                   return (
                     <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-4 sm:px-6 py-4 text-[11px] sm:text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">

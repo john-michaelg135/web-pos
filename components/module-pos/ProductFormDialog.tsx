@@ -126,7 +126,7 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
           left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: 99999,
-          width: "100%",
+          width: "calc(100% - 32px)",
           maxWidth: 600,
           maxHeight: "90vh",
           backgroundColor: "#ffffff",
@@ -261,7 +261,7 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
 
       {confirmAction && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100000, backgroundColor: "rgba(0, 0, 0, 0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div style={{ backgroundColor: "#ffffff", borderRadius: 12, padding: 24, maxWidth: 400, width: "100%", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ backgroundColor: "#ffffff", borderRadius: 12, padding: 24, maxWidth: 400, width: "calc(100% - 32px)", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", display: "flex", flexDirection: "column", gap: 16 }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
               {confirmAction === "add" ? "Confirm Add Product" : "Discard Changes"}
             </h3>

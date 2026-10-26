@@ -953,8 +953,8 @@ export default function ViewSalesProcessing() {
 
   return (
     <div className={cn(
-      "w-full py-8 px-6 md:px-8 space-y-6 animate-in fade-in duration-500",
-      isMobile ? "min-h-full" : "flex flex-col h-[calc(100vh-4rem)]"
+      "w-full pt-8 px-6 md:px-8 space-y-6 animate-in fade-in duration-500",
+      isMobile ? "min-h-full pb-28" : "pb-8 flex flex-col h-[calc(100vh-4rem)]"
     )}>
       {/* Header */}
       <div className="shrink-0">
@@ -1085,7 +1085,7 @@ export default function ViewSalesProcessing() {
         <div
           onClick={() => !shiftClosed && setShowMobileCart(true)}
           className={cn(
-            "fixed bottom-6 left-6 right-6 bg-primary text-primary-foreground px-6 py-4 rounded-[20px] flex justify-between items-center shadow-2xl z-40 cursor-pointer",
+            "fixed bottom-20 left-4 right-4 bg-primary text-primary-foreground px-6 py-4 rounded-[20px] flex justify-between items-center shadow-2xl z-40 cursor-pointer",
             shiftClosed && "pointer-events-none opacity-50 grayscale"
           )}
         >
@@ -1750,7 +1750,7 @@ export default function ViewSalesProcessing() {
       {lastOrder && (
         <div className={cn(
           "fixed z-[100001] bg-card border border-border rounded-3xl p-5 shadow-2xl flex gap-5 animate-in slide-in-from-bottom-4 duration-500",
-          isMobile ? "bottom-5 left-5 right-5" : "bottom-10 right-10 w-[340px]"
+          isMobile ? "bottom-20 left-4 right-4" : "bottom-10 right-10 w-[340px]"
         )}>
           <div className="w-14 h-14 rounded-[22px] bg-green-50 dark:bg-green-950 flex items-center justify-center border border-green-200 dark:border-green-900 shrink-0">
             <CheckCircle className="h-8 w-8 text-green-500" />
