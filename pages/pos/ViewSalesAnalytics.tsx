@@ -251,7 +251,7 @@ export function ViewSalesAnalytics() {
   };
 
   return (
-    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in print:py-2 print:px-0 print:m-0 print:w-full print:max-w-none print:bg-white">
+    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in print:py-2 print:px-0 print:m-0 print:w-full print:max-w-none print:bg-white">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Report</h1>

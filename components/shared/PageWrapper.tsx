@@ -11,7 +11,7 @@ interface PageWrapperProps {
 
 export function PageWrapper({ title, description, actions, children }: PageWrapperProps) {
   return (
-    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-8 max-w-7xl mx-auto animate-page-in">
+    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-8 animate-page-in">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">

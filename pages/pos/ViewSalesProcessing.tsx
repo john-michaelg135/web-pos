@@ -953,7 +953,7 @@ export default function ViewSalesProcessing() {
 
   return (
     <div className={cn(
-      "w-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500",
+      "w-full py-8 px-6 md:px-8 space-y-6 animate-in fade-in duration-500",
       isMobile ? "min-h-full" : "flex flex-col h-[calc(100vh-4rem)]"
     )}>
       {/* Header */}

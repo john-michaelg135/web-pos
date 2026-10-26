@@ -497,7 +497,7 @@ export default function ViewOrderManagement() {
   const currentOrders = activeTab === "pending" ? pendingApproval : activeTab === "active" ? activeOrders : activeTab === "paid" ? paidOrders : activeTab === "completed" ? completedOrders : activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : activeTab === "voids" ? (voidSubTab === "requested" ? voidRequests : voidSubTab === "voided" ? voidedOrders : rejectedVoids) : cancelledOrders;
 
   return (
-    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in">
+    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in">
       {/* Header */}
       <div className={cn("flex justify-between gap-5", isMobile ? "flex-col items-start" : "items-center")}>
         <div>

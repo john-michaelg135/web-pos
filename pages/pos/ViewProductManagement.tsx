@@ -250,7 +250,7 @@ export default function ViewProductManagement() {
   // ── Render ────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in">
+    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

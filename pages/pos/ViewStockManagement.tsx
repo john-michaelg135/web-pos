@@ -216,7 +216,7 @@ export function ViewStockManagement() {
   if (!hasAccess) return null;
 
   return (
-    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in">
+    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">

@@ -359,7 +359,7 @@ export default function ViewLocationsManagement() {
   const activeBranches = locations.filter((l) => l.isActive);
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Building2 className="w-6 h-6" />
