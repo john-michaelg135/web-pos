@@ -8,6 +8,14 @@ import { Order, OrderStatus, STATUS_LABELS, STATUS_PIPELINE } from "@/components
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 
+// Order type badges: brand purple for store sales, indigo for institutional, teal for online.
+const TYPE_BADGE: Record<string, React.CSSProperties> = {
+  store: { background: "color-mix(in oklch, var(--primary) 10%, transparent)", color: "var(--primary)", borderColor: "color-mix(in oklch, var(--primary) 20%, transparent)" },
+  "walk-in": { background: "color-mix(in oklch, var(--primary) 10%, transparent)", color: "var(--primary)", borderColor: "color-mix(in oklch, var(--primary) 20%, transparent)" },
+  institutional: { background: "var(--badge-indigo)", color: "var(--badge-indigo-foreground)", borderColor: "color-mix(in oklch, var(--badge-indigo-foreground) 20%, transparent)" },
+  online: { background: "var(--badge-teal)", color: "var(--badge-teal-foreground)", borderColor: "color-mix(in oklch, var(--badge-teal-foreground) 20%, transparent)" },
+};
+
 interface OrderCardProps {
   order: Order;
   primary: string;
@@ -145,8 +153,21 @@ onRejectVoid,
           </td>
           <td className="px-5 py-4 text-sm font-bold text-foreground align-middle">
             {order.customer}
-            <div className="text-[10px] text-muted-foreground font-bold uppercase mt-1 tracking-wider">
-              {order.type} {order.isPreOrder && "(Pre-order)"}
+            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+              <span
+                className="inline-flex items-center text-[10px] font-bold uppercase px-2 py-0.5 rounded-[6px] border"
+                style={TYPE_BADGE[order.type] ?? TYPE_BADGE.store}
+              >
+                {order.type === "walk-in" ? "Walk-in" : order.type}
+              </span>
+              {order.isPreOrder && (
+                <span
+                  className="inline-flex items-center text-[10px] font-bold uppercase px-2 py-0.5 rounded-[6px] border"
+                  style={{ background: "var(--badge-orange)", color: "var(--badge-orange-foreground)", borderColor: "color-mix(in oklch, var(--badge-orange-foreground) 20%, transparent)" }}
+                >
+                  Pre-order
+                </span>
+              )}
             </div>
           </td>
           <td className="px-5 py-4 text-sm text-foreground align-middle">
@@ -373,7 +394,7 @@ onRejectVoid={onRejectVoid}
             const stepWidth = isMobile ? 80 : (currentPipeline.length <= 4 ? 90 : 60);
             const dotOffset = stepWidth / 2;
 
-            const activeLineWidth = isMobile 
+            const activeLineWidth = isMobile
               ? (currentIndex === visibleSteps[0] ? "0%" : currentIndex === visibleSteps[1] ? "50%" : "100%")
               : `${(currentIndex / (currentPipeline.length - 1)) * 100}%`;
 
@@ -404,7 +425,7 @@ onRejectVoid={onRejectVoid}
                     const step = currentPipeline[stepIdx];
                     const active = currentIndex >= stepIdx;
                     const isCurrent = currentIndex === stepIdx;
-                    
+
                     return (
                       <div key={step} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, width: stepWidth, position: "relative" }}>
                         <div
@@ -517,13 +538,13 @@ onRejectVoid={onRejectVoid}
           >
             {!canManageRefunds && ["refund_requested", "refunded", "void_requested", "voided"].includes(order.status) ? "Review Order" : "Manage Order"}
           </button>
-          
+
 
 
 
         </div>
       </div>
-      
+
       <ViewOrderModal
         isOpen={showViewModal}
         onClose={() => setShowViewModal(false)}
