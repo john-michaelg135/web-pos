@@ -74,10 +74,11 @@ export function ViewSalesAnalytics() {
     }
   };
 
+  // Report days are Philippine days (UTC+8), whatever time zone the browser is in.
   const getStartOfDay = (dateStr: string) =>
-    dateStr ? new Date(dateStr + "T00:00:00").toISOString() : undefined;
+    dateStr ? new Date(dateStr + "T00:00:00+08:00").toISOString() : undefined;
   const getEndOfDay = (dateStr: string) =>
-    dateStr ? new Date(dateStr + "T23:59:59").toISOString() : undefined;
+    dateStr ? new Date(dateStr + "T23:59:59.999+08:00").toISOString() : undefined;
 
   useEffect(() => {
     setIsMounted(true);
@@ -255,7 +256,7 @@ export function ViewSalesAnalytics() {
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Report</h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap min-w-0">
-            <p className="text-sm text-muted-foreground">Comprehensive overview of sales performance and trends.</p>
+            <p className="text-sm text-muted-foreground">Completed sales, by the day each order was placed.</p>
             <span className="text-muted-foreground font-bold">&middot;</span>
             <Badge variant="secondary" className="text-xs font-bold truncate max-w-[200px]">
               {locationLabel}
