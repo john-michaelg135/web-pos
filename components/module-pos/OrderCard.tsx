@@ -18,6 +18,7 @@ interface OrderCardProps {
   inputBg: string;
 
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
+  onCompletePayment?: () => Promise<boolean | void>;
   onRequestRefund?: () => void;
 onRequestVoid?: () => void;
 onApplyVoid?: () => void;
@@ -37,6 +38,7 @@ export default function OrderCard({
   cardBg,
   inputBg,
   onStatusUpdate,
+  onCompletePayment,
   onRequestRefund,
 onRequestVoid,
 onApplyVoid,
@@ -114,6 +116,7 @@ onRejectVoid,
           text={text}
           cardBg={cardBg}
           onStatusUpdate={onStatusUpdate}
+          onCompletePayment={onCompletePayment}
           onRequestRefund={onRequestRefund}
           onApplyRefund={onApplyRefund}
 onRequestVoid={onRequestVoid}
@@ -268,7 +271,7 @@ onRejectVoid={onRejectVoid}
             const currentPipeline: OrderStatus[] = isWebOrder
               ? ["pending", "processing", "shipped", "delivered"]
               : order.type === "institutional"
-              ? ["pending", "processing", "shipped", "completed"]
+              ? ["pending", "processing", "paid", "shipped", "completed"]
               : ["pending", "processing", "completed"]; // walk-in / store
 
             let currentIndex = currentPipeline.indexOf(order.status);
@@ -454,6 +457,7 @@ onRejectVoid={onRejectVoid}
         text={text}
         cardBg={cardBg}
         onStatusUpdate={onStatusUpdate}
+        onCompletePayment={onCompletePayment}
         onRequestRefund={onRequestRefund}
         onApplyRefund={onApplyRefund}
 onRequestVoid={onRequestVoid}

@@ -2,6 +2,7 @@ export type OrderStatus =
   | "pending"
   | "awaiting_stock"
   | "processing"
+  | "paid"
   | "ready_for_delivery"
   | "shipped"
   | "delivered"
@@ -42,7 +43,10 @@ export type Order = {
   /** Numeric branch id — used for reliable location filtering (name can drift). */
   locationId?: number;
   isPreOrder: boolean;
-  paymentStatus: "pending" | "paid";
+  paymentStatus: "pending" | "partial" | "paid";
+  paymentMethod?: string;
+  /** Sum of successful payments recorded against the order. */
+  amountPaid?: number;
   remarks?: string;
   paymentUrl?: string | null;
   source?: string;
@@ -63,6 +67,7 @@ export type Order = {
 export const STATUS_PIPELINE: OrderStatus[] = [
   "pending",
   "processing",
+  "paid",
   "ready_for_delivery",
   "shipped",
   "delivered",
@@ -73,6 +78,7 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Pending",
   awaiting_stock: "Awaiting Stock",
   processing: "Processing",
+  paid: "Paid",
   ready_for_delivery: "For Delivery",
   shipped: "Shipped",
   delivered: "Delivered",

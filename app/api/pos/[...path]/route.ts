@@ -11,7 +11,7 @@ async function proxy(request: NextRequest, context: RouteContext, method: "GET" 
   const isPinRead = method === "GET" && endpoint === "user-pin";
   const isOrderAction =
     method === "PUT" &&
-    /^order-management\/orders\/\d+\/(approve-void|reject-void|request-void|approve-refund|reject-refund|request-refund|status)$/.test(endpoint);
+    /^order-management\/orders\/\d+\/(approve-void|reject-void|request-void|approve-refund|reject-refund|request-refund|complete-payment|status)$/.test(endpoint);
 
   if (!isPinRead && !isOrderAction) {
     return NextResponse.json({ message: "POS endpoint not found." }, { status: 404 });

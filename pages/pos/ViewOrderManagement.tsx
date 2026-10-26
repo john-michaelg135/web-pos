@@ -70,7 +70,7 @@ export default function ViewOrderManagement() {
     return h;
   }, [assignedLocation?.locationId]);
 
-  const [activeTab, setActiveTab] = useState<"pending" | "active" | "completed" | "refunds" | "voids" | "cancelled">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "active" | "paid" | "completed" | "refunds" | "voids" | "cancelled">("pending");
   const [showManagerPinDialog, setShowManagerPinDialog] = useState(false);
   const [managerPin, setManagerPin] = useState<string | null>(null);
   const [managerPinError, setManagerPinError] = useState<string | null>(null);
@@ -137,7 +137,9 @@ export default function ViewOrderManagement() {
     location: dto.locationName || "Unknown",
     locationId: dto.locationId != null ? Number(dto.locationId) : undefined,
     isPreOrder: !!dto.isPreorder,
-    paymentStatus: (dto.paymentStatus?.toLowerCase() as "pending" | "paid") || "pending",
+    paymentStatus: (dto.paymentStatus?.toLowerCase() as "pending" | "partial" | "paid") || "pending",
+    paymentMethod: dto.paymentMethod || undefined,
+    amountPaid: (dto.payments ?? []).filter(p => p.paymentStatus === "Success").reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0),
     // Only actual rejection/cancellation reasons belong in "Remarks / Reason".
     // Customization notes are surfaced separately via customVariationNotes.
     remarks: dto.rejectionRemarks || "",
@@ -422,7 +424,7 @@ export default function ViewOrderManagement() {
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus): Promise<boolean> => {
     try {
-      const statusMap: Record<string, string> = { pending: "Pending", awaiting_stock: "Awaiting Stock", processing: "Processing", ready_for_delivery: "Processing", shipped: "Shipped", delivered: "Delivered", completed: "Completed", rejected: "Cancelled", cancelled: "Cancelled", refund_requested: "Refund Requested", refunded: "Refunded" };
+      const statusMap: Record<string, string> = { pending: "Pending", awaiting_stock: "Awaiting Stock", processing: "Processing", paid: "Paid", ready_for_delivery: "Processing", shipped: "Shipped", delivered: "Delivered", completed: "Completed", rejected: "Cancelled", cancelled: "Cancelled", refund_requested: "Refund Requested", refunded: "Refunded" };
       const backendStatus = statusMap[newStatus] || newStatus;
       await requestManagerEndpoint(`order-management/orders/${orderId}/status`, { status: backendStatus, updatedBy: 1 });
       const order = orders.find(o => o.id === orderId);
@@ -442,15 +444,30 @@ export default function ViewOrderManagement() {
       } else { toast.success("Order status updated."); }
       fetchOrders();
       return true;
-    } catch (err) { console.error("Failed to update order status:", err); toast.error("Failed to update order status."); return false; }
+    } catch (err) { console.error("Failed to update order status:", err); toast.error(err instanceof Error && err.message ? err.message : "Failed to update order status."); return false; }
+  };
+
+  // Institutional GCash downpayment: the remaining balance has reflected in the company wallet.
+  const completePayment = async (orderId: string): Promise<boolean> => {
+    try {
+      await requestManagerEndpoint(`order-management/orders/${orderId}/complete-payment`, {});
+      toast.success("Payment completed. The order is now fully paid and ready for shipment.");
+      fetchOrders();
+      return true;
+    } catch (err) {
+      console.error("Failed to complete payment:", err);
+      toast.error(err instanceof Error && err.message ? err.message : "Failed to complete payment.");
+      return false;
+    }
   };
 
   const pendingApproval = filteredOrders.filter((o) => o.status === "pending" || o.status === "awaiting_stock");
-  const activeOrders = filteredOrders.filter((o) => o.status !== "pending" && o.status !== "awaiting_stock" && !["completed", "delivered", "rejected", "cancelled", "refund_requested", "refunded", "void_requested", "voided"].includes(o.status));
+  const activeOrders = filteredOrders.filter((o) => o.status !== "pending" && o.status !== "awaiting_stock" && !["paid", "completed", "delivered", "rejected", "cancelled", "refund_requested", "refunded", "void_requested", "voided"].includes(o.status));
   const rejectedRefunds = filteredOrders
     .filter((o) => o.status === "completed" && (o.remarks?.toLowerCase().startsWith("refund rejected") || o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed")))
     .map((o) => ({ ...o, status: "rejected" as const }));
   const completedOrders = filteredOrders.filter((o) => ["completed", "delivered"].includes(o.status) && !(o.remarks?.toLowerCase().startsWith("refund rejected") || o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed")));
+  const paidOrders = filteredOrders.filter((o) => o.status === "paid");
   const refundRequests = filteredOrders.filter((o) => o.status === "refund_requested");
   const refundedOrders = filteredOrders.filter((o) => o.status === "refunded");
   const voidRequests = filteredOrders.filter((o) => o.status === "void_requested");
@@ -470,13 +487,14 @@ export default function ViewOrderManagement() {
   const statusTabs: { key: typeof activeTab; label: string; count: number; destructive?: boolean }[] = [
     { key: "pending", label: "Pending", count: pendingApproval.length },
     { key: "active", label: "Active", count: activeOrders.length },
+    { key: "paid", label: "Paid", count: paidOrders.length },
     { key: "completed", label: "Completed", count: completedOrders.length },
     { key: "refunds", label: "Refunds", count: refundRequests.length + refundedOrders.length + rejectedRefunds.length, destructive: true },
     { key: "voids", label: "Voids", count: voidRequests.length + voidedOrders.length + rejectedVoids.length, destructive: true },
     { key: "cancelled", label: "Cancelled", count: cancelledOrders.length, destructive: true },
   ];
 
-  const currentOrders = activeTab === "pending" ? pendingApproval : activeTab === "active" ? activeOrders : activeTab === "completed" ? completedOrders : activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : activeTab === "voids" ? (voidSubTab === "requested" ? voidRequests : voidSubTab === "voided" ? voidedOrders : rejectedVoids) : cancelledOrders;
+  const currentOrders = activeTab === "pending" ? pendingApproval : activeTab === "active" ? activeOrders : activeTab === "paid" ? paidOrders : activeTab === "completed" ? completedOrders : activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : activeTab === "voids" ? (voidSubTab === "requested" ? voidRequests : voidSubTab === "voided" ? voidedOrders : rejectedVoids) : cancelledOrders;
 
   return (
     <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 max-w-7xl mx-auto animate-page-in">
@@ -621,6 +639,7 @@ export default function ViewOrderManagement() {
                         onApplyRefund={() => handleApproveRefund(order)}
                         onRejectRefund={() => handleRejectRefund(order)}
                         onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
+                        onCompletePayment={() => completePayment(order.id)}
                         isMobile={isMobile}
                         viewMode="list"
                       />
@@ -646,6 +665,7 @@ export default function ViewOrderManagement() {
                   onApplyRefund={() => handleApproveRefund(order)}
                   onRejectRefund={() => handleRejectRefund(order)}
                   onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
+                  onCompletePayment={() => completePayment(order.id)}
                   isMobile={isMobile}
                   viewMode="grid"
                 />

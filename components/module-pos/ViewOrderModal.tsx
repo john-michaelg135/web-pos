@@ -20,6 +20,7 @@ interface ViewOrderModalProps {
   text: string;
   cardBg: string;
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
+  onCompletePayment?: () => Promise<boolean | void>;
   onRequestRefund?: () => void;
 onRequestVoid?: () => void;
 onApplyVoid?: () => void;
@@ -38,6 +39,7 @@ export function ViewOrderModal({
   text,
   cardBg,
   onStatusUpdate,
+  onCompletePayment,
   onRequestRefund,
 onRequestVoid,
 onApplyVoid,
@@ -56,6 +58,8 @@ onRejectVoid,
   const [mounted, setMounted] = useState(false);
   const [statusToConfirm, setStatusToConfirm] = useState<OrderStatus | null>(null);
   const [cancelToConfirm, setCancelToConfirm] = useState(false);
+  const [completePaymentToConfirm, setCompletePaymentToConfirm] = useState(false);
+  const [isCompletingPayment, setIsCompletingPayment] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -84,11 +88,18 @@ onRejectVoid,
   const isInstitutional = order.type === "institutional";
   const isPwdOrder = !!order.seniorPwdId;
 
-  const allowedStatuses: OrderStatus[] = isWebOrder
+  const isPartiallyPaid = order.paymentStatus === "partial";
+  const amountPaid = order.amountPaid ?? 0;
+  const remainingBalance = Math.max(0, order.total - amountPaid);
+  const showPaymentSummary = isInstitutional && order.paymentMethod?.toLowerCase() === "gcash";
+
+  // A partially paid order cannot move to Paid or beyond until the balance is confirmed.
+  const allowedStatuses = (isWebOrder
     ? ["pending", "processing", "shipped", "delivered"]
     : isInstitutional
-    ? ["pending", "processing", "shipped", "completed"]
-    : ["pending", "processing", "completed"]; // walk-in / store
+    ? ["pending", "processing", "paid", "shipped", "completed"]
+    : ["pending", "processing", "completed"] // walk-in / store
+  ).filter((s) => !isPartiallyPaid || !["paid", "shipped", "completed"].includes(s)) as OrderStatus[];
 
   const pricing = useMemo(() => {
     if (!isPwdOrder) {
@@ -287,6 +298,59 @@ onRejectVoid,
             </div>
           )}
 
+          {/* Institutional GCash payment summary (50% downpayment or full) */}
+          {showPaymentSummary && (
+            <div className="p-4 rounded-xl border mb-8 flex flex-col gap-3" style={{ borderColor: border, background: `${border}10` }}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>GCash Payment</p>
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+                  style={order.paymentStatus === "paid"
+                    ? { color: primary, borderColor: `${primary}50`, background: `${primary}1A` }
+                    : isPartiallyPaid
+                    ? { color: "#b45309", borderColor: "#f59e0b66", background: "#f59e0b1a" }
+                    : { color: "#dc2626", borderColor: "#dc262666", background: "#dc26261a" }}
+                >
+                  {order.paymentStatus === "paid"
+                    ? "Fully Paid"
+                    : isPartiallyPaid
+                    ? `Downpayment (${order.total > 0 ? Math.round((amountPaid / order.total) * 100) : 0}%)`
+                    : "Unpaid"}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider m-0" style={{ color: muted }}>Total</p>
+                  <p className="font-bold m-0" style={{ color: text }}>₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider m-0" style={{ color: muted }}>Amount Paid</p>
+                  <p className="font-bold m-0" style={{ color: text }}>₱{amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider m-0" style={{ color: muted }}>Balance</p>
+                  <p className="font-bold m-0" style={{ color: remainingBalance > 0 ? "#dc2626" : text }}>₱{remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+              {isPartiallyPaid && onCompletePayment && !["cancelled", "rejected", "void_requested", "voided", "refund_requested", "refunded"].includes(order.status) && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t pt-3" style={{ borderColor: border }}>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 m-0">
+                    Click once the remaining balance has reflected in the company GCash wallet.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCompletePaymentToConfirm(true)}
+                    disabled={isCompletingPayment}
+                    className="px-4 py-2 text-xs font-black uppercase rounded-lg text-white active:scale-95 transition-all whitespace-nowrap disabled:opacity-60"
+                    style={{ background: primary }}
+                  >
+                    Complete Payment
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Direct Status Changer (Admin / Order Manager / dev) */}
           {isAuthorizedToEdit && order.status !== "refund_requested" && order.status !== "refunded" && order.status !== "rejected" && order.status !== "cancelled" && (
             <div className="p-4 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: border, background: `${border}10` }}>
@@ -464,7 +528,7 @@ onRejectVoid,
           {/* Actions Left: Cancel / Refund / Review Refund */}
           <div className="flex items-center gap-2">
             {/* Cancel Order Button */}
-            {["pending", "awaiting_stock", "processing", "shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (
+            {["pending", "awaiting_stock", "processing", "paid", "shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (
               <button
                 onClick={() => setCancelToConfirm(true)}
                 className="px-4 py-2 text-xs font-bold uppercase text-red-600 border border-red-500/40 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 active:scale-95 transition-all"
@@ -757,6 +821,83 @@ onRejectVoid,
                 style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: primary, color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
               >
                 Confirm
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Complete Payment Confirmation Modal */}
+      {completePaymentToConfirm && (
+        <>
+          <div
+            onClick={() => { if (!isCompletingPayment) setCompletePaymentToConfirm(false); }}
+            style={{ position: "fixed", inset: 0, zIndex: 100001, backgroundColor: "rgba(0, 0, 0, 0.6)", backdropFilter: "blur(4px)" }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 100002,
+              width: "calc(100% - 32px)",
+              maxWidth: 420,
+              backgroundColor: cardBg,
+              borderRadius: 12,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "16px 24px", borderBottom: `1px solid ${border}` }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: text }}>
+                Confirm Remaining Payment
+              </h2>
+            </div>
+            <div style={{ padding: "24px" }}>
+              <p style={{ margin: 0, fontSize: 14, color: muted }}>
+                Has the customer paid the remaining balance of{" "}
+                <span style={{ fontWeight: "bold", color: text }}>₱{remainingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>{" "}
+                for Order {order.orderNumber ?? `#${order.id}`}, and has it reflected in the company GCash wallet balance?
+              </p>
+              <p style={{ margin: "12px 0 0", fontSize: 12, color: muted }}>
+                The order will be marked fully paid and moved to Paid (ready for shipment).
+              </p>
+            </div>
+            <div
+              style={{
+                padding: "12px 24px",
+                borderTop: `1px solid ${border}`,
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                backgroundColor: `${border}10`,
+              }}
+            >
+              <button
+                disabled={isCompletingPayment}
+                onClick={() => setCompletePaymentToConfirm(false)}
+                style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${border}`, background: cardBg, color: text, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              >
+                Not Yet
+              </button>
+              <button
+                disabled={isCompletingPayment}
+                onClick={async () => {
+                  if (!onCompletePayment) return;
+                  setIsCompletingPayment(true);
+                  try {
+                    await onCompletePayment();
+                  } finally {
+                    setIsCompletingPayment(false);
+                    setCompletePaymentToConfirm(false);
+                  }
+                }}
+                style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: primary, color: "white", fontSize: 14, fontWeight: 600, cursor: isCompletingPayment ? "wait" : "pointer", opacity: isCompletingPayment ? 0.7 : 1 }}
+              >
+                {isCompletingPayment ? "Confirming..." : "Yes, Payment Received"}
               </button>
             </div>
           </div>

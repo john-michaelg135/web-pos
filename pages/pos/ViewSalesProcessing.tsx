@@ -193,6 +193,9 @@ export default function ViewSalesProcessing() {
   }, []);
 
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "gcash">("cash");
+  // Institutional + GCash only: customer pays a 50% downpayment now, balance later.
+  const [isPartialPayment, setIsPartialPayment] = useState(false);
+  const [showGcashConfirm, setShowGcashConfirm] = useState(false);
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [amountPaid, setAmountPaid] = useState("");
   const [lastOrder, setLastOrder] = useState<{ id: string; total: number } | null>(null);
@@ -482,6 +485,9 @@ export default function ViewSalesProcessing() {
     }
   };
 
+  const isGcashDownpayment = paymentMethod === "gcash" && isInstitutional && isPartialPayment;
+  const gcashAmountDue = isGcashDownpayment ? Math.round(total * 50) / 100 : total;
+
   const confirmSale = async () => {
     if (shiftClosed) {
       toast.error("This shift has ended. Sales are disabled.");
@@ -556,6 +562,7 @@ export default function ViewSalesProcessing() {
             contactPerson: resolvedContact,
             customVariationNotes: notes,
             paymentMethod: paymentMethod === "cash" ? "Cash" : "GCash",
+            isPartialPayment: isGcashDownpayment,
             submittedBy: 1,
             items: items,
             amountTendered: paymentMethod === "cash" && amountPaid.trim() !== "" ? parseFloat(amountPaid) : null,
@@ -658,6 +665,7 @@ export default function ViewSalesProcessing() {
       setContactPerson("");
       setContactNumber("");
       setIsInstitutional(false);
+      setIsPartialPayment(false);
       setIsPreOrder(false);
       setIsSeniorPWD(false);
       setIdNumber("");
@@ -1189,7 +1197,7 @@ export default function ViewSalesProcessing() {
                     <div className="grid grid-cols-2 gap-3 mt-2">
                       <button
                         type="button"
-                        onClick={() => setPaymentMethod("cash")}
+                        onClick={() => { setPaymentMethod("cash"); setIsPartialPayment(false); }}
                         aria-label="Cash"
                         className={cn(
                           "flex items-center justify-center p-3 rounded-xl border-2 transition-colors",
@@ -1251,6 +1259,40 @@ export default function ViewSalesProcessing() {
                     <span className="text-2xl font-bold text-foreground">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
 
+                  {paymentMethod === "gcash" && (
+                    <div className="flex flex-col gap-3 border-t border-border pt-4 mt-2">
+                      {isInstitutional && (
+                        <label htmlFor="gcashPartialPayment" className="flex items-start gap-3 p-3 rounded-xl border border-border bg-muted/40 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            id="gcashPartialPayment"
+                            checked={isPartialPayment}
+                            onChange={(e) => setIsPartialPayment(e.target.checked)}
+                            className="w-4 h-4 mt-0.5 cursor-pointer accent-foreground rounded border-border"
+                          />
+                          <span className="flex flex-col gap-0.5">
+                            <span className="text-sm font-bold text-foreground">Partial payment (50% downpayment)</span>
+                            <span className="text-xs text-muted-foreground">
+                              The order stays in Active until the remaining balance is confirmed in the GCash wallet.
+                            </span>
+                          </span>
+                        </label>
+                      )}
+                      <div className="flex justify-between items-end">
+                        <span className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                          {isGcashDownpayment ? "Downpayment (50%)" : "Amount via GCash"}
+                        </span>
+                        <span className="text-xl font-bold text-foreground">₱{gcashAmountDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      {isGcashDownpayment && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Remaining balance</span>
+                          <span className="font-semibold text-destructive">₱{(total - gcashAmountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {paymentMethod === "cash" && (
                     <div className="flex flex-col gap-3 border-t border-border pt-4 mt-2">
                       <div className="flex justify-between items-start text-sm">
@@ -1307,7 +1349,74 @@ export default function ViewSalesProcessing() {
               }}
             >
               <Button variant="outline" onClick={() => setShowCheckoutDialog(false)}>Cancel</Button>
-              <Button onClick={confirmSale}>{isPreOrder ? "Process" : "Confirm"}</Button>
+              <Button
+                onClick={() => {
+                  if (paymentMethod === "gcash" && isInstitutional) {
+                    setShowGcashConfirm(true);
+                    return;
+                  }
+                  confirmSale();
+                }}
+              >
+                {isPreOrder ? "Process" : "Confirm"}
+              </Button>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* GCash wallet check before completing an institutional sale */}
+      {showGcashConfirm && showCheckoutDialog && typeof document !== "undefined" && createPortal(
+        <>
+          <div
+            onClick={() => setShowGcashConfirm(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 100000, backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+          />
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="gcash-confirm-title"
+            className="bg-background text-foreground border border-border"
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 100001,
+              width: "calc(100% - 32px)",
+              maxWidth: 440,
+              borderRadius: 12,
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              overflow: "hidden",
+            }}
+          >
+            <div className="px-6 py-4 border-b border-border">
+              <h2 id="gcash-confirm-title" className="text-lg font-semibold m-0">Confirm GCash Payment</h2>
+            </div>
+            <div className="px-6 py-5 flex flex-col gap-3 text-sm text-muted-foreground">
+              <p className="m-0">
+                Have you checked the company GCash wallet and confirmed that the customer&apos;s{" "}
+                {isGcashDownpayment ? "50% downpayment" : "full payment"} of{" "}
+                <span className="font-bold text-foreground">₱{gcashAmountDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>{" "}
+                has reflected in the balance?
+              </p>
+              {isGcashDownpayment && (
+                <p className="m-0 text-xs">
+                  The order will stay in Active until the remaining ₱{(total - gcashAmountDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} is confirmed.
+                </p>
+              )}
+            </div>
+            <div className="px-6 py-3 border-t border-border bg-muted/40 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowGcashConfirm(false)}>Not Yet</Button>
+              <Button
+                onClick={() => {
+                  setShowGcashConfirm(false);
+                  confirmSale();
+                }}
+              >
+                Yes, Payment Reflected
+              </Button>
             </div>
           </div>
         </>,
