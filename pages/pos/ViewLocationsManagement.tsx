@@ -1,31 +1,50 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Loader2, Plus, MapPin, Users, Building2, Trash2, Pencil } from "lucide-react";
+import { Loader2, Plus, MapPin, Users, Trash2 } from "lucide-react";
 
 import { apiClient } from "@/components/module-pos/api";
 import { LocationResponseDto } from "@/components/module-pos/api/api";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
+// Table look shared with the Order Management list view.
+const TABLE_CARD = "mt-4 bg-card border border-border rounded-xl shadow-sm overflow-hidden";
+const TH = "px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider";
+const TR = "hover:bg-muted/10 transition-colors border-b border-border last:border-b-0";
+const PILL = "inline-flex items-center text-[10px] font-bold uppercase px-2 py-0.5 rounded-[6px] border whitespace-nowrap";
+const ACTION_BUTTON =
+  "h-8 px-4 rounded-lg border border-primary/25 bg-transparent text-xs font-bold uppercase text-primary transition-colors hover:bg-primary/10 cursor-pointer";
+
+type PillTone = "brand" | "indigo" | "teal" | "orange";
+
+// Same tints as the order type badges (store / institutional / online / pre-order).
+function pillStyle(tone: PillTone = "brand"): CSSProperties {
+  if (tone === "brand") {
+    return {
+      background: "color-mix(in oklch, var(--primary) 10%, transparent)",
+      color: "var(--primary)",
+      borderColor: "color-mix(in oklch, var(--primary) 20%, transparent)",
+    };
+  }
+  return {
+    background: `var(--badge-${tone})`,
+    color: `var(--badge-${tone}-foreground)`,
+    borderColor: `color-mix(in oklch, var(--badge-${tone}-foreground) 20%, transparent)`,
+  };
+}
+
+const LOCATION_TONE: Record<string, PillTone> = { store: "brand", bazaar: "indigo", commissary: "teal" };
 
 
 interface PosUserRow {
@@ -359,12 +378,9 @@ export default function ViewLocationsManagement() {
   const activeBranches = locations.filter((l) => l.isActive);
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="w-full py-8 px-6 md:px-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Building2 className="w-6 h-6" />
-          Location Management
-        </h1>
+        <h1 className="text-headline-md font-bold tracking-tight text-foreground">Location Management</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Manage branches and assign staff to the locations they work at.
         </p>
@@ -383,13 +399,21 @@ export default function ViewLocationsManagement() {
         {/* ── Branches ── */}
         <TabsContent value="branches" className="mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Branches</CardTitle>
-              <Button size="sm" onClick={openCreateBranch} className="gap-1.5">
+            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+              <div className="space-y-1.5">
+                <CardTitle className="text-base">Branches</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  The stores, bazaars and commissary your business sells from. Switch a branch off to
+                  hide it from sales and assignments without losing its history.
+                </p>
+              </div>
+              <Button size="sm" onClick={openCreateBranch} className="gap-1.5 shrink-0">
                 <Plus className="w-4 h-4" /> Add Branch
               </Button>
             </CardHeader>
-            <CardContent>
+          </Card>
+
+          <div className={TABLE_CARD}>
               {loadingLocations ? (
                 <div className="flex justify-center py-10">
                   <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -399,56 +423,54 @@ export default function ViewLocationsManagement() {
                   No branches yet. Add your first branch.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {locations.map((loc) => (
-                      <TableRow key={loc.locationId}>
-                        <TableCell className="font-medium">{loc.locationName}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">{loc.locationType}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={!!loc.isActive}
-                              onCheckedChange={() => toggleBranchActive(loc)}
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              {loc.isActive ? "Active" : "Inactive"}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[640px]">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className={`${TH} w-[32%]`}>Name</th>
+                        <th className={`${TH} w-[22%]`}>Type</th>
+                        <th className={`${TH} w-[24%]`}>Status</th>
+                        <th className={TH}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {locations.map((loc) => (
+                        <tr key={loc.locationId} className={TR}>
+                          <td className="px-5 py-4 text-sm font-medium text-muted-foreground align-middle">{loc.locationName}</td>
+                          <td className="px-5 py-4 align-middle">
+                            <span className={PILL} style={pillStyle(LOCATION_TONE[(loc.locationType ?? "").toLowerCase()])}>
+                              {loc.locationType}
                             </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openEditBranch(loc)}
-                            className="gap-1.5"
-                          >
-                            <Pencil className="w-3.5 h-3.5" /> Edit
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          </td>
+                          <td className="px-5 py-4 align-middle">
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={!!loc.isActive}
+                                onCheckedChange={() => toggleBranchActive(loc)}
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {loc.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap align-middle">
+                            <button type="button" onClick={() => openEditBranch(loc)} className={ACTION_BUTTON}>
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-            </CardContent>
-          </Card>
+          </div>
         </TabsContent>
 
         {/* ── Staff Assignment ── */}
         <TabsContent value="staff" className="mt-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="space-y-1.5">
               <CardTitle className="text-base">Staff Assignment</CardTitle>
               <p className="text-sm text-muted-foreground">
                 Assign each employee the branch they work at. Each employee works
@@ -457,7 +479,9 @@ export default function ViewLocationsManagement() {
                 Super admins see all locations and don&apos;t need an assignment.
               </p>
             </CardHeader>
-            <CardContent>
+          </Card>
+
+          <div className={TABLE_CARD}>
               {loadingUsers ? (
                 <div className="flex justify-center py-10">
                   <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -467,69 +491,62 @@ export default function ViewLocationsManagement() {
                   No users found.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Assigned Location</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((u) => (
-                      <TableRow key={u.authUserId}>
-                        <TableCell>
-                          <div className="font-medium">{u.fullName}</div>
-                          <div className="text-xs text-muted-foreground">{u.username}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{u.role}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {u.locations.length === 0 ? (
-                            <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                              Unassigned
-                            </span>
-                          ) : (
-                            <div className="flex flex-wrap gap-1.5">
-                              {u.locations.map((l) => (
-                                <Badge
-                                  key={l.id}
-                                  variant="secondary"
-                                  className="gap-1 pr-1"
-                                >
-                                  {l.locationName}
-                                  <button
-                                    onClick={() => removeAssignment(l.id, u.fullName)}
-                                    className="ml-0.5 rounded-sm hover:bg-destructive/20 p-0.5"
-                                    title="Remove"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => openAssign(u)}
-                            className="gap-1.5"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            {u.locations.length > 0 ? "Reassign" : "Assign"}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[720px]">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className={`${TH} w-[28%]`}>Employee</th>
+                        <th className={`${TH} w-[18%]`}>Role</th>
+                        <th className={`${TH} w-[32%]`}>Assigned Location</th>
+                        <th className={TH}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((u) => (
+                        <tr key={u.authUserId} className={TR}>
+                          <td className="px-5 py-4 text-sm font-medium text-muted-foreground align-middle">
+                            <span>{u.fullName}</span>
+                            <div className="text-[11px] text-muted-foreground mt-1 font-medium">{u.username}</div>
+                          </td>
+                          <td className="px-5 py-4 align-middle">
+                            <span className={PILL} style={pillStyle()}>{u.role}</span>
+                          </td>
+                          <td className="px-5 py-4 align-middle">
+                            {u.locations.length === 0 ? (
+                              <span className={PILL} style={pillStyle("orange")}>Unassigned</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5">
+                                {u.locations.map((l) => (
+                                  <span key={l.id} className="inline-flex items-center gap-1.5">
+                                    <span className="inline-flex items-center rounded-[6px] border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                                      {l.locationName}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeAssignment(l.id, u.fullName)}
+                                      className="inline-flex size-6 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                                      title="Remove assignment"
+                                      aria-label={`Remove ${l.locationName}`}
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 whitespace-nowrap align-middle">
+                            <button type="button" onClick={() => openAssign(u)} className={ACTION_BUTTON}>
+                              {u.locations.length > 0 ? "Reassign" : "Assign"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-            </CardContent>
-          </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
