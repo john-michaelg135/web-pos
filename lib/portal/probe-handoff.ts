@@ -19,11 +19,15 @@ function handoffSecret(): string {
   return secret;
 }
 
+/** The branch a manager works at; the owner has none and sees every location. */
+export type ProbeLocation = { id: number; name: string } | null;
+
 /**
- * A short-lived pass that tells POS-PROBE who the Staff member is. It is signed with the
- * secret both apps share, so POS-PROBE can trust it without asking the Enterprise Portal.
+ * A short-lived pass that tells POS-PROBE who the Staff member is and, for a manager, their
+ * branch. It is signed with the secret both apps share, so POS-PROBE can trust it without
+ * asking the Enterprise Portal.
  */
-export function signProbeHandoff(staff: Staff, role: "owner" | "manager"): string {
+export function signProbeHandoff(staff: Staff, role: "owner" | "manager", location: ProbeLocation): string {
   const now = Math.floor(Date.now() / 1000);
   const payload = Buffer.from(
     JSON.stringify({
@@ -33,6 +37,7 @@ export function signProbeHandoff(staff: Staff, role: "owner" | "manager"): strin
       email: staff.email,
       posRole: staff.role,
       role,
+      location,
       iat: now,
       exp: now + HANDOFF_SECONDS,
     }),
