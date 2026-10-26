@@ -387,3 +387,35 @@ body {
   font-weight: 500;
   line-height: 1.0rem;
 }
+
+/* ── Scrollbar styling (same as POS-PROBE) ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f2f4f7;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1a2231;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d0d5dd;
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475467;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #98a2b3;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #667085;
+}
