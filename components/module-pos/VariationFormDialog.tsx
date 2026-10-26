@@ -369,7 +369,7 @@ export function VariationFormDialog({
                 disabled={isEdit}
                 onClick={() => setIsActive(!isActive)}
                 className={`relative w-11 h-6 rounded-full transition-colors ${
-                  isActive ? "bg-foreground" : "bg-gray-300 dark:bg-gray-600"
+                  isActive ? "bg-primary" : "bg-gray-300 dark:bg-gray-600"
                 } ${isEdit ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 <span
@@ -392,7 +392,7 @@ export function VariationFormDialog({
           </button>
           <button
             onClick={handleSubmit}
-            className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-foreground hover:bg-foreground/90 transition-colors shadow-sm"
+            className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
           >
             {isEdit ? "Update Price" : "Add Variation"}
           </button>

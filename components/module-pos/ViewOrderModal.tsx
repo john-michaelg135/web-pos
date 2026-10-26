@@ -571,7 +571,7 @@ onRejectVoid,
             {order.status === "void_requested" && onApplyVoid && canApproveVoid && (
               <button
                 onClick={onApplyVoid}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-foreground rounded-lg hover:bg-foreground/90 active:scale-95 transition-all shadow-sm"
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-primary rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
               >
                 Approve Void
               </button>
@@ -601,7 +601,7 @@ onRejectVoid,
             {order.status === "refund_requested" && onApplyRefund && canApproveRefund && (
               <button
                 onClick={onApplyRefund}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-foreground rounded-lg hover:bg-foreground/90 active:scale-95 transition-all shadow-sm"
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-primary rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
               >
                 Approve Refund
               </button>

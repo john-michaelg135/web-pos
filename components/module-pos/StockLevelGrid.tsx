@@ -14,6 +14,12 @@ const useTheme = () => {
   }
 };
 
+// Brand purple for healthy stock, a softer red for low stock — both as gentle diagonal gradients.
+const BRAND_FILL = "bg-[linear-gradient(135deg,var(--primary),#8a52bf)]";
+const LOW_FILL = "bg-[linear-gradient(135deg,#dc2626,#f87171)]";
+// Stock bars are thin, so they need a stronger left-to-right sweep for the gradient to read.
+const BRAND_BAR = "bg-[linear-gradient(90deg,var(--primary),#9d5fd6,#c9a3f0)]";
+
 interface StockLevelGridProps {
   selectedLocation: string;
   /** Optional externally-controlled search. When omitted, the grid manages its own search state. */
@@ -151,7 +157,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                     </div>
                     <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${isLowStock ? "bg-destructive" : "bg-foreground"}`}
+                        className={`h-full rounded-full ${isLowStock ? LOW_FILL : BRAND_BAR}`}
                         style={{ width: `${stockPercent}%` }}
                       />
                     </div>
@@ -162,7 +168,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                     <button
                       onClick={() => onAdjustStock && onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold })}
                       className={`shrink-0 h-9 px-4 text-xs font-semibold rounded-lg transition-colors ${
-                        isLowStock ? "bg-destructive text-white" : "bg-foreground text-background"
+                        isLowStock ? `${LOW_FILL} text-white shadow-sm shadow-red-500/25` : `${BRAND_FILL} text-white shadow-sm shadow-primary/25`
                       }`}
                     >
                       Adjust
@@ -250,8 +256,8 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                               onClick={() => onAdjustStock && onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold })}
                               className={`px-3 py-1.5 text-white text-xs font-bold rounded-lg transition-all shadow-sm ${
                                 isLowStock
-                                  ? "bg-error-500 hover:bg-error-600 shadow-error-500/20"
-                                  : "bg-brand-500 hover:bg-brand-600 shadow-brand-500/20"
+                                  ? `${LOW_FILL} hover:opacity-90 shadow-red-500/20`
+                                  : `${BRAND_FILL} hover:opacity-90 shadow-primary/25`
                               }`}
                             >
                               Adjust
@@ -287,7 +293,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                   }`}
                 >
                   {/* Top accent bar */}
-                  <div className={`h-1 w-full ${isLowStock ? "bg-destructive/60" : "bg-primary/10"}`} />
+                  <div className={`h-1 w-full ${isLowStock ? LOW_FILL : BRAND_FILL}`} />
 
                   <div className="p-4 sm:p-5 flex flex-col h-full">
                     {/* Header */}
@@ -333,7 +339,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                             LOW STOCK
                           </span>
                         ) : (
-                          <span className="inline-flex items-center text-[10px] font-bold px-2 py-1 rounded-md bg-primary/5 text-foreground border border-border">
+                          <span className="inline-flex items-center text-[10px] font-bold px-2 py-1 rounded-md bg-primary/10 text-primary border border-primary/20">
                             IN STOCK
                           </span>
                         )}
@@ -352,7 +358,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                         <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
-                              isLowStock ? "bg-destructive" : "bg-foreground"
+                              isLowStock ? LOW_FILL : BRAND_BAR
                             }`}
                             style={{ width: `${stockPercent}%` }}
                           />
@@ -377,8 +383,8 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                           }}
                           className={`w-full py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                             isLowStock
-                              ? "bg-destructive text-white hover:bg-destructive/90 shadow-sm"
-                              : "bg-foreground text-background hover:bg-foreground/90 shadow-sm"
+                              ? `${LOW_FILL} text-white hover:opacity-90 shadow-sm shadow-red-500/25`
+                              : `${BRAND_FILL} text-white hover:opacity-90 shadow-sm shadow-primary/25`
                           }`}
                         >
                           Adjust Stock

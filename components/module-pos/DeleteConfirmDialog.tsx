@@ -22,7 +22,7 @@ export function DeleteConfirmDialog({
   if (!isOpen) return null;
 
   const confirmBtnBg = confirmVariant === "brand"
-    ? "bg-brand-500 hover:bg-brand-600 shadow-lg shadow-brand-500/30"
+    ? "bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
     : "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/30";
 
   return (

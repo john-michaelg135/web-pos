@@ -207,7 +207,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
         <div className="grid grid-cols-[1fr_auto] sm:flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setShowManualDialog(true)}
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-xl text-white bg-foreground hover:bg-foreground/90 transition-colors shadow-sm"
+            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-xl text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
           >
             <svg
               style={{ width: 16, height: 16, marginRight: 8, display: "inline-block", verticalAlign: "middle" }}
@@ -369,7 +369,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
               <button
                 onClick={handleManualSubmit}
                 disabled={!manualVariationId || !manualLocationId || !manualQuantity}
-                className="px-5 py-2 text-sm font-bold rounded-lg text-white bg-foreground hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                className="px-5 py-2 text-sm font-bold rounded-lg text-white bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 Receive Stock
               </button>
@@ -438,7 +438,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
                 <button
                   onClick={() => handleConfirm(t)}
                   disabled={!matchedVar}
-                  className="w-full h-10 text-xs font-bold text-white rounded-lg bg-foreground hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
+                  className="w-full h-10 text-xs font-bold text-white rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
                 >
                   Confirm Receipt
                 </button>
@@ -551,7 +551,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
                           <button
                             onClick={() => handleConfirm(t)}
                             disabled={!matchedVar}
-                            className="px-4 py-2 text-xs font-bold text-white rounded-lg bg-foreground hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
+                            className="px-4 py-2 text-xs font-bold text-white rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
                           >
                             Confirm Receipt
                           </button>

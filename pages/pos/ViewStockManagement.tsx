@@ -313,7 +313,7 @@ export function ViewStockManagement() {
         reason={adjustmentReason}
         setReason={setAdjustmentReason}
         onSubmit={handleAdjustmentSubmit}
-        primary="#465fff"
+        primary="#5b2a86"
         muted="#667085"
         border="#e4e7ec"
         text="#101828"

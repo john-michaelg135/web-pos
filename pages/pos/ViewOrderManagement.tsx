@@ -29,7 +29,7 @@ import { useRouter } from "next/navigation";
 
 // Legacy color props for child components that haven't been rewritten yet
 const LEGACY_COLORS = {
-  primary: "#18181b",
+  primary: "#5b2a86",
   muted: "#71717a",
   border: "#e4e4e7",
   text: "#18181b",
