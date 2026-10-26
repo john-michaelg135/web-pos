@@ -16,3 +16,7 @@ export const startingCashRule = (
   role: string | undefined,
 ): "mandatory" | "optional" | "exempt" =>
   isSuperUser(role) ? "exempt" : isManager(role) ? "optional" : "mandatory";
+
+/** The POS-PROBE role a POS role opens the probe as: the owner (Super Admin, CEO) or a manager; anyone else can't. */
+export const probeRoleFor = (role: string | undefined): "owner" | "manager" | null =>
+  isSuperUser(role) ? "owner" : isManager(role) ? "manager" : null;

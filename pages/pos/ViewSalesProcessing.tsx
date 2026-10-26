@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Calendar,
   X,
+  Radar,
 } from "lucide-react";
 import { apiClient } from "../../components/module-pos/api";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import PwdFormModal from "@/components/module-pos/PwdFormModal";
 import StartingCashGate from "@/components/module-pos/StartingCashGate";
 import { cn } from "@/lib/utils";
+import { probeRoleFor } from "@/lib/portal/roles";
 
 type Product = {
   id: string;
@@ -960,7 +962,8 @@ export default function ViewSalesProcessing() {
       isMobile ? "min-h-full pb-28" : "pb-8 flex flex-col h-[calc(100vh-4rem)]"
     )}>
       {/* Header */}
-      <div className="shrink-0">
+      <div className="shrink-0 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
         <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Processing</h1>
         <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
           <span>Process walk-in and institutional orders</span>
@@ -973,6 +976,19 @@ export default function ViewSalesProcessing() {
                 : "Store"}
           </Badge>
         </div>
+        </div>
+        {/* POS-PROBE (forecasting and anomaly alerts) is for the owner and POS Managers only. */}
+        {probeRoleFor(authUser?.role) && (
+          <a
+            href="/api/probe/open"
+            target="_blank"
+            rel="noopener"
+            className="px-3 py-2 shrink-0 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
+          >
+            <Radar className="w-4 h-4" aria-hidden />
+            Open Probe
+          </a>
+        )}
       </div>
 
       <StartingCashGate locationId={effectiveLocationId} onChange={handleStartingCashChange} />
