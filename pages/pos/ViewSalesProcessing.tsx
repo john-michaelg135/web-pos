@@ -892,7 +892,10 @@ export default function ViewSalesProcessing() {
               size="sm"
               variant={isSeniorPWD ? "outline" : "default"}
               disabled={shiftClosed}
-              className={cn("text-xs font-bold rounded-lg h-6 px-2.5", isSeniorPWD && "text-primary border-primary/20 bg-primary/10 hover:bg-primary/20")}
+              className={cn(
+                "text-xs font-semibold rounded-md h-7 px-3 shadow-none text-primary bg-primary/10 hover:bg-primary/20",
+                isSeniorPWD && "border-primary/20"
+              )}
               onClick={() => setShowPwdModal(true)}
             >
               {isSeniorPWD ? "Applied" : "Apply"}

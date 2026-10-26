@@ -57,11 +57,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap text-[11px] text-gray-500 dark:text-gray-400">
                     <span>{when}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter ${
-                      m.type === "arrival" ? "bg-success-50 dark:bg-success-500/10 text-success-600" :
-                      m.type === "sale" ? "bg-brand-50 dark:bg-brand-500/10 text-brand-600" :
-                      "bg-gray-100 dark:bg-gray-800 text-gray-500"
-                    }`}>
+                    <span className="inline-flex items-center text-[10px] font-bold px-2 py-1 rounded-md uppercase bg-primary/10 text-primary border border-primary/20">
                       {m.type}
                     </span>
                     {m.notes && <span className="min-w-0 break-words">{m.notes}</span>}
@@ -133,11 +129,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                         {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
                       </td>
                       <td className="px-4 sm:px-6 py-4 hidden sm:table-cell whitespace-nowrap">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter ${
-                          m.type === "arrival" ? "bg-success-50 dark:bg-success-500/10 text-success-600" :
-                          m.type === "sale" ? "bg-brand-50 dark:bg-brand-500/10 text-brand-600" :
-                          "bg-gray-100 dark:bg-gray-800 text-gray-500"
-                        }`}>
+                        <span className="inline-flex items-center text-[10px] font-bold px-2 py-1 rounded-md uppercase bg-primary/10 text-primary border border-primary/20">
                           {m.type}
                         </span>
                       </td>
