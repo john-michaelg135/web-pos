@@ -12,7 +12,6 @@ import {
   CheckCircle,
   ChevronDown,
   Calendar,
-  DollarSign,
   X,
 } from "lucide-react";
 import { apiClient } from "../../components/module-pos/api";
@@ -30,6 +29,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { toast } from "sonner";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -1188,28 +1188,30 @@ export default function ViewSalesProcessing() {
                     <Label>Payment Method</Label>
                     <div className="grid grid-cols-2 gap-3 mt-2">
                       <button
+                        type="button"
                         onClick={() => setPaymentMethod("cash")}
+                        aria-label="Cash"
                         className={cn(
-                          "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
+                          "flex items-center justify-center p-3 rounded-xl border-2 transition-colors",
                           paymentMethod === "cash"
-                            ? "border-foreground bg-foreground/5 text-foreground"
-                            : "border-border text-muted-foreground hover:border-muted-foreground/30"
+                            ? "border-foreground bg-foreground/5"
+                            : "border-border hover:border-muted-foreground/30"
                         )}
                       >
-                        <DollarSign className="h-5 w-5" />
-                        <span className="text-xs font-bold uppercase">Cash</span>
+                        <Image src="/images/brand/cash-logo.png" alt="Cash" width={610} height={195} className="h-6 w-auto" />
                       </button>
                       <button
                         type="button"
-                        disabled
-                        title="QRPH is not available yet — company QRPH account pending setup."
+                        onClick={() => setPaymentMethod("gcash")}
+                        aria-label="GCash"
                         className={cn(
-                          "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-colors",
-                          "border-border text-muted-foreground/50 bg-muted/30 cursor-not-allowed opacity-60"
+                          "flex items-center justify-center p-3 rounded-xl border-2 transition-colors",
+                          paymentMethod === "gcash"
+                            ? "border-foreground bg-foreground/5"
+                            : "border-border hover:border-muted-foreground/30"
                         )}
                       >
-                        <Package className="h-5 w-5" />
-                        <span className="text-xs font-bold uppercase">QRPH</span>
+                        <Image src="/images/brand/gcash-logo.png" alt="GCash" width={558} height={143} className="h-7 w-auto" />
                       </button>
                     </div>
                   </div>
