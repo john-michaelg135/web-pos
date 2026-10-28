@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Loader2, X, FileText, Download, Printer } from "lucide-react";
+import { Loader2, Download, Printer } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -15,15 +14,14 @@ import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import {
   SalesReport,
   formatPeriod,
-  salesReportCsv,
+  salesReportXlsx,
   type SalesReportData,
 } from "@/components/module-pos/SalesReport";
+import { MoneyAuditPrint, moneyAuditXlsx } from "@/components/module-pos/MoneyAuditReport";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ViewStartingCash, type StartingCashRecord } from "./ViewStartingCash";
 
@@ -69,7 +67,6 @@ export function ViewSalesAnalytics() {
     useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [isCsvPreviewOpen, setIsCsvPreviewOpen] = useState(false);
   const [preset, setPreset] = useState<PeriodPreset>("this-month");
   const [dateFrom, setDateFrom] = useState(() => presetRange("this-month").from);
   const [dateTo, setDateTo] = useState(() => presetRange("this-month").to);
@@ -212,10 +209,17 @@ export function ViewSalesAnalytics() {
     branchLabel: branchName ?? "All branches",
     preparedBy: authUser?.name || authUser?.username || "",
   };
+  // Managers' Money Audit is always their own branch, whatever the branch selector shows.
+  const auditMeta = {
+    ...reportMeta,
+    branchLabel: auditLocation ? auditLocation.locationName || "Unknown" : reportMeta.branchLabel,
+  };
 
-  const downloadFile = (content: string, filename: string) => {
-    // BOM so Excel reads the peso sign and accents correctly.
-    const blob = new Blob(["﻿" + content], { type: "text/csv;charset=utf-8" });
+  const downloadFile = (content: string | Blob, filename: string) => {
+    // CSV text gets a BOM so Excel reads the peso sign and accents correctly.
+    const blob = typeof content === "string"
+      ? new Blob(["﻿" + content], { type: "text/csv;charset=utf-8" })
+      : content;
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -226,28 +230,20 @@ export function ViewSalesAnalytics() {
     URL.revokeObjectURL(url);
   };
 
-  const reportFileStem = () => {
-    const branch = (branchName ?? "all-branches").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  const reportFileStem = (kind = activeTab === "money-audit" ? "money-audit" : "sales-report") => {
+    const branchLabel = kind === "money-audit" ? auditMeta.branchLabel : branchName ?? "all-branches";
+    const branch = branchLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const period = dateFrom || dateTo ? `${dateFrom || "start"}_to_${dateTo || "today"}` : "all-dates";
-    return `sales-report_${branch}_${period}`;
+    return `${kind}_${branch}_${period}`;
   };
 
-  const handleDownloadReportCsv = () => {
+  const handleDownloadReportXlsx = () => {
     if (!reportData) return;
-    downloadFile(salesReportCsv(reportData, reportMeta), `${reportFileStem()}.csv`);
+    downloadFile(salesReportXlsx(reportData, reportMeta), `${reportFileStem()}.xlsx`);
   };
 
-  const handleDownloadMoneyAuditCsv = () => {
-    const csvContent =
-      "Date,Cashier,Branch,Recorded At,Starting Cash,Successful Sales,Approved Refunds,Closed By,End Shift Cash,Expected Cash,Shortage\n" +
-      moneyAuditRecords
-        .map(
-          (r) =>
-            `"${r.businessDate}","${r.cashierName}","${r.locationName || `Branch ${r.locationId}`}","${new Date(r.createdAt).toLocaleString()}","${r.amount}","${r.successfulSalesAmount ?? ""}","${r.approvedRefundAmount ?? ""}","${r.endShiftCashierName ?? ""}","${r.endShiftAmount ?? ""}","${r.expectedCash ?? ""}","${r.cashShortage ?? ""}"`
-        )
-        .join("\n");
-    downloadFile(csvContent, "starting_cash_audit_report.csv");
-    setIsCsvPreviewOpen(false);
+  const handleDownloadMoneyAuditXlsx = () => {
+    downloadFile(moneyAuditXlsx(moneyAuditRecords, auditMeta), `${reportFileStem("money-audit")}.xlsx`);
   };
 
   const printPage = (title: string) => {
@@ -339,21 +335,33 @@ export function ViewSalesAnalytics() {
             </div>
             {(preset === "custom" || activeTab === "money-audit") && dateInputs}
           </div>
+          {/* Same two exports on both tabs, each in its report template. */}
           <div className="flex items-center gap-3">
-            {activeTab === "analytics" ? (
-              <>
-                <Button variant="outline" className="gap-2" disabled={!reportData} onClick={handleDownloadReportCsv}>
-                  <Download className="h-4 w-4" />
-                  CSV
-                </Button>
-                <Button className="gap-2" disabled={!reportData} onClick={() => printPage(`${reportFileStem()} | Sales Report`)}>
-                  <Printer className="h-4 w-4" />
-                  Print / PDF
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setIsCsvPreviewOpen(true)}>Generate Report</Button>
-            )}
+            {(() => {
+              const isAudit = activeTab === "money-audit";
+              const ready = isAudit ? true : !!reportData;
+              return (
+                <>
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    disabled={!ready}
+                    onClick={isAudit ? handleDownloadMoneyAuditXlsx : handleDownloadReportXlsx}
+                  >
+                    <Download className="h-4 w-4" />
+                    Excel
+                  </Button>
+                  <Button
+                    className="gap-2"
+                    disabled={!ready}
+                    onClick={() => printPage(`${reportFileStem()} | ${isAudit ? "Money Audit Report" : "Sales Report"}`)}
+                  >
+                    <Printer className="h-4 w-4" />
+                    Print / PDF
+                  </Button>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -391,11 +399,9 @@ export function ViewSalesAnalytics() {
 
         {canMoneyAudit && (
           <TabsContent value="money-audit" className="space-y-6 mt-0">
-            {(dateFrom || dateTo) && (
-              <p className="hidden print:block text-xs text-muted-foreground">
-                Report Period: {dateFrom || "Earliest"} to {dateTo || "Latest"}
-              </p>
-            )}
+            {/* On paper the templated report replaces the interactive table. */}
+            <MoneyAuditPrint records={moneyAuditRecords} meta={auditMeta} />
+            <div className="print:hidden">
             <ViewStartingCash
               embedded
               locationId={isManagerUser && locScope === "assigned"
@@ -405,96 +411,11 @@ export function ViewSalesAnalytics() {
               dateTo={dateTo}
               onRecordsChange={setMoneyAuditRecords}
             />
+            </div>
           </TabsContent>
         )}
       </Tabs>
 
-      {/* Money Audit export modal */}
-      {isCsvPreviewOpen && typeof document !== "undefined" &&
-        createPortal(
-          <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 print:hidden z-[100000]">
-            <Card className="w-full max-w-4xl mx-4 flex flex-col max-h-[90vh]">
-              <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  Generate Starting Cash Report
-                </CardTitle>
-                <Button variant="ghost" size="icon" onClick={() => setIsCsvPreviewOpen(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <Separator />
-              <CardContent className="overflow-y-auto flex-1 p-5">
-                <div className="border border-border rounded-sm overflow-x-auto bg-card font-mono text-sm">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-muted text-muted-foreground select-none">
-                      <tr>
-                        <th className="px-3 py-1.5 border border-border w-10 text-center font-normal" />
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">A</th>
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">B</th>
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">C</th>
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">D</th>
-                        <th className="px-4 py-1.5 border border-border text-center font-normal">E</th>
-                      </tr>
-                      <tr className="bg-card">
-                        <td className="px-3 py-2 border border-border text-center font-normal bg-muted text-muted-foreground">1</td>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Date</th>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Cashier</th>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Branch</th>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Recorded At</th>
-                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Starting Cash</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {moneyAuditRecords.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground font-sans">
-                            No starting cash records found for the selected date range.
-                          </td>
-                        </tr>
-                      ) : (
-                        moneyAuditRecords.map((item, index) => (
-                          <tr key={index} className="hover:bg-muted/50 transition-colors">
-                            <td className="px-3 py-2 border border-border text-center bg-muted text-muted-foreground select-none">{index + 2}</td>
-                            <td className="px-4 py-2 border border-border text-foreground whitespace-nowrap">{item.businessDate}</td>
-                            <td className="px-4 py-2 border border-border text-foreground">{item.cashierName}</td>
-                            <td className="px-4 py-2 border border-border text-foreground">{item.locationName || `Branch ${item.locationId}`}</td>
-                            <td className="px-4 py-2 border border-border text-foreground text-muted-foreground text-xs">
-                              {new Date(item.createdAt).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-2 border border-border text-foreground text-right font-medium">
-                              ₱{item.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-              <Separator />
-              <div className="flex justify-end gap-3 p-4">
-                <Button variant="outline" onClick={() => setIsCsvPreviewOpen(false)}>Cancel</Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsCsvPreviewOpen(false);
-                    printPage("Money Audit Report | ERP System");
-                  }}
-                  className="gap-2"
-                >
-                  <FileText className="h-4 w-4 text-destructive" />
-                  Export PDF
-                </Button>
-                <Button variant="outline" onClick={handleDownloadMoneyAuditCsv} className="gap-2">
-                  <Download className="h-4 w-4 text-green-600" />
-                  Download CSV
-                </Button>
-              </div>
-            </Card>
-          </div>,
-          document.body
-        )}
     </div>
   );
 }

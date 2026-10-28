@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Image from "next/image";
+import {
+  COMPANY_NAME,
+  ReportDetailsStrip,
+  ReportFigure,
+  ReportPrintFrame,
+  SignOff,
+} from "@/components/module-pos/ReportPrint";
 import { Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/components/module-pos/api";
 import { parseVariationName } from "@/components/module-pos/utils";
+import { buildXlsx, type Cell, type Row } from "@/components/module-pos/xlsx";
 
 export interface SalesTotals {
   grossSales: number;
@@ -78,7 +85,6 @@ const TD = "px-5 py-3.5 text-sm align-middle";
 const NUM = "text-right tabular-nums whitespace-nowrap";
 const TOTAL_ROW = "border-t-2 border-border bg-muted/30 font-semibold text-foreground";
 
-export const COMPANY_NAME = "Bren Raphael's";
 
 const pesoFmt = new Intl.NumberFormat("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -356,9 +362,7 @@ function KeyFigure({ label, value, current, previous, money = true }: {
   money?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-4 min-w-0 print:p-3 print:rounded-md">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground m-0">{label}</p>
-      <p className="text-2xl font-bold text-foreground tabular-nums mt-2 mb-1 truncate print:text-lg print:mt-1">{value}</p>
+    <ReportFigure label={label} value={value}>
       <p className="text-xs text-muted-foreground m-0 flex flex-wrap items-center gap-x-1.5">
         <PercentChange current={current} previous={previous} />
         <span>vs previous period</span>
@@ -366,7 +370,7 @@ function KeyFigure({ label, value, current, previous, money = true }: {
           <span className="tabular-nums">({money ? peso(previous) : count(previous)})</span>
         )}
       </p>
-    </div>
+    </ReportFigure>
   );
 }
 
@@ -551,32 +555,26 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
   );
 
   return (
-    // On paper the report is a CSS table, so its header group repeats at the top of every page.
-    <div className="sr-report print:table print:w-full">
-      <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
-
-      <div className="hidden print:table-header-group">
-        <div className="print:table-row">
-          <div className="print:table-cell">
-            <PrintHeader periodLabel={periodLabel} branchLabel={branchLabel} />
-          </div>
-        </div>
-      </div>
-
-      <div className="print:table-row-group">
-        <div className="print:table-row">
-          <div className="print:table-cell">
+    <ReportPrintFrame title="Sales Report" periodLabel={periodLabel} branchLabel={branchLabel}>
           <div className="space-y-6 print:space-y-5">
-            {/* Letterhead; on paper only its details strip is shown, under the running header. */}
-            <section className="rounded-2xl border border-border bg-card overflow-hidden break-inside-avoid print:rounded-md print:bg-muted/30">
-              <div className="h-1.5 bg-primary print:hidden" />
-              <div className="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-end justify-between gap-5 print:p-3">
-                <div className="min-w-0 print:hidden">
+            {/* On paper the shared details strip replaces this letterhead, under the running header. */}
+            <ReportDetailsStrip
+              items={[
+                ["Branch", branchLabel],
+                ["Compared with", data.previousFrom ? formatPeriod(data.previousFrom, data.previousTo) : "—"],
+                ["Prepared by", preparedBy || "—"],
+                ["Generated", generated],
+              ]}
+            />
+            <section className="rounded-2xl border border-border bg-card overflow-hidden print:hidden">
+              <div className="h-1.5 bg-primary" />
+              <div className="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-end justify-between gap-5">
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wider text-primary m-0">{COMPANY_NAME}</p>
                   <h2 className="text-xl font-bold tracking-tight text-foreground mt-1 mb-0">Sales Report</h2>
                   <p className="text-sm text-muted-foreground mt-1 m-0">For the period {periodLabel}</p>
                 </div>
-                <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm m-0 print:grid-cols-4 print:w-full">
+                <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-sm m-0">
                   {[
                     ["Branch", branchLabel],
                     ["Compared with", data.previousFrom ? formatPeriod(data.previousFrom, data.previousTo) : "—"],
@@ -804,151 +802,146 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
                 <li>{COMPANY_NAME} is not VAT-registered; no output VAT is included in these amounts.</li>
               </ol>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-10 print:grid-cols-3">
-                {[
-                  ["Prepared by", preparedBy],
-                  ["Reviewed by", ""],
-                  ["Approved by", ""],
-                ].map(([role, name]) => (
-                  <div key={role}>
-                    <div className="h-8 border-b border-foreground/40 flex items-end pb-1 text-sm font-medium text-foreground">{name}</div>
-                    <p className="text-xs text-muted-foreground mt-1.5 m-0">{role}</p>
-                  </div>
-                ))}
-              </div>
+              <SignOff preparedBy={preparedBy} />
             </section>
           </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </ReportPrintFrame>
   );
 }
 
-/** Running header printed at the top of every page: enterprise logo, POS badge, report title. */
-function PrintHeader({ periodLabel, branchLabel }: { periodLabel: string; branchLabel: string }) {
-  return (
-    <div className="flex items-center justify-between gap-6 pb-3 mb-5 border-b-2 border-primary">
-      <div className="flex items-center gap-3">
-        <Image
-          src="/images/bren-raphaels-logo.svg"
-          alt=""
-          width={40}
-          height={40}
-          unoptimized
-          className="size-10 shrink-0 rounded-[9px]"
-        />
-        <div className="flex flex-col gap-1">
-          <span className="text-lg font-bold text-zinc-900 leading-none">{COMPANY_NAME}</span>
-          <span className="text-[10px] font-semibold bg-[#f3e8ff] text-[#6d28d9] px-2 py-[2px] rounded-md w-fit">
-            Point of Sale
-          </span>
-        </div>
-      </div>
-      <div className="text-right">
-        <p className="text-base font-bold text-foreground m-0 leading-tight">Sales Report</p>
-        <p className="text-xs text-muted-foreground m-0 mt-0.5">{periodLabel}</p>
-        <p className="text-xs text-muted-foreground m-0">{branchLabel}</p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * A4 page setup for the printed report. The page footer comes from @page margin boxes,
- * which replace the browser's own date/URL header and footer where supported.
- */
-const PRINT_CSS = `
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 12mm 12mm 14mm;
-    @bottom-left {
-      content: "${COMPANY_NAME} \\00B7 Sales Report \\00B7 For internal use";
-      font-family: Inter, system-ui, sans-serif;
-      font-size: 7.5pt;
-      color: #71717a;
-    }
-    @bottom-right {
-      content: "Page " counter(page) " of " counter(pages);
-      font-family: Inter, system-ui, sans-serif;
-      font-size: 7.5pt;
-      color: #71717a;
-    }
-  }
-  html, body { background: #fff !important; }
-  .sr-report { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .sr-report tr { break-inside: avoid; }
-  .sr-report table th { padding: 6px 8px !important; font-size: 7pt !important; }
-  .sr-report table td { padding: 5px 8px !important; font-size: 8.5pt !important; }
-}
-`;
-
-/** The whole report as CSV, section by section, for spreadsheets. */
-export function salesReportCsv(data: SalesReportData, meta: SalesReportMeta) {
-  const q = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
-  const money = (n: number) => n.toFixed(2);
-  const rows: (string | number)[][] = [];
+/** The whole report as an Excel workbook, section by section, with columns sized to fit. */
+export function salesReportXlsx(data: SalesReportData, meta: SalesReportMeta): Blob {
+  const rows: Row[] = [];
   const blank = () => rows.push([]);
+  const money = (v: number): Cell => ({ v, s: "money" });
+  const less = (v: number): Cell => ({ v: v === 0 ? 0 : -v, s: "money" });
+  const share = (v: number): Cell => ({ v, s: "percent" });
+  const header = (...labels: string[]): Row => labels.map((v) => ({ v, s: "header" as const }));
+  // Section titles are outlined bands across their table's width.
+  const section = (title: string, width: number) => rows.push([{ v: title, s: "section", span: width }]);
+  // Header details: outlined label, with the value merged across two columns.
+  const detail = (label: string, value: string) => rows.push([{ v: label, s: "label" }, { v: value, s: "meta", span: 2 }]);
+  const prev = data.previous;
 
-  rows.push([`${COMPANY_NAME} — Sales Report`]);
-  rows.push(["Period", meta.periodLabel]);
-  rows.push(["Branch", meta.branchLabel]);
-  if (data.previousFrom) rows.push(["Compared with", formatPeriod(data.previousFrom, data.previousTo)]);
-  rows.push(["Prepared by", meta.preparedBy]);
-  rows.push(["Generated", new Date(data.generatedAt).toLocaleString("en-PH", { timeZone: "Asia/Manila" })]);
+  rows.push([{ v: `${COMPANY_NAME} — Sales Report`, s: "title" }]);
+  detail("Period", meta.periodLabel);
+  detail("Branch", meta.branchLabel);
+  if (data.previousFrom) detail("Compared with", formatPeriod(data.previousFrom, data.previousTo));
+  detail("Prepared by", meta.preparedBy || "—");
+  detail(
+    "Generated",
+    new Date(data.generatedAt).toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" })
+  );
   blank();
 
-  const prev = data.previous;
-  rows.push(["SALES SUMMARY"]);
-  rows.push(["Particulars", "This period", "Previous period"]);
-  rows.push(["Gross sales", money(data.current.grossSales), prev ? money(prev.grossSales) : ""]);
-  rows.push(["Less: Senior Citizen / PWD discounts", money(-data.current.discounts), prev ? money(-prev.discounts) : ""]);
-  rows.push(["Less: Sales returns and refunds", money(-data.current.returns), prev ? money(-prev.returns) : ""]);
-  rows.push(["Net sales", money(data.current.netSales), prev ? money(prev.netSales) : ""]);
-  rows.push(["Number of transactions", data.current.transactions, prev?.transactions ?? ""]);
-  rows.push(["Units sold", data.current.unitsSold, prev?.unitsSold ?? ""]);
-  rows.push(["Refunds processed", data.current.refundCount, prev?.refundCount ?? ""]);
-  rows.push(["Average transaction value", money(data.current.averageTransaction), prev ? money(prev.averageTransaction) : ""]);
+  section("Sales summary", 3);
+  rows.push(header("Particulars", "This period", "Previous period"));
+  rows.push(["Gross sales", money(data.current.grossSales), prev ? money(prev.grossSales) : null]);
+  rows.push(["Less: Senior Citizen / PWD discounts", less(data.current.discounts), prev ? less(prev.discounts) : null]);
+  rows.push(["Less: Sales returns and refunds", less(data.current.returns), prev ? less(prev.returns) : null]);
+  rows.push([
+    { v: "Net sales", s: "totalLabel" },
+    { v: data.current.netSales, s: "totalMoney" },
+    prev ? { v: prev.netSales, s: "totalMoney" } : { v: null, s: "totalMoney" },
+  ]);
+  rows.push(["Number of transactions", data.current.transactions, prev?.transactions ?? null]);
+  rows.push(["Units sold", data.current.unitsSold, prev?.unitsSold ?? null]);
+  rows.push(["Refunds processed", data.current.refundCount, prev?.refundCount ?? null]);
+  rows.push(["Average transaction value", money(data.current.averageTransaction), prev ? money(prev.averageTransaction) : null]);
   blank();
 
   const breakdown = (title: string, heading: string, lines: SalesLine[]) => {
-    rows.push([title]);
-    rows.push([heading, "Transactions", "Gross sales", "Discounts", "Returns", "Net sales", "% of net"]);
+    section(title, 7);
+    rows.push(header(heading, "Transactions", "Gross sales", "Discounts", "Returns", "Net sales", "% of net"));
     lines.forEach((l) =>
-      rows.push([l.label, l.transactions, money(l.grossSales), money(-l.discounts), money(-l.returns), money(l.netSales), l.share.toFixed(1)])
+      rows.push([l.label, l.transactions, money(l.grossSales), less(l.discounts), less(l.returns), money(l.netSales), share(l.share)])
     );
+    const c = data.current;
+    rows.push([
+      { v: "Total", s: "totalLabel" },
+      { v: c.transactions, s: "totalCount" },
+      { v: c.grossSales, s: "totalMoney" },
+      { v: c.discounts ? -c.discounts : 0, s: "totalMoney" },
+      { v: c.returns ? -c.returns : 0, s: "totalMoney" },
+      { v: c.netSales, s: "totalMoney" },
+      { v: c.netSales !== 0 ? 100 : null, s: "totalPercent" },
+    ]);
     blank();
   };
-  breakdown("SALES BY BRANCH", "Branch", data.byBranch);
-  breakdown("SALES BY CHANNEL", "Channel", data.byChannel);
-  breakdown("SALES BY PAYMENT METHOD", "Payment method", data.byPaymentMethod);
+  breakdown("Sales by branch", "Branch", data.byBranch);
+  breakdown("Sales by channel", "Channel", data.byChannel);
+  breakdown("Sales by payment method", "Payment method", data.byPaymentMethod);
 
-  rows.push(["SALES BY PRODUCT"]);
-  rows.push(["SKU", "Product", "Variation", "Units sold", "Units returned", "Average price", "Gross sales", "Discounts", "Returns", "Net sales", "Sales mix %"]);
+  section("Sales by product", 11);
+  rows.push(header("SKU", "Product", "Variation", "Units sold", "Units returned", "Average price", "Gross sales", "Discounts", "Returns", "Net sales", "Sales mix"));
   data.byProduct.forEach((p) => {
     const parsed = parseVariationName(p.variationName);
     rows.push([
       p.sku || parsed.sku,
       p.productName,
-      [parsed.packaging, parsed.size].filter(Boolean).join(" ") || p.variationName,
+      [parsed.packaging, parsed.size].filter(Boolean).join(" · ") || p.variationName,
       p.unitsSold,
       p.unitsReturned,
-      money(p.averageUnitPrice),
+      p.unitsSold ? money(p.averageUnitPrice) : null,
       money(p.grossSales),
-      money(-p.discounts),
-      money(-p.returns),
+      less(p.discounts),
+      less(p.returns),
       money(p.netSales),
-      p.share.toFixed(1),
+      share(p.share),
     ]);
   });
+  const t = data.byProduct.reduce(
+    (a, p) => ({ sold: a.sold + p.unitsSold, returned: a.returned + p.unitsReturned, gross: a.gross + p.grossSales, disc: a.disc + p.discounts, ret: a.ret + p.returns, net: a.net + p.netSales }),
+    { sold: 0, returned: 0, gross: 0, disc: 0, ret: 0, net: 0 }
+  );
+  rows.push([
+    { v: "Total", s: "totalLabel" },
+    { v: "", s: "totalLabel" },
+    { v: "", s: "totalLabel" },
+    { v: t.sold, s: "totalCount" },
+    { v: t.returned, s: "totalCount" },
+    { v: t.sold ? (t.gross - t.disc) / t.sold : null, s: "totalMoney" },
+    { v: t.gross, s: "totalMoney" },
+    { v: t.disc ? -t.disc : 0, s: "totalMoney" },
+    { v: t.ret ? -t.ret : 0, s: "totalMoney" },
+    { v: t.net, s: "totalMoney" },
+    { v: t.gross ? 100 : null, s: "totalPercent" },
+  ]);
   blank();
 
-  rows.push([data.trendGranularity === "day" ? "DAILY SALES" : "MONTHLY SALES"]);
-  rows.push([data.trendGranularity === "day" ? "Date" : "Month", "Transactions", "Units", "Gross sales", "Discounts", "Returns", "Net sales"]);
+  const daily = data.trendGranularity === "day";
+  section(daily ? "Daily sales" : "Monthly sales", 7);
+  rows.push(header(daily ? "Date" : "Month", "Transactions", "Units", "Gross sales", "Discounts", "Returns", "Net sales"));
   data.trend.forEach((d) =>
-    rows.push([d.label, d.transactions, d.unitsSold, money(d.grossSales), money(-d.discounts), money(-d.returns), money(d.netSales)])
+    rows.push([
+      // Real dates (not text) so the column sorts and filters as dates in Excel.
+      daily ? { v: new Date(`${d.label}T00:00:00Z`), s: "date" } : trendLabel(d.label, "month"),
+      d.transactions,
+      d.unitsSold,
+      money(d.grossSales),
+      less(d.discounts),
+      less(d.returns),
+      money(d.netSales),
+    ])
   );
+  const c = data.current;
+  rows.push([
+    { v: "Total", s: "totalLabel" },
+    { v: c.transactions, s: "totalCount" },
+    { v: c.unitsSold, s: "totalCount" },
+    { v: c.grossSales, s: "totalMoney" },
+    { v: c.discounts ? -c.discounts : 0, s: "totalMoney" },
+    { v: c.returns ? -c.returns : 0, s: "totalMoney" },
+    { v: c.netSales, s: "totalMoney" },
+  ]);
+  blank();
 
-  return rows.map((r) => r.map(q).join(",")).join("\r\n");
+  section("Notes", 7);
+  [
+    "Amounts in Philippine pesos; amounts in parentheses are deductions or decreases.",
+    "Sales are recognised on the date the order was placed; returns on the date the refund was approved.",
+    `${COMPANY_NAME} is not VAT-registered; no output VAT is included in these amounts.`,
+  ].forEach((n, i) => rows.push([{ v: `${i + 1}. ${n}`, s: "note" }]));
+
+  return buildXlsx("Sales Report", rows);
 }
