@@ -10,8 +10,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   if (!user) return null;
 
   return (
-    <LocationGate>
-      <AppShell>{children}</AppShell>
-    </LocationGate>
+    <AppShell>
+      <LocationGate>{children}</LocationGate>
+    </AppShell>
   );
 }

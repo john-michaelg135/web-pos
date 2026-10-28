@@ -6,6 +6,8 @@ import { StockResponseDto } from "@/components/module-pos/api/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
 
+import { StockLevelsSkeleton } from "@/components/shared/PageSkeleton";
+
 const useTheme = () => {
   try {
     return useRealTheme();
@@ -100,9 +102,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
 
   if (isLoading) {
     return (
-      <div className="flex justify-center p-12">
-        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
+      <StockLevelsSkeleton viewMode={viewMode} withSearch={searchQuery === undefined} />
     );
   }
 

@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import { BranchTableSkeleton, LocationManagementSkeleton, StaffTableSkeleton } from "@/components/shared/PageSkeleton";
+
 // Table look shared with the Order Management list view.
 const TABLE_CARD = "mt-4 bg-card border border-border rounded-xl shadow-sm overflow-hidden";
 const TH = "px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider";
@@ -369,9 +371,7 @@ export default function ViewLocationsManagement() {
 
   if (!isSuperUser) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
+      <LocationManagementSkeleton />
     );
   }
 
@@ -415,9 +415,7 @@ export default function ViewLocationsManagement() {
 
           <div className={TABLE_CARD}>
               {loadingLocations ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
+                <BranchTableSkeleton />
               ) : locations.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
                   No branches yet. Add your first branch.
@@ -483,9 +481,7 @@ export default function ViewLocationsManagement() {
 
           <div className={TABLE_CARD}>
               {loadingUsers ? (
-                <div className="flex justify-center py-10">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
+                <StaffTableSkeleton />
               ) : users.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
                   No users found.

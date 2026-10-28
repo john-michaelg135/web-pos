@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { useMyLocations } from "@/lib/useMyLocations";
 
+import { Bone, SkeletonRows } from "@/components/shared/PageSkeleton";
+
 const useTheme = () => {
   try {
     return useRealTheme();
@@ -394,9 +396,10 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
       {/* Phones: one card per delivery */}
       <ul className="md:hidden flex flex-col gap-2.5 m-0 p-0 list-none">
         {isLoading ? (
-          <li className="py-12 flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-4 border-foreground border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Fetching pending deliveries from SCM...</span>
+          <li className="space-y-2.5" aria-label="Fetching pending deliveries from SCM">
+            {[0, 1, 2].map((i) => (
+              <Bone key={i} className="h-24 rounded-xl" />
+            ))}
           </li>
         ) : filteredTransfers.length === 0 ? (
           <li className="py-12 text-center text-sm text-gray-400 dark:text-gray-500">No pending deliveries found.</li>
@@ -476,16 +479,8 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <div className="w-8 h-8 border-4 border-foreground border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Fetching pending deliveries from SCM...
-                      </span>
-                    </div>
-                  </td>
-                </tr>
+                // Same columns as a delivery row: product, quantity, destination, reference, status, action.
+                <SkeletonRows columns={["stack", "num", "text", "short", "badge", "button"]} rows={5} cellClassName="px-6 py-4" />
               ) : filteredTransfers.length === 0 ? (
                 <tr>
                   <td

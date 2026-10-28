@@ -44,6 +44,8 @@ import StartingCashGate from "@/components/module-pos/StartingCashGate";
 import { cn } from "@/lib/utils";
 import { isSuperUser, probeRoleFor } from "@/lib/portal/roles";
 
+import { ProductCatalogSkeleton, SalesProcessingSkeleton } from "@/components/shared/PageSkeleton";
+
 type Product = {
   id: string;
   name: string;
@@ -78,6 +80,8 @@ export default function ViewSalesProcessing() {
   const ownerOnly = isSuperUser(authUser?.role);
   const salesLocked = shiftClosed || ownerOnly;
   const [products, setProducts] = useState<Product[]>(mockProducts);
+  // False until the first product-grid response (or failure), so the catalog shows a skeleton, not a blank panel.
+  const [productsLoaded, setProductsLoaded] = useState(false);
   const [locationName, setLocationName] = useState<string>("");
   const [locationType, setLocationType] = useState<string>("");
 
@@ -123,6 +127,8 @@ export default function ViewSalesProcessing() {
         }
       } catch (err) {
         console.error("Error fetching products, falling back to mock:", err);
+      } finally {
+        setProductsLoaded(true);
       }
     };
 
@@ -917,7 +923,7 @@ export default function ViewSalesProcessing() {
     }
   }, [authUser, authLoading, hasAccess, router]);
 
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (authLoading) return <SalesProcessingSkeleton />;
 
   if (!hasAccess) {
     return null;
@@ -1007,7 +1013,9 @@ export default function ViewSalesProcessing() {
             </div>
           </CardHeader>
           <CardContent className={cn(isMobile ? "p-3" : "p-5", !isMobile && "flex-1 min-h-0 overflow-y-auto custom-scrollbar")}>
-            {catalogView === "grid" ? (
+            {!productsLoaded ? (
+              <ProductCatalogSkeleton view={catalogView} isMobile={isMobile} />
+            ) : catalogView === "grid" ? (
               <>
                 {categories.map((category) => (
                   <div key={category} className={cn(isMobile ? "mb-5" : "mb-7")}>

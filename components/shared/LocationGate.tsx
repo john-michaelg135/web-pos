@@ -1,9 +1,12 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Loader2, Clock, LogOut, RefreshCw } from "lucide-react";
+import { Clock, LogOut, RefreshCw } from "lucide-react";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { Button } from "@/components/ui/button";
+
+import { RouteSkeleton } from "@/components/shared/PageSkeleton";
 
 /**
  * Global location gate.
@@ -20,6 +23,7 @@ export function LocationGate({ children }: { children: React.ReactNode }) {
   const isSuperUser = !!user?.isSuperUser;
 
   const { isLoading, isUnassigned } = useMyLocations();
+  const pathname = usePathname() ?? "/";
 
   // Super users never need a location — let them straight through without
   // even waiting on the scope fetch.
@@ -27,18 +31,17 @@ export function LocationGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // The gate sits inside the app shell, so the sidebar and header stay put while
+  // the branch check runs; only the page area shows its skeleton.
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <RouteSkeleton pathname={pathname} />;
   }
 
+  // Still blocks the whole app (sidebar included) by covering the screen.
   if (isUnassigned) {
     return (
       <div
-        className="flex items-center justify-center min-h-screen bg-background px-6"
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-background px-6"
       >
         <div
           className="flex flex-col items-center text-center"

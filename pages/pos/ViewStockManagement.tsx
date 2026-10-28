@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -22,6 +22,8 @@ import { StockLevel, StockMovement } from "@/components/module-pos/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+import { StockManagementSkeleton } from "@/components/shared/PageSkeleton";
 
 export function ViewStockManagement() {
   const { user: authUser, isLoading: authLoading, canRead } = useAuth();
@@ -207,13 +209,7 @@ export function ViewStockManagement() {
     if (!authLoading && !hasAccess) router.replace("/no-access");
   }, [authUser, authLoading, hasAccess, router]);
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (authLoading) return <StockManagementSkeleton />;
 
   if (!hasAccess) return null;
 

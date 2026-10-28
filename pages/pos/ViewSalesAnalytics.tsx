@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Download, Printer } from "lucide-react";
+import { Download, Printer } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -24,6 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ViewStartingCash, type StartingCashRecord } from "./ViewStartingCash";
+
+import { SalesReportPageSkeleton } from "@/components/shared/PageSkeleton";
 
 type PeriodPreset = "this-month" | "last-month" | "this-quarter" | "year-to-date" | "all" | "custom";
 
@@ -163,12 +165,7 @@ export function ViewSalesAnalytics() {
     if (!authLoading && !hasAccess) router.replace("/no-access");
   }, [authUser, authLoading, hasAccess, router]);
 
-  if (authLoading || locLoading)
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+  if (authLoading || locLoading) return <SalesReportPageSkeleton />;
   if (!hasAccess || !isMounted) return null;
 
   // Non-super user with no assigned branch: gate the location-scoped report.

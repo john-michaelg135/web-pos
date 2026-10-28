@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
-import { Search, Filter, Loader2, LayoutGrid, List } from "lucide-react";
+import { Search, Filter, LayoutGrid, List } from "lucide-react";
 import { Order, OrderStatus, STATUS_LABELS } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
@@ -26,6 +26,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+
+import { Bone, OrderListSkeleton, OrderManagementSkeleton } from "@/components/shared/PageSkeleton";
 
 // Legacy color props for child components that haven't been rewritten yet
 const LEGACY_COLORS = {
@@ -481,7 +483,7 @@ export default function ViewOrderManagement() {
 
   useEffect(() => { if (!authLoading && !hasAccess) router.replace("/no-access"); }, [authUser, authLoading, hasAccess, router]);
 
-  if (authLoading) return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  if (authLoading) return <OrderManagementSkeleton />;
   if (!hasAccess || !isMounted) return null;
 
   const statusTabs: { key: typeof activeTab; label: string; count: number; destructive?: boolean }[] = [
@@ -606,7 +608,7 @@ export default function ViewOrderManagement() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        <OrderListSkeleton viewMode={isMobile ? "grid" : viewMode} />
       ) : (
         <div className="flex flex-col gap-4 w-full">
           {activeTab === "refunds" && (
@@ -778,8 +780,8 @@ export default function ViewOrderManagement() {
               
               <div className="py-4 px-6 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6">
                 {isLoadingPin ? (
-                  <div className="h-8 flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                  <div className="h-9 flex items-center justify-center" aria-label="Loading PIN">
+                    <Bone className="h-7 w-36 rounded-lg" />
                   </div>
                 ) : managerPinError ? (
                   <p className="text-sm text-red-600" role="alert">{managerPinError}</p>

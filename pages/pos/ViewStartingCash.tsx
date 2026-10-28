@@ -14,6 +14,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+import { MONEY_AUDIT_COLUMNS, MoneyAuditSkeleton, SkeletonRows } from "@/components/shared/PageSkeleton";
+
 export interface StartingCashRecord {
   id: number;
   cashierName: string;
@@ -216,10 +218,16 @@ export function ViewStartingCash({
   const total = useMemo(() => visible.reduce((sum, r) => sum + r.amount, 0), [visible]);
 
   if (authLoading) {
+    if (embedded) return <MoneyAuditSkeleton />;
     return (
-      <div className={cn("flex items-center justify-center", embedded ? "py-12" : "min-h-screen")}>
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mr-2" />
-        <span className="text-sm text-muted-foreground">Loading starting cash records...</span>
+      <div className="w-full py-8 px-6 md:px-8 space-y-6">
+        <div>
+          <h2 className="font-bold tracking-tight text-foreground text-headline-md">Starting Cash</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The drawer cash each cashier declared before selling. Visible to managers only.
+          </p>
+        </div>
+        <MoneyAuditSkeleton />
       </div>
     );
   }
@@ -323,12 +331,7 @@ export function ViewStartingCash({
             </thead>
             <tbody>
               {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin inline-block mr-2" />
-                    Loading records...
-                  </td>
-                </tr>
+                <SkeletonRows columns={MONEY_AUDIT_COLUMNS} rows={5} cellClassName="px-5 py-3.5" />
               ) : visible.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground print:py-8 print:text-gray-500">

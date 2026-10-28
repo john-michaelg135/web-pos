@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Product, Variation, ProductCategory } from "@/components/module-pos/types";
@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+import { ProductManagementSkeleton, ProductTableSkeleton } from "@/components/shared/PageSkeleton";
 
 type ViewTab = "products" | "variations";
 
@@ -237,13 +239,7 @@ export default function ViewProductManagement() {
     }
   }, [authUser, authLoading, hasAccess, router]);
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (authLoading) return <ProductManagementSkeleton />;
 
   if (!hasAccess) return null;
 
@@ -312,9 +308,7 @@ export default function ViewProductManagement() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
+        <ProductTableSkeleton tab={activeTab} />
       ) : (
         <>
           {activeTab === "products" && <ProductTable products={products} />}

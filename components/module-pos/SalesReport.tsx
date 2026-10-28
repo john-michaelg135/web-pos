@@ -8,12 +8,13 @@ import {
   ReportPrintFrame,
   SignOff,
 } from "@/components/module-pos/ReportPrint";
-import { Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/components/module-pos/api";
 import { parseVariationName } from "@/components/module-pos/utils";
 import { buildXlsx, type Cell, type Row } from "@/components/module-pos/xlsx";
+
+import { ReportSkeleton } from "@/components/shared/PageSkeleton";
 
 export interface SalesTotals {
   grossSales: number;
@@ -502,8 +503,8 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div role="status" aria-label="Loading sales report">
+        <ReportSkeleton />
       </div>
     );
   }
