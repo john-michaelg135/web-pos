@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useNavClick, useNavigationPending } from "./NavigationPending";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, ShoppingCart, ClipboardList, Package, BarChart3 } from "lucide-react";
 
 export function MobileNav() {
   const pathname = usePathname();
+  const navClick = useNavClick();
+  const { pendingHref } = useNavigationPending();
 
   const navItems = [
     { name: "Home", href: "/", icon: LayoutDashboard },
@@ -19,11 +22,12 @@ export function MobileNav() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-background border-t border-border flex items-center justify-around px-2 z-50">
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = pathname === item.href;
+        const isActive = (pendingHref ?? pathname) === item.href;
         return (
           <Link
             key={item.name}
             href={item.href}
+            onClick={navClick(item.href)}
             prefetch={false}
             className={`flex flex-col items-center gap-0.5 transition-colors ${
               isActive ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"

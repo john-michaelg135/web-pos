@@ -929,11 +929,12 @@ export default function ViewSalesProcessing() {
     return null;
   }
 
-  if (!isMounted) return null;
+  // Still waiting on the branch scope before products load: keep the skeleton up, not a blank page.
+  if (!isMounted) return <SalesProcessingSkeleton />;
 
   return (
     <div className={cn(
-      "w-full pt-8 px-6 md:px-8 space-y-6 animate-in fade-in duration-500",
+      "w-full pt-8 px-6 md:px-8 space-y-6 animate-page-in",
       isMobile ? "min-h-full pb-28" : "pb-8 flex flex-col h-[calc(100vh-4rem)]"
     )}>
       {/* Header */}
@@ -1012,7 +1013,8 @@ export default function ViewSalesProcessing() {
               </button>
             </div>
           </CardHeader>
-          <CardContent className={cn(isMobile ? "p-3" : "p-5", !isMobile && "flex-1 min-h-0 overflow-y-auto custom-scrollbar")}>
+          {/* Stable gutter: the scrollbar always takes its space, so the card grid (and its skeleton) never changes column count. */}
+          <CardContent className={cn(isMobile ? "p-3" : "p-5", !isMobile && "flex-1 min-h-0 overflow-y-auto custom-scrollbar [scrollbar-gutter:stable]")}>
             {!productsLoaded ? (
               <ProductCatalogSkeleton view={catalogView} isMobile={isMobile} />
             ) : catalogView === "grid" ? (

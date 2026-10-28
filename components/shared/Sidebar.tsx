@@ -31,6 +31,7 @@ import { ReturningToPortalCard } from "./ReturningToPortalCard";
 import { SidebarProfileFooter } from "./SidebarProfileFooter";
 import { useAuth } from "@/context/AuthContext";
 import { MODULES } from "@/lib/portal/modules";
+import { useNavClick, useNavigationPending } from "./NavigationPending";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -45,6 +46,11 @@ export function Sidebar() {
   }, []);
 
   const isOpen = isMobile ? openMobile : open;
+
+  const navClick = useNavClick();
+  const { pendingHref } = useNavigationPending();
+  // Highlight the tab being opened right away, before its page has arrived.
+  const activePath = pendingHref ?? pathname;
 
   const handleNavClick = () => {
     if (isMobile) {
@@ -185,8 +191,8 @@ export function Sidebar() {
                       const Icon = item.icon;
                       const isActive =
                         item.href === "/"
-                          ? pathname === "/"
-                          : pathname === item.href || pathname?.startsWith(item.href + "/");
+                          ? activePath === "/"
+                          : activePath === item.href || activePath?.startsWith(item.href + "/");
                       return (
                         <SidebarMenuItem key={item.name}>
                           <SidebarMenuButton
@@ -194,7 +200,14 @@ export function Sidebar() {
                             isActive={isActive}
                             className="h-auto w-full flex items-center gap-3 px-2.5 py-[9px] rounded-lg text-[15px] font-medium text-sidebar-foreground transition-colors data-[active=true]:font-semibold data-[active=true]:text-sidebar-accent-foreground"
                           >
-                            <Link href={item.href} onClick={handleNavClick} prefetch={false}>
+                            <Link
+                              href={item.href}
+                              onClick={(e) => {
+                                navClick(item.href)(e);
+                                handleNavClick();
+                              }}
+                              prefetch={false}
+                            >
                               <Icon className="size-[18px] shrink-0" />
                               <span>{item.name}</span>
                             </Link>

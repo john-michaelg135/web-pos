@@ -513,13 +513,14 @@ export function SalesProcessingSkeleton() {
         <Bone className="h-9 w-32 rounded-xl" />
       </div>
       <Bone className="h-[54px] rounded-xl" />
-      <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1fr_420px]">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-[1fr_420px]">
         <div className="rounded-2xl border border-border bg-card overflow-hidden">
           <div className="px-5 py-4 border-b border-border flex items-center justify-between">
             <h2 className="text-xl font-bold m-0">Product Catalog</h2>
             <Bone className="h-9 w-[72px] rounded-lg" />
           </div>
-          <div className="p-5">
+          {/* Same padding and reserved scrollbar gutter as the real catalog, so the columns match. */}
+          <div className="p-5 overflow-y-auto custom-scrollbar [scrollbar-gutter:stable]">
             <ProductCatalogSkeleton />
           </div>
         </div>
@@ -671,6 +672,30 @@ export function MoneyAuditSkeleton() {
   );
 }
 
+// ── Owner dashboard ─────────────────────────────────────────────────
+
+export function DashboardSkeleton() {
+  return (
+    <div role="status" aria-label="Loading dashboard" className="px-4 py-7 sm:px-8">
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <div className="space-y-2">
+            <Bone className="h-8 w-64 rounded-lg" />
+            <Bone className="h-4 w-80 max-w-full rounded-md" />
+          </div>
+          <Bone className="h-10 w-72 rounded-xl" />
+        </div>
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Bone key={i} className="h-32" />
+          ))}
+        </div>
+        <Bone className="h-80" />
+      </div>
+    </div>
+  );
+}
+
 // ── Route lookup ────────────────────────────────────────────────────
 
 /** The skeleton for a POS route, for loading states that sit above the page (e.g. the branch check). */
@@ -692,5 +717,6 @@ export function RouteSkeleton({ pathname }: { pathname: string }) {
       </Shell>
     );
   }
+  if (pathname === "/") return <DashboardSkeleton />;
   return <PageSkeleton />;
 }

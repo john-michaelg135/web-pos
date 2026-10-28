@@ -2,9 +2,34 @@ import { validateSession, type Staff, type Validation } from "./client";
 import { MODULES } from "./modules";
 import { DEV_STAFF, devBypassEnabled } from "./dev-bypass";
 
+// How long a Portal answer for one session and Module is reused across page loads. Every
+// navigation used to wait on several Portal round trips; a revoked grant or Role change
+// now takes effect within this window. Only "allowed" and "denied" are remembered.
+const REMEMBER_MS = 30_000;
+const remembered = new Map<string, { at: number; answer: Validation }>();
+
+function rememberedAnswer(sessionHandle: string, module: string): Promise<Validation> {
+  const key = `${sessionHandle}|${module}`;
+  const hit = remembered.get(key);
+  if (hit && Date.now() - hit.at < REMEMBER_MS) return Promise.resolve(hit.answer);
+
+  return validateSession(sessionHandle, module).then((answer) => {
+    if (answer.decision === "allowed" || answer.decision === "denied") {
+      remembered.set(key, { at: Date.now(), answer });
+      // Keep the map small: drop anything already expired.
+      if (remembered.size > 500) {
+        for (const [k, v] of remembered) if (Date.now() - v.at >= REMEMBER_MS) remembered.delete(k);
+      }
+    } else {
+      remembered.delete(key);
+    }
+    return answer;
+  });
+}
+
 /**
- * Access for one page load. The Enterprise Portal is asked once per Module and the answer
- * is reused for the rest of the load; nothing is remembered beyond it.
+ * Access for one page load. The Enterprise Portal is asked once per Module; the answer is
+ * reused for the rest of the load and, briefly, for the next loads (see REMEMBER_MS).
  */
 export function accessFor(
   sessionHandle: string | undefined,
@@ -24,7 +49,7 @@ export function accessFor(
     let answer = answers.get(module);
 
     if (!answer) {
-      answer = validateSession(sessionHandle, module);
+      answer = rememberedAnswer(sessionHandle, module);
       answers.set(module, answer);
     }
 

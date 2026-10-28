@@ -245,7 +245,7 @@ export function ViewStartingCash({
 
   return (
     <div className={cn(
-      embedded ? "w-full space-y-6" : "w-full py-8 px-6 md:px-8 space-y-6 animate-in fade-in duration-500"
+      embedded ? "w-full space-y-6" : "w-full py-8 px-6 md:px-8 space-y-6 animate-page-in"
     )}>
       {!embedded && (
         <div>

@@ -484,7 +484,8 @@ export default function ViewOrderManagement() {
   useEffect(() => { if (!authLoading && !hasAccess) router.replace("/no-access"); }, [authUser, authLoading, hasAccess, router]);
 
   if (authLoading) return <OrderManagementSkeleton />;
-  if (!hasAccess || !isMounted) return null;
+  if (!hasAccess) return null;
+  if (!isMounted) return <OrderManagementSkeleton />;
 
   const statusTabs: { key: typeof activeTab; label: string; count: number; destructive?: boolean }[] = [
     { key: "pending", label: "Pending", count: pendingApproval.length },

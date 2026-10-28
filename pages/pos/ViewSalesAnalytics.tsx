@@ -166,7 +166,8 @@ export function ViewSalesAnalytics() {
   }, [authUser, authLoading, hasAccess, router]);
 
   if (authLoading || locLoading) return <SalesReportPageSkeleton />;
-  if (!hasAccess || !isMounted) return null;
+  if (!hasAccess) return null;
+  if (!isMounted) return <SalesReportPageSkeleton />;
 
   // Non-super user with no assigned branch: gate the location-scoped report.
   if (isUnassigned) {
