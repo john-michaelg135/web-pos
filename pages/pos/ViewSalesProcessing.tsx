@@ -470,6 +470,8 @@ export default function ViewSalesProcessing() {
       return;
     }
     if (validate()) {
+      // Each sale starts with an empty Amount Paid, not the last customer's cash.
+      setAmountPaid("");
       setShowCheckoutDialog(true);
     } else {
       if (isInstitutional) {
@@ -597,43 +599,6 @@ export default function ViewSalesProcessing() {
           if (isPreOrder && response) {
             await apiClient.apiPos.orderEntryOrdersPreorderUpdate(Number(response.orderId), { isPreorder: true });
           }
-
-          if (response && response.paymentUrl) {
-            const url = response.paymentUrl;
-            deductStocks();
-            setCart([]);
-            setNotes("");
-            setStreet("");
-            setBarangay("");
-            setCity("");
-            setProvince("");
-            setZipCode("");
-            setIsOrg(false);
-            setOrgName("");
-            setContactFirstName("");
-            setContactMiddleName("");
-            setContactLastName("");
-            setContactSuffix("");
-            setContactPerson("");
-            setContactNumber("");
-            setIsInstitutional(false);
-            setIsPreOrder(false);
-            setIsSeniorPWD(false);
-            setIdNumber("");
-            setPwdCustomerName("");
-            setPwdStreet("");
-            setPwdBarangay("");
-            setPwdCity("");
-            setPwdProvince("");
-            setPwdZipCode("");
-            setShowCheckoutDialog(false);
-
-            toast.success("Order submitted! Redirecting to Xendit payment gateway...");
-            setTimeout(() => {
-              window.location.href = url;
-            }, 1000);
-            return;
-          }
         }
       } catch (err: unknown) {
         console.error("Checkout failed:", err);
@@ -671,6 +636,7 @@ export default function ViewSalesProcessing() {
       setContactNumber("");
       setIsInstitutional(false);
       setIsPartialPayment(false);
+      setAmountPaid("");
       setIsPreOrder(false);
       setIsSeniorPWD(false);
       setIdNumber("");
@@ -1381,7 +1347,8 @@ export default function ViewSalesProcessing() {
               <Button variant="outline" onClick={() => setShowCheckoutDialog(false)}>Cancel</Button>
               <Button
                 onClick={() => {
-                  if (paymentMethod === "gcash" && isInstitutional) {
+                  // Every GCash sale is checked against the company wallet before it is recorded.
+                  if (paymentMethod === "gcash") {
                     setShowGcashConfirm(true);
                     return;
                   }
@@ -1738,6 +1705,7 @@ export default function ViewSalesProcessing() {
                 setContactPerson(resolvedContact);
 
                 setShowInstitutionalModal(false);
+                setAmountPaid("");
                 setShowCheckoutDialog(true);
               }}
             >

@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Loader2, X, FileText, Download } from "lucide-react";
-import { toast } from "sonner";
+import { Loader2, X, FileText, Download, Printer } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -12,26 +11,56 @@ import { POS_MODULES } from "@/lib/permissions";
 import { isManager } from "@/lib/portal/roles";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { apiClient } from "@/components/module-pos/api";
-import { renderVariationBadges } from "@/components/module-pos/utils";
-import { SalesAnalyticsCharts } from "@/components/module-pos/SalesAnalyticsCharts";
-import { SalesByLocationChart } from "@/components/module-pos/SalesByLocationChart";
-import { SalesByChannelChart } from "@/components/module-pos/SalesByChannelChart";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
+import {
+  SalesReport,
+  formatPeriod,
+  salesReportCsv,
+  type SalesReportData,
+} from "@/components/module-pos/SalesReport";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ViewStartingCash, type StartingCashRecord } from "./ViewStartingCash";
 
-interface TopSellingVariation {
-  name: string;
-  sales: number;
-  percent: number;
-  amount: number;
+type PeriodPreset = "this-month" | "last-month" | "this-quarter" | "year-to-date" | "all" | "custom";
+
+const PERIOD_OPTIONS: { value: PeriodPreset; label: string }[] = [
+  { value: "this-month", label: "This month" },
+  { value: "last-month", label: "Last month" },
+  { value: "this-quarter", label: "This quarter" },
+  { value: "year-to-date", label: "Year to date" },
+  { value: "all", label: "All dates" },
+  { value: "custom", label: "Custom range" },
+];
+
+// Earliest date with sales records.
+const MIN_REPORT_DATE = "2026-07-10";
+
+const ymd = (d: Date) => d.toISOString().slice(0, 10);
+
+/** Philippine calendar date range for a preset, as YYYY-MM-DD strings. */
+function presetRange(preset: PeriodPreset): { from: string; to: string } {
+  const today = new Date(Date.now() + 8 * 3600_000); // Manila "now", read with UTC getters
+  const y = today.getUTCFullYear();
+  const m = today.getUTCMonth();
+  const todayStr = ymd(today);
+  switch (preset) {
+    case "this-month":
+      return { from: ymd(new Date(Date.UTC(y, m, 1))), to: todayStr };
+    case "last-month":
+      return { from: ymd(new Date(Date.UTC(y, m - 1, 1))), to: ymd(new Date(Date.UTC(y, m, 0))) };
+    case "this-quarter":
+      return { from: ymd(new Date(Date.UTC(y, m - (m % 3), 1))), to: todayStr };
+    case "year-to-date":
+      return { from: ymd(new Date(Date.UTC(y, 0, 1))), to: todayStr };
+    default:
+      return { from: "", to: "" };
+  }
 }
 
 export function ViewSalesAnalytics() {
@@ -41,10 +70,10 @@ export function ViewSalesAnalytics() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = useState(false);
-  const [topSellingData, setTopSellingData] = useState<TopSellingVariation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [preset, setPreset] = useState<PeriodPreset>("this-month");
+  const [dateFrom, setDateFrom] = useState(() => presetRange("this-month").from);
+  const [dateTo, setDateTo] = useState(() => presetRange("this-month").to);
+  const [reportData, setReportData] = useState<SalesReportData | null>(null);
 
   const [locationName, setLocationName] = useState<string | null>(null);
   const [filterLocation, setFilterLocation] = useState<number | undefined>(undefined);
@@ -72,6 +101,14 @@ export function ViewSalesAnalytics() {
       url.searchParams.set("tab", val);
       window.history.replaceState({}, "", url.toString());
     }
+  };
+
+  const handlePresetChange = (next: PeriodPreset) => {
+    setPreset(next);
+    if (next === "custom") return; // keep the current dates as the starting point
+    const range = presetRange(next);
+    setDateFrom(range.from);
+    setDateTo(range.to);
   };
 
   // Report days are Philippine days (UTC+8), whatever time zone the browser is in.
@@ -123,48 +160,6 @@ export function ViewSalesAnalytics() {
     void populateLocations();
   }, [locScope, locLoading, myLocations]);
 
-  useEffect(() => {
-
-    const fetchTopSelling = async () => {
-      try {
-        setIsLoading(true);
-        const { data } = await apiClient.apiPos.analyticsSalesByVariationList({
-          DateFrom: getStartOfDay(dateFrom),
-          DateTo: getEndOfDay(dateTo),
-          LocationId: filterLocation,
-        });
-        const totalUnits = data.reduce((sum, item) => sum + (Number(item.totalUnitsSold) || 0), 0);
-
-        const formatted = data
-          .map((item) => ({
-            name: item.label || "Unknown",
-            sales: Number(item.totalUnitsSold) || 0,
-            percent: 0,
-            amount: Number(item.totalRevenue) || 0,
-          }))
-          .sort((a, b) => b.sales - a.sales)
-          .slice(0, 10)
-          .map((item) => ({
-            ...item,
-            percent: totalUnits > 0 ? Math.round((item.sales / totalUnits) * 100) : 0,
-          }));
-
-        setTopSellingData(formatted);
-      } catch (err) {
-        console.error("Failed to fetch top selling variations:", err);
-        setTopSellingData([
-          { name: "Ube Halaya - 500g Jar", sales: 420, percent: 85, amount: 159180 },
-          { name: "Ube Jam - 300g Jar", sales: 280, percent: 62, amount: 78120 },
-          { name: "Ube Halaya - 300g Jar", sales: 150, percent: 45, amount: 41850 },
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchTopSelling();
-  }, [dateFrom, dateTo, filterLocation, authUser]);
-
   const hasAccess = !!authUser && canRead(POS_MODULES.SALES_REPORTS);
 
   useEffect(() => {
@@ -201,68 +196,121 @@ export function ViewSalesAnalytics() {
   const showLocationSelector = canPickAll || (locScope === "assigned" && myLocations.length > 1);
 
   const auditLocation = isManagerUser && locScope === "assigned" ? myLocations[0] : undefined;
+  const branchName = isLocked
+    ? locationName ?? myLocations[0]?.locationName ?? "Unknown"
+    : filterLocation
+      ? locations.find((l) => l.id === filterLocation)?.name || "Unknown"
+      : null;
   const locationLabel = activeTab === "money-audit" && auditLocation
     ? `Store - ${auditLocation.locationName || "Unknown"}`
-    : isLocked
-    ? `Store - ${locationName ?? myLocations[0]?.locationName ?? "Unknown"}`
-    : filterLocation
-      ? `Store - ${locations.find((l) => l.id === filterLocation)?.name || "Unknown"}`
+    : branchName
+      ? `Store - ${branchName}`
       : "All Locations";
 
-  const handleDownloadCsv = () => {
-    const csvContent =
-      "data:text/csv;charset=utf-8,Name,Sales (units),Percent,Amount\n" +
-      topSellingData.map((e) => `"${e.name}",${e.sales},${e.percent}%,${e.amount}`).join("\n");
+  const reportMeta = {
+    periodLabel: formatPeriod(getStartOfDay(dateFrom) ?? null, getEndOfDay(dateTo) ?? null),
+    branchLabel: branchName ?? "All branches",
+    preparedBy: authUser?.name || authUser?.username || "",
+  };
+
+  const downloadFile = (content: string, filename: string) => {
+    // BOM so Excel reads the peso sign and accents correctly.
+    const blob = new Blob(["﻿" + content], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "sales_analytics_report.csv");
+    link.href = url;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setIsCsvPreviewOpen(false);
+    URL.revokeObjectURL(url);
+  };
+
+  const reportFileStem = () => {
+    const branch = (branchName ?? "all-branches").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const period = dateFrom || dateTo ? `${dateFrom || "start"}_to_${dateTo || "today"}` : "all-dates";
+    return `sales-report_${branch}_${period}`;
+  };
+
+  const handleDownloadReportCsv = () => {
+    if (!reportData) return;
+    downloadFile(salesReportCsv(reportData, reportMeta), `${reportFileStem()}.csv`);
   };
 
   const handleDownloadMoneyAuditCsv = () => {
     const csvContent =
-      "data:text/csv;charset=utf-8,Date,Cashier,Branch,Recorded At,Starting Cash,Successful Sales,Approved Refunds,Closed By,End Shift Cash,Expected Cash,Shortage\n" +
+      "Date,Cashier,Branch,Recorded At,Starting Cash,Successful Sales,Approved Refunds,Closed By,End Shift Cash,Expected Cash,Shortage\n" +
       moneyAuditRecords
         .map(
           (r) =>
             `"${r.businessDate}","${r.cashierName}","${r.locationName || `Branch ${r.locationId}`}","${new Date(r.createdAt).toLocaleString()}","${r.amount}","${r.successfulSalesAmount ?? ""}","${r.approvedRefundAmount ?? ""}","${r.endShiftCashierName ?? ""}","${r.endShiftAmount ?? ""}","${r.expectedCash ?? ""}","${r.cashShortage ?? ""}"`
         )
         .join("\n");
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download", "starting_cash_audit_report.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadFile(csvContent, "starting_cash_audit_report.csv");
     setIsCsvPreviewOpen(false);
   };
 
-  const parseVariationName = (name: string) => {
-    const emDashIdx = name.indexOf(" — ");
-    const enDashIdx = name.indexOf(" – ");
-    const hyphenIdx = name.indexOf(" - ");
-    const splitIdx = emDashIdx !== -1 ? emDashIdx : enDashIdx !== -1 ? enDashIdx : hyphenIdx;
-    if (splitIdx !== -1) return { prodName: name.substring(0, splitIdx), variationPart: name.substring(splitIdx + 3) };
-    if (name.includes("|")) return { prodName: "", variationPart: name };
-    return { prodName: name, variationPart: "" };
+  const printPage = (title: string) => {
+    const originalTitle = document.title;
+    document.title = title;
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
+    }, 250);
   };
+
+  const dateInputs = (
+    <div className="flex items-center gap-2">
+      <Input
+        type="date"
+        min={MIN_REPORT_DATE}
+        max={dateTo || undefined}
+        value={dateFrom}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val && val < MIN_REPORT_DATE) return;
+          setPreset("custom");
+          setDateFrom(val);
+        }}
+        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+        className="w-[150px] cursor-pointer"
+      />
+      <span className="text-muted-foreground text-sm">to</span>
+      <Input
+        type="date"
+        min={dateFrom || MIN_REPORT_DATE}
+        value={dateTo}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val && val < MIN_REPORT_DATE) return;
+          setPreset("custom");
+          setDateTo(val);
+        }}
+        onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+        className="w-[150px] cursor-pointer"
+      />
+    </div>
+  );
 
   return (
     <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in print:py-2 print:px-0 print:m-0 print:w-full print:max-w-none print:bg-white">
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
+      <div className="flex flex-col gap-5 print:hidden">
+        <div className="flex flex-col gap-1 min-w-0">
           <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Report</h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap min-w-0">
-            <p className="text-sm text-muted-foreground">Completed sales, by the day each order was placed.</p>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === "analytics"
+                ? "Company sales for a period, compared with the period before."
+                : "Starting cash, sales and the end-of-shift count for each shift."}
+            </p>
             <span className="text-muted-foreground font-bold">&middot;</span>
             <Badge variant="secondary" className="text-xs font-bold truncate max-w-[200px]">
               {locationLabel}
             </Badge>
             {showLocationSelector && !(activeTab === "money-audit" && isManagerUser) && (
-              <div className="w-48 ml-1 shrink-0 print:hidden">
+              <div className="w-48 ml-1 shrink-0">
                 <CustomSelect
                   value={filterLocation ? String(filterLocation) : "All"}
                   onChange={(val) => setFilterLocation(val === "All" ? undefined : Number(val))}
@@ -274,53 +322,39 @@ export function ViewSalesAnalytics() {
                 />
               </div>
             )}
-            {(dateFrom || dateTo) && (
-              <p className="hidden print:block text-xs text-muted-foreground w-full mt-1">
-                Report Period: {dateFrom || "Earliest"} to {dateTo || "Latest"}
-              </p>
-            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 print:hidden shrink-0">
-          <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              min="2026-07-10"
-              max={dateTo || undefined}
-              value={dateFrom}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val && val < "2026-07-10") return;
-                setDateFrom(val);
-              }}
-              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              className="w-[160px] cursor-pointer"
-            />
-            <span className="text-muted-foreground text-sm">to</span>
-            <Input
-              type="date"
-              min={dateFrom || "2026-07-10"}
-              value={dateTo}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val && val < "2026-07-10") return;
-                setDateTo(val);
-              }}
-              onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-              className="w-[160px] cursor-pointer"
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!dateFrom && !dateTo}
-              onClick={() => { setDateFrom(""); setDateTo(""); }}
-              className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Reset
-            </Button>
+        {/* Toolbar on its own row so the period controls never squeeze the title and location badge. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Period</span>
+            {/* CustomSelect has a 180px minimum width; a narrower box lets it overlap the next control. */}
+            <div className="w-[180px] shrink-0">
+              <CustomSelect
+                value={preset}
+                onChange={(val) => handlePresetChange(val as PeriodPreset)}
+                options={PERIOD_OPTIONS}
+              />
+            </div>
+            {(preset === "custom" || activeTab === "money-audit") && dateInputs}
           </div>
-          <Button onClick={() => setIsCsvPreviewOpen(true)}>Generate Report</Button>
+          <div className="flex items-center gap-3">
+            {activeTab === "analytics" ? (
+              <>
+                <Button variant="outline" className="gap-2" disabled={!reportData} onClick={handleDownloadReportCsv}>
+                  <Download className="h-4 w-4" />
+                  CSV
+                </Button>
+                <Button className="gap-2" disabled={!reportData} onClick={() => printPage(`${reportFileStem()} | Sales Report`)}>
+                  <Printer className="h-4 w-4" />
+                  Print / PDF
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setIsCsvPreviewOpen(true)}>Generate Report</Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -328,7 +362,7 @@ export function ViewSalesAnalytics() {
       <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as "analytics" | "money-audit")} className="space-y-6">
         <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start gap-2 p-0 print:hidden">
           {[
-            { value: "analytics", label: "Analytics" },
+            { value: "analytics", label: "Sales Report" },
             ...(canMoneyAudit ? [{ value: "money-audit", label: "Money Audit" }] : []),
           ].map((tab) => (
             <TabsTrigger
@@ -345,75 +379,37 @@ export function ViewSalesAnalytics() {
           ))}
         </TabsList>
 
-        <TabsContent value="analytics" className="space-y-6 mt-0">
-          <div className="grid grid-cols-1 gap-8">
-            <SalesAnalyticsCharts dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} locationId={filterLocation} />
+        <TabsContent value="analytics" className="mt-0">
+          <SalesReport
+            dateFrom={getStartOfDay(dateFrom)}
+            dateTo={getEndOfDay(dateTo)}
+            locationId={filterLocation}
+            onData={setReportData}
+            {...reportMeta}
+          />
+        </TabsContent>
 
-            <div className={cn("grid grid-cols-1 gap-8", !authUser?.locationId && !filterLocation && "lg:grid-cols-2")}>
-              <SalesByChannelChart dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} locationId={filterLocation} />
-              {!authUser?.locationId && !filterLocation && (
-                <SalesByLocationChart dateFrom={getStartOfDay(dateFrom)} dateTo={getEndOfDay(dateTo)} />
-              )}
-            </div>
-
-            <Card className="shadow-none border-border">
-          <CardHeader>
-            <CardTitle>Top Selling Variations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center p-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : topSellingData.length === 0 ? (
-              <p className="text-muted-foreground">No sales data available yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {topSellingData.map((item, i) => {
-                  const { prodName, variationPart } = parseVariationName(item.name);
-                  return (
-                    <div key={i} className="space-y-2">
-                      <div className="flex justify-between items-start text-sm font-medium">
-                        <div className="flex flex-col gap-1">
-                          {prodName && <span className="text-foreground font-bold">{prodName}</span>}
-                          {variationPart
-                            ? renderVariationBadges(variationPart, "#8899aa", "rgba(228,231,236,0.2)", "rgba(70,95,255,0.1)", true)
-                            : !prodName && <span className="text-muted-foreground">{item.name}</span>}
-                        </div>
-                        <span className="text-foreground shrink-0 font-bold">{item.sales} units</span>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-1000"
-                          style={{ width: `${item.percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+        {canMoneyAudit && (
+          <TabsContent value="money-audit" className="space-y-6 mt-0">
+            {(dateFrom || dateTo) && (
+              <p className="hidden print:block text-xs text-muted-foreground">
+                Report Period: {dateFrom || "Earliest"} to {dateTo || "Latest"}
+              </p>
             )}
-          </CardContent>
-        </Card>
-      </div>
-    </TabsContent>
+            <ViewStartingCash
+              embedded
+              locationId={isManagerUser && locScope === "assigned"
+                ? myLocations[0]?.locationId
+                : filterLocation ?? (locScope === "assigned" && myLocations.length > 0 ? myLocations[0].locationId : undefined)}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onRecordsChange={setMoneyAuditRecords}
+            />
+          </TabsContent>
+        )}
+      </Tabs>
 
-    {canMoneyAudit && (
-      <TabsContent value="money-audit" className="space-y-6 mt-0">
-        <ViewStartingCash
-          embedded
-          locationId={isManagerUser && locScope === "assigned"
-            ? myLocations[0]?.locationId
-            : filterLocation ?? (locScope === "assigned" && myLocations.length > 0 ? myLocations[0].locationId : undefined)}
-          dateFrom={dateFrom}
-          dateTo={dateTo}
-          onRecordsChange={setMoneyAuditRecords}
-        />
-      </TabsContent>
-    )}
-  </Tabs>
-
-      {/* Report Export Modal */}
+      {/* Money Audit export modal */}
       {isCsvPreviewOpen && typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 print:hidden z-[100000]">
@@ -421,7 +417,7 @@ export function ViewSalesAnalytics() {
               <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />
-                  {activeTab === "analytics" ? "Generate Sales Report" : "Generate Starting Cash Report"}
+                  Generate Starting Cash Report
                 </CardTitle>
                 <Button variant="ghost" size="icon" onClick={() => setIsCsvPreviewOpen(false)}>
                   <X className="h-4 w-4" />
@@ -429,88 +425,52 @@ export function ViewSalesAnalytics() {
               </CardHeader>
               <Separator />
               <CardContent className="overflow-y-auto flex-1 p-5">
-                {activeTab === "analytics" ? (
-                  <div className="border border-border rounded-sm overflow-x-auto bg-card font-mono text-sm">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-muted text-muted-foreground select-none">
+                <div className="border border-border rounded-sm overflow-x-auto bg-card font-mono text-sm">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-muted text-muted-foreground select-none">
+                      <tr>
+                        <th className="px-3 py-1.5 border border-border w-10 text-center font-normal" />
+                        <th className="px-4 py-1.5 border border-border text-center font-normal">A</th>
+                        <th className="px-4 py-1.5 border border-border text-center font-normal">B</th>
+                        <th className="px-4 py-1.5 border border-border text-center font-normal">C</th>
+                        <th className="px-4 py-1.5 border border-border text-center font-normal">D</th>
+                        <th className="px-4 py-1.5 border border-border text-center font-normal">E</th>
+                      </tr>
+                      <tr className="bg-card">
+                        <td className="px-3 py-2 border border-border text-center font-normal bg-muted text-muted-foreground">1</td>
+                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Date</th>
+                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Cashier</th>
+                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Branch</th>
+                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Recorded At</th>
+                        <th className="px-4 py-2 border border-border font-semibold text-foreground">Starting Cash</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {moneyAuditRecords.length === 0 ? (
                         <tr>
-                          <th className="px-3 py-1.5 border border-border w-10 text-center font-normal" />
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">A</th>
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">B</th>
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">C</th>
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">D</th>
+                          <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground font-sans">
+                            No starting cash records found for the selected date range.
+                          </td>
                         </tr>
-                        <tr className="bg-card">
-                          <td className="px-3 py-2 border border-border text-center font-normal bg-muted text-muted-foreground">1</td>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Name</th>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Sales (units)</th>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Percent</th>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {topSellingData.map((item, index) => (
+                      ) : (
+                        moneyAuditRecords.map((item, index) => (
                           <tr key={index} className="hover:bg-muted/50 transition-colors">
                             <td className="px-3 py-2 border border-border text-center bg-muted text-muted-foreground select-none">{index + 2}</td>
-                            <td className="px-4 py-2 border border-border text-foreground whitespace-nowrap">{item.name}</td>
-                            <td className="px-4 py-2 border border-border text-foreground text-right">{item.sales}</td>
-                            <td className="px-4 py-2 border border-border text-foreground text-right">{item.percent}%</td>
-                            <td className="px-4 py-2 border border-border text-foreground text-right">
+                            <td className="px-4 py-2 border border-border text-foreground whitespace-nowrap">{item.businessDate}</td>
+                            <td className="px-4 py-2 border border-border text-foreground">{item.cashierName}</td>
+                            <td className="px-4 py-2 border border-border text-foreground">{item.locationName || `Branch ${item.locationId}`}</td>
+                            <td className="px-4 py-2 border border-border text-foreground text-muted-foreground text-xs">
+                              {new Date(item.createdAt).toLocaleString()}
+                            </td>
+                            <td className="px-4 py-2 border border-border text-foreground text-right font-medium">
                               ₱{item.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="border border-border rounded-sm overflow-x-auto bg-card font-mono text-sm">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-muted text-muted-foreground select-none">
-                        <tr>
-                          <th className="px-3 py-1.5 border border-border w-10 text-center font-normal" />
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">A</th>
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">B</th>
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">C</th>
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">D</th>
-                          <th className="px-4 py-1.5 border border-border text-center font-normal">E</th>
-                        </tr>
-                        <tr className="bg-card">
-                          <td className="px-3 py-2 border border-border text-center font-normal bg-muted text-muted-foreground">1</td>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Date</th>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Cashier</th>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Branch</th>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Recorded At</th>
-                          <th className="px-4 py-2 border border-border font-semibold text-foreground">Starting Cash</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {moneyAuditRecords.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground font-sans">
-                              No starting cash records found for the selected date range.
-                            </td>
-                          </tr>
-                        ) : (
-                          moneyAuditRecords.map((item, index) => (
-                            <tr key={index} className="hover:bg-muted/50 transition-colors">
-                              <td className="px-3 py-2 border border-border text-center bg-muted text-muted-foreground select-none">{index + 2}</td>
-                              <td className="px-4 py-2 border border-border text-foreground whitespace-nowrap">{item.businessDate}</td>
-                              <td className="px-4 py-2 border border-border text-foreground">{item.cashierName}</td>
-                              <td className="px-4 py-2 border border-border text-foreground">{item.locationName || `Branch ${item.locationId}`}</td>
-                              <td className="px-4 py-2 border border-border text-foreground text-muted-foreground text-xs">
-                                {new Date(item.createdAt).toLocaleString()}
-                              </td>
-                              <td className="px-4 py-2 border border-border text-foreground text-right font-medium">
-                                ₱{item.amount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
               <Separator />
               <div className="flex justify-end gap-3 p-4">
@@ -519,27 +479,14 @@ export function ViewSalesAnalytics() {
                   variant="outline"
                   onClick={() => {
                     setIsCsvPreviewOpen(false);
-                    const originalTitle = typeof document !== "undefined" ? document.title : "";
-                    if (typeof document !== "undefined") {
-                      document.title = activeTab === "money-audit" ? "Money Audit Report | ERP System" : "Sales Report | ERP System";
-                    }
-                    setTimeout(() => {
-                      window.print();
-                      setTimeout(() => {
-                        if (typeof document !== "undefined") document.title = originalTitle;
-                      }, 1000);
-                    }, 250);
+                    printPage("Money Audit Report | ERP System");
                   }}
                   className="gap-2"
                 >
                   <FileText className="h-4 w-4 text-destructive" />
                   Export PDF
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={activeTab === "analytics" ? handleDownloadCsv : handleDownloadMoneyAuditCsv}
-                  className="gap-2"
-                >
+                <Button variant="outline" onClick={handleDownloadMoneyAuditCsv} className="gap-2">
                   <Download className="h-4 w-4 text-green-600" />
                   Download CSV
                 </Button>

@@ -547,8 +547,8 @@ onRejectVoid,
         >
           {/* Actions Left: Cancel / Refund / Review Refund */}
           <div className="grid grid-cols-2 gap-2 empty:hidden sm:flex sm:items-center [&>button]:w-full sm:[&>button]:w-auto [&>button]:py-2.5 sm:[&>button]:py-2 [&>button:only-child]:col-span-2">
-            {/* Cancel Order Button */}
-            {["pending", "awaiting_stock", "processing", "paid", "shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (
+            {/* Cancel Order Button: managers and administrators only; cashiers may not cancel orders */}
+            {isAuthorizedToEdit && ["pending", "awaiting_stock", "processing", "paid", "shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (
               <button
                 onClick={() => setCancelToConfirm(true)}
                 className="px-4 py-2 text-xs font-bold uppercase text-red-600 border border-red-500/40 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 active:scale-95 transition-all"
