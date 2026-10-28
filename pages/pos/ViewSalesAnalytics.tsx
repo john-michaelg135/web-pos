@@ -15,9 +15,11 @@ import {
   SalesReport,
   formatPeriod,
   salesReportXlsx,
+  SALES_REPORT_NOTES,
   type SalesReportData,
 } from "@/components/module-pos/SalesReport";
-import { MoneyAuditPrint, moneyAuditXlsx } from "@/components/module-pos/MoneyAuditReport";
+import { MONEY_AUDIT_NOTES, MoneyAuditPrint, moneyAuditXlsx } from "@/components/module-pos/MoneyAuditReport";
+import { PrintSignDialog } from "@/components/module-pos/PrintSignDialog";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +75,9 @@ export function ViewSalesAnalytics() {
   const [dateFrom, setDateFrom] = useState(() => presetRange("this-month").from);
   const [dateTo, setDateTo] = useState(() => presetRange("this-month").to);
   const [reportData, setReportData] = useState<SalesReportData | null>(null);
+  // Print / PDF first asks for a signature; it is placed on the printout's sign-off line.
+  const [isSigning, setIsSigning] = useState(false);
+  const [signature, setSignature] = useState<string | null>(null);
 
   const [locationName, setLocationName] = useState<string | null>(null);
   const [filterLocation, setFilterLocation] = useState<number | undefined>(undefined);
@@ -352,7 +357,7 @@ export function ViewSalesAnalytics() {
                   <Button
                     className="gap-2"
                     disabled={!ready}
-                    onClick={() => printPage(`${reportFileStem()} | ${isAudit ? "Money Audit Report" : "Sales Report"}`)}
+                    onClick={() => setIsSigning(true)}
                   >
                     <Printer className="h-4 w-4" />
                     Print / PDF
@@ -391,6 +396,7 @@ export function ViewSalesAnalytics() {
             dateTo={getEndOfDay(dateTo)}
             locationId={filterLocation}
             onData={setReportData}
+            signature={signature}
             {...reportMeta}
           />
         </TabsContent>
@@ -398,7 +404,7 @@ export function ViewSalesAnalytics() {
         {canMoneyAudit && (
           <TabsContent value="money-audit" className="space-y-6 mt-0">
             {/* On paper the templated report replaces the interactive table. */}
-            <MoneyAuditPrint records={moneyAuditRecords} meta={auditMeta} />
+            <MoneyAuditPrint records={moneyAuditRecords} meta={auditMeta} signature={signature} />
             <div className="print:hidden">
             <ViewStartingCash
               embedded
@@ -413,6 +419,20 @@ export function ViewSalesAnalytics() {
           </TabsContent>
         )}
       </Tabs>
+
+      <PrintSignDialog
+        open={isSigning}
+        onOpenChange={setIsSigning}
+        title={activeTab === "money-audit" ? "Money Audit Report" : "Sales Report"}
+        notes={activeTab === "money-audit" ? MONEY_AUDIT_NOTES : SALES_REPORT_NOTES}
+        signerName={reportMeta.preparedBy}
+        onConfirm={(signed) => {
+          setSignature(signed);
+          setIsSigning(false);
+          // printPage waits a moment, so the signature is on the page and the dialog has closed.
+          printPage(`${reportFileStem()} | ${activeTab === "money-audit" ? "Money Audit Report" : "Sales Report"}`);
+        }}
+      />
 
     </div>
   );

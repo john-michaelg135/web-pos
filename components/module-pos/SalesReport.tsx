@@ -5,8 +5,8 @@ import {
   COMPANY_NAME,
   ReportDetailsStrip,
   ReportFigure,
+  ReportNotes,
   ReportPrintFrame,
-  SignOff,
 } from "@/components/module-pos/ReportPrint";
 
 import { cn } from "@/lib/utils";
@@ -70,12 +70,23 @@ export interface SalesReportMeta {
   preparedBy: string;
 }
 
+/** Printed under "Notes to the report", and shown in the signing dialog before printing. */
+export const SALES_REPORT_NOTES = [
+  "All amounts are in Philippine pesos (₱). Amounts in parentheses are deductions or decreases.",
+  "Sales are recognised on the date the order was placed and include orders marked Completed, including ones later refunded. Pending, cancelled and voided orders are excluded.",
+  "Returns and refunds are recognised on the date the refund was approved, so a refund can relate to a sale from an earlier period.",
+  "Senior Citizen / PWD discounts are the 20% discount and the 12% VAT exemption given at checkout, shown against the regular selling price.",
+  `${COMPANY_NAME} is not VAT-registered; no output VAT is included in these amounts.`,
+];
+
 interface SalesReportProps extends SalesReportMeta {
   dateFrom?: string;
   dateTo?: string;
   locationId?: number;
   /** Lets the page export what is on screen. */
   onData?: (data: SalesReportData | null) => void;
+  /** Signature drawn before printing (PNG data URL), placed on the printed sign-off. */
+  signature?: string | null;
 }
 
 // Table look shared with the Order Management and Location Management tables.
@@ -322,16 +333,24 @@ function SharePie({ lines, total }: { lines: SalesLine[]; total: SalesTotals }) 
           </div>
         )}
       </div>
-      <ul className="flex-1 min-w-0 w-full m-0 p-0 list-none divide-y divide-border" onMouseLeave={() => setHovered(null)}>
+      <ul className="flex-1 min-w-0 w-full m-0 p-0 list-none flex flex-col gap-1.5" onMouseLeave={() => setHovered(null)}>
         {slices.map((s, i) => (
           <li
             key={s.label}
             onMouseEnter={() => setHovered(i)}
+            // Separate rounded rows (no divider lines), so the hover tint reads as one card in the slice's colour.
             className={cn(
-              "flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-lg text-sm transition-colors",
-              hovered === i && "bg-muted/60",
+              "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition-[background-color,border-color,opacity] duration-150",
               hovered !== null && hovered !== i && "opacity-50"
             )}
+            style={
+              hovered === i
+                ? {
+                    background: `color-mix(in oklch, ${s.color} 8%, transparent)`,
+                    borderColor: `color-mix(in oklch, ${s.color} 30%, transparent)`,
+                  }
+                : { borderColor: "transparent" }
+            }
           >
             <span className="size-2.5 rounded-full shrink-0" style={{ background: fill(s.color, i) }} />
             <span className="flex-1 min-w-0">
@@ -346,7 +365,7 @@ function SharePie({ lines, total }: { lines: SalesLine[]; total: SalesTotals }) 
             </span>
           </li>
         ))}
-        <li className="flex items-center justify-between gap-3 py-2.5 text-sm font-semibold text-foreground">
+        <li className="flex items-center justify-between gap-3 mt-1 border-t border-border px-3 pt-3 pb-1 text-sm font-semibold text-foreground">
           <span>Total net sales</span>
           <span className="tabular-nums">{peso(total.netSales)}</span>
         </li>
@@ -470,7 +489,7 @@ function TrendChart({ data }: { data: SalesReportData }) {
  * income-statement sales section (gross → discounts → returns → net) against the
  * previous period, then breakdowns by branch, channel, payment method, product and day.
  */
-export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchLabel, preparedBy, onData }: SalesReportProps) {
+export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchLabel, preparedBy, onData, signature }: SalesReportProps) {
   // The result remembers which filters it was loaded for; any other filters mean it's still loading.
   const requestKey = `${dateFrom ?? ""}|${dateTo ?? ""}|${locationId ?? ""}`;
   const [result, setResult] = useState<{ key: string; data: SalesReportData | null } | null>(null);
@@ -783,28 +802,7 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
               )}
             </Section>
 
-            {/* Notes and sign-off */}
-            <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 break-inside-avoid">
-              <h2 className="text-base font-semibold text-foreground m-0 mb-3">Notes to the report</h2>
-              <ol className="list-decimal pl-5 space-y-1.5 text-sm text-muted-foreground m-0">
-                <li>All amounts are in Philippine pesos (₱). Amounts in parentheses are deductions or decreases.</li>
-                <li>
-                  Sales are recognised on the date the order was placed and include orders marked Completed, including ones
-                  later refunded. Pending, cancelled and voided orders are excluded.
-                </li>
-                <li>
-                  Returns and refunds are recognised on the date the refund was approved, so a refund can relate to a sale
-                  from an earlier period.
-                </li>
-                <li>
-                  Senior Citizen / PWD discounts are the 20% discount and the 12% VAT exemption given at checkout, shown
-                  against the regular selling price.
-                </li>
-                <li>{COMPANY_NAME} is not VAT-registered; no output VAT is included in these amounts.</li>
-              </ol>
-
-              <SignOff preparedBy={preparedBy} />
-            </section>
+            <ReportNotes notes={SALES_REPORT_NOTES} preparedBy={preparedBy} signature={signature} />
           </div>
     </ReportPrintFrame>
   );

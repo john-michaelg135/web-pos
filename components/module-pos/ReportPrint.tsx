@@ -152,20 +152,41 @@ export function ReportFigure({ label, value, tone, children }: {
   );
 }
 
-/** Prepared / Reviewed / Approved signature lines. */
-export function SignOff({ preparedBy }: { preparedBy: string }) {
+/**
+ * Sign-off: who prepared the report, and one long signature line (the width of two
+ * columns) carrying the signature drawn just before printing.
+ */
+export function SignOff({ preparedBy, signature }: { preparedBy: string; signature?: string | null }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mt-10 print:grid-cols-3">
-      {[
-        ["Prepared by", preparedBy],
-        ["Reviewed by", ""],
-        ["Approved by", ""],
-      ].map(([role, name]) => (
-        <div key={role}>
-          <div className="h-8 border-b border-foreground/40 flex items-end pb-1 text-sm font-medium text-foreground">{name}</div>
-          <p className="text-xs text-muted-foreground mt-1.5 m-0">{role}</p>
+      <div>
+        <div className="h-14 border-b border-foreground/40 flex items-end pb-1 text-sm font-medium text-foreground">{preparedBy}</div>
+        <p className="text-xs text-muted-foreground mt-1.5 m-0">Prepared by</p>
+      </div>
+      <div className="sm:col-span-2 print:col-span-2">
+        <div className="h-14 border-b border-foreground/40 flex items-end">
+          {signature && (
+            // eslint-disable-next-line @next/next/no-img-element -- a data URL drawn on this page; nothing for next/image to optimise
+            <img src={signature} alt={`Signature of ${preparedBy}`} className="h-14 w-auto max-w-full object-contain object-left-bottom" />
+          )}
         </div>
-      ))}
+        <p className="text-xs text-muted-foreground mt-1.5 m-0">Signature</p>
+      </div>
     </div>
+  );
+}
+
+/** "Notes to the report" with the sign-off. Printed only: on screen the notes show in the signing dialog. */
+export function ReportNotes({ notes, preparedBy, signature }: { notes: string[]; preparedBy: string; signature?: string | null }) {
+  return (
+    <section className="hidden print:block break-inside-avoid">
+      <h2 className="text-base font-semibold text-foreground m-0 mb-2">Notes to the report</h2>
+      <ol className="list-decimal pl-5 space-y-1 text-sm text-muted-foreground m-0">
+        {notes.map((note) => (
+          <li key={note}>{note}</li>
+        ))}
+      </ol>
+      <SignOff preparedBy={preparedBy} signature={signature} />
+    </section>
   );
 }

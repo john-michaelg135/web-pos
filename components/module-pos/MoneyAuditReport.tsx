@@ -5,8 +5,8 @@ import {
   COMPANY_NAME,
   ReportDetailsStrip,
   ReportFigure,
+  ReportNotes,
   ReportPrintFrame,
-  SignOff,
 } from "@/components/module-pos/ReportPrint";
 import { buildXlsx, type Cell, type Row } from "@/components/module-pos/xlsx";
 import type { StartingCashRecord } from "@/pages/pos/ViewStartingCash";
@@ -16,6 +16,14 @@ export interface MoneyAuditMeta {
   branchLabel: string;
   preparedBy: string;
 }
+
+/** Printed under "Notes to the report", and shown in the signing dialog before printing. */
+export const MONEY_AUDIT_NOTES = [
+  "All amounts are in Philippine pesos (₱).",
+  "Expected cash is the shift's starting cash plus its sales, less approved refunds.",
+  "Variance is the counted cash less the expected cash: negative is short, positive is over.",
+  "Auto-closed shifts were not ended by a cashier and were closed by the system at the end of the business day; no cash was counted, so they have no variance.",
+];
 
 type ShiftStatus = "Balanced" | "Short" | "Over" | "Auto-closed" | "Not closed";
 
@@ -94,7 +102,12 @@ function Section({ number, title, subtitle, children }: { number: number; title:
  * Printed Money Audit report, in the same template as the Sales Report. It only renders
  * on paper; the interactive Money Audit table stays on screen.
  */
-export function MoneyAuditPrint({ records, meta }: { records: StartingCashRecord[]; meta: MoneyAuditMeta }) {
+export function MoneyAuditPrint({ records, meta, signature }: {
+  records: StartingCashRecord[];
+  meta: MoneyAuditMeta;
+  /** Signature drawn before printing (PNG data URL). */
+  signature?: string | null;
+}) {
   const t = totalsOf(records);
   const generated = new Date().toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" });
   const multiBranch = new Set(records.map((r) => r.locationId)).size > 1;
@@ -229,19 +242,7 @@ export function MoneyAuditPrint({ records, meta }: { records: StartingCashRecord
           )}
         </Section>
 
-        <section className="break-inside-avoid">
-          <h2 className="text-base font-semibold text-foreground m-0 mb-2">Notes to the report</h2>
-          <ol className="list-decimal pl-5 space-y-1 text-sm text-muted-foreground m-0">
-            <li>All amounts are in Philippine pesos (₱).</li>
-            <li>Expected cash is the shift&apos;s starting cash plus its sales, less approved refunds.</li>
-            <li>Variance is the counted cash less the expected cash: negative is short, positive is over.</li>
-            <li>
-              Auto-closed shifts were not ended by a cashier and were closed by the system at the end of the business
-              day; no cash was counted, so they have no variance.
-            </li>
-          </ol>
-          <SignOff preparedBy={meta.preparedBy} />
-        </section>
+        <ReportNotes notes={MONEY_AUDIT_NOTES} preparedBy={meta.preparedBy} signature={signature} />
         {/* Eleven columns on portrait A4: slimmer cells than the shared report tables. */}
         <style>{`@media print { .audit-details table th { padding: 5px 5px !important; } .audit-details table td { padding: 4px 5px !important; font-size: 8pt !important; } }`}</style>
       </div>

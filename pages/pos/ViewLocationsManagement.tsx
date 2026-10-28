@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { Loader2, Plus, MapPin, Users, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 
 import { apiClient } from "@/components/module-pos/api";
 import { LocationResponseDto } from "@/components/module-pos/api/api";
@@ -389,10 +389,10 @@ export default function ViewLocationsManagement() {
       <Tabs defaultValue="branches" className="w-full">
         <TabsList>
           <TabsTrigger value="branches" className="gap-2">
-            <MapPin className="w-4 h-4" /> Branches
+            Branches
           </TabsTrigger>
           <TabsTrigger value="staff" className="gap-2">
-            <Users className="w-4 h-4" /> Staff Assignment
+            Staff Assignment
           </TabsTrigger>
         </TabsList>
 

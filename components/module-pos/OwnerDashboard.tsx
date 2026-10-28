@@ -62,7 +62,6 @@ const PERIODS: { value: Period; label: string; compareTo: string }[] = [
 const CHANNEL_COLORS: Record<string, string> = {
   "Walk-in": "var(--primary)",
   Institutional: "var(--chart-2)",
-  Online: "var(--chart-4)",
 };
 
 // ── Formatting ──────────────────────────────────────────────────────
@@ -423,10 +422,9 @@ export default function OwnerDashboard() {
   const compareTo = PERIODS.find((p) => p.value === period)!.compareTo;
   const periodLabel = PERIODS.find((p) => p.value === period)!.label;
 
-  const channelTotal = useMemo(
-    () => (data ? data.salesByChannel.reduce((sum, c) => sum + Math.max(0, c.sales), 0) : 0),
-    [data],
-  );
+  // The POS sells walk-in and institutional only; online orders belong to the e-commerce system.
+  const channels = useMemo(() => (data ? data.salesByChannel.filter((c) => c.channel !== "Online") : []), [data]);
+  const channelTotal = useMemo(() => channels.reduce((sum, c) => sum + Math.max(0, c.sales), 0), [channels]);
   const branchMax = useMemo(
     () => (data ? Math.max(0, ...data.salesByBranch.map((b) => b.sales)) : 0),
     [data],
@@ -672,14 +670,14 @@ export default function OwnerDashboard() {
               ) : (
                 <>
                   <div className="flex h-3 rounded-full overflow-hidden bg-muted gap-0.5" aria-hidden>
-                    {data.salesByChannel
+                    {channels
                       .filter((c) => c.sales > 0)
                       .map((c) => (
                         <div key={c.channel} style={{ width: `${(c.sales / channelTotal) * 100}%`, background: CHANNEL_COLORS[c.channel] }} />
                       ))}
                   </div>
                   <ul className="flex flex-col gap-3 m-0 mt-5 p-0 list-none">
-                    {data.salesByChannel.map((c) => (
+                    {channels.map((c) => (
                       <li key={c.channel} className="flex items-center gap-3 text-sm">
                         <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: CHANNEL_COLORS[c.channel] }} />
                         <span className="flex-1 text-foreground">{c.channel}</span>

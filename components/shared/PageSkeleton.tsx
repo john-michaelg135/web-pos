@@ -437,7 +437,7 @@ export function LocationManagementSkeleton() {
         <div className="rounded-xl border border-border bg-card p-6 flex items-start justify-between gap-4">
           <div className="space-y-2 flex-1">
             <p className="text-base font-semibold text-foreground m-0">Branches</p>
-            <Bone className="h-4 w-full max-w-xl rounded-md" />
+            <Bone className="h-4 w-full max-w-[36rem] rounded-md" />
           </div>
           <Bone className="h-8 w-28 rounded-md" />
         </div>
