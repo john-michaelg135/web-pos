@@ -30,6 +30,8 @@ export interface StartingCashRecord {
   expectedCash?: number | null;
   cashVariance?: number | null;
   cashShortage?: number | null;
+  /** Closed by the system at the end of the business day because no cashier ended the shift. */
+  autoClosed?: boolean;
 }
 
 const peso = (n: number) =>
@@ -354,11 +356,15 @@ export function ViewStartingCash({
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-foreground print:px-2 print:py-2">
-                      {r.endShiftCashierName || "—"}
+                      {r.autoClosed ? (
+                        <span className="text-muted-foreground">System (end of day)</span>
+                      ) : (
+                        r.endShiftCashierName || "—"
+                      )}
                     </td>
                     <td className="px-5 py-3.5 print:px-2 print:py-2">
                       <div className="space-y-1.5">
-                        <div><span className="text-muted-foreground">End:</span> <span className="font-semibold text-foreground">{r.endShiftAmount == null ? "—" : peso(r.endShiftAmount)}</span></div>
+                        <div><span className="text-muted-foreground">End:</span> <span className="font-semibold text-foreground">{r.endShiftAmount != null ? peso(r.endShiftAmount) : r.autoClosed ? <span className="font-normal text-muted-foreground">Not counted</span> : "—"}</span></div>
                         <div><span className="text-muted-foreground">Expected:</span> <span className="text-foreground">{r.expectedCash == null ? "—" : peso(r.expectedCash)}</span></div>
                         <div>
                           <span className="text-muted-foreground">Variance:</span>{" "}
@@ -374,7 +380,15 @@ export function ViewStartingCash({
                       </div>
                     </td>
                     <td className="px-5 py-3.5 print:px-2 print:py-2">
-                      {r.endShiftAmount == null ? (
+                      {r.autoClosed ? (
+                        <span
+                          className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-slate-600 dark:text-slate-300"
+                          title="No cashier ended this shift, so it was closed automatically at the end of the day."
+                        >
+                          <span className="h-2 w-2 rounded-full bg-slate-400" />
+                          Auto-closed
+                        </span>
+                      ) : r.endShiftAmount == null ? (
                         <span className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-amber-600 dark:text-amber-400">
                           <span className="h-2 w-2 rounded-full bg-amber-400" />
                           Not Closed

@@ -304,12 +304,28 @@ function AttentionRow({ icon, tone, title, detail, href }: {
   );
 }
 
+// Table look shared with the Order Management and Location Management tables.
+const TH = "px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider";
+const TR = "hover:bg-muted/10 transition-colors border-b border-border last:border-b-0";
+const TD = "px-5 py-4 text-sm align-middle";
+
 function ShiftPill({ status }: { status: string }) {
   const tone = status === "Open" ? "success" : status === "Closed" ? "info" : null;
   return (
     <span
-      className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold", !tone && "bg-muted text-muted-foreground")}
-      style={tone ? { background: `var(--badge-${tone})`, color: `var(--badge-${tone}-foreground)` } : undefined}
+      className={cn(
+        "inline-flex items-center gap-1.5 text-[10px] font-bold uppercase px-2 py-0.5 rounded-[6px] border whitespace-nowrap",
+        !tone && "bg-muted text-muted-foreground border-border"
+      )}
+      style={
+        tone
+          ? {
+              background: `var(--badge-${tone})`,
+              color: `var(--badge-${tone}-foreground)`,
+              borderColor: `color-mix(in oklch, var(--badge-${tone}-foreground) 20%, transparent)`,
+            }
+          : undefined
+      }
     >
       {status === "Open" && <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />}
       {status}
@@ -684,23 +700,23 @@ export default function OwnerDashboard() {
             {data.branchesToday.length === 0 ? (
               <p className="text-sm text-muted-foreground m-0">No branches to show.</p>
             ) : (
-              <div className="overflow-x-auto -mx-5 sm:-mx-6 px-5 sm:px-6">
-                <table className="w-full min-w-[520px] text-sm">
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full text-left border-collapse min-w-[640px]">
                   <thead>
-                    <tr className="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      <th className="pb-3 font-semibold">Branch</th>
-                      <th className="pb-3 font-semibold">Shift</th>
-                      <th className="pb-3 font-semibold text-right">Collected today</th>
-                      <th className="pb-3 font-semibold text-right">Cash count</th>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className={`${TH} w-[36%]`}>Branch</th>
+                      <th className={`${TH} w-[20%]`}>Shift</th>
+                      <th className={`${TH} w-[22%]`}>Collected today</th>
+                      <th className={TH}>Cash count</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody>
                     {data.branchesToday.map((b) => (
-                      <tr key={b.locationId}>
-                        <td className="py-3 pr-3 text-foreground">{b.name}</td>
-                        <td className="py-3 pr-3"><ShiftPill status={b.shiftStatus} /></td>
-                        <td className="py-3 pr-3 text-right font-semibold text-foreground tabular-nums">{peso(b.salesToday)}</td>
-                        <td className="py-3 text-right tabular-nums"><CashCount value={b.cashOverShort} /></td>
+                      <tr key={b.locationId} className={TR}>
+                        <td className={`${TD} font-medium text-muted-foreground`}>{b.name}</td>
+                        <td className={TD}><ShiftPill status={b.shiftStatus} /></td>
+                        <td className={`${TD} font-semibold text-foreground tabular-nums`}>{peso(b.salesToday)}</td>
+                        <td className={`${TD} tabular-nums`}><CashCount value={b.cashOverShort} /></td>
                       </tr>
                     ))}
                   </tbody>

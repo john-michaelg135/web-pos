@@ -316,7 +316,8 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
         <div
           role={entry.endShiftAt ? "status" : undefined}
           aria-live={entry.endShiftAt ? "polite" : undefined}
-          className={`shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border px-4 py-2.5 text-sm ${
+          // min-h keeps every role's bar the height of the cashier's, whose End Shift button (h-8) sets it.
+          className={`shrink-0 flex flex-wrap items-center content-center gap-x-4 gap-y-1 min-h-[54px] rounded-xl border px-4 py-2.5 text-sm ${
             entry.endShiftAt
               ? "border-destructive/30 bg-destructive/5"
               : "border-primary/30 bg-primary/5"
