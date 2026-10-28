@@ -72,7 +72,7 @@ export default function ViewOrderManagement() {
     return h;
   }, [assignedLocation?.locationId]);
 
-  const [activeTab, setActiveTab] = useState<"pending" | "active" | "paid" | "completed" | "refunds" | "voids" | "cancelled">("pending");
+  const [activeTab, setActiveTab] = useState<"active" | "paid" | "completed" | "refunds" | "voids" | "cancelled">("active");
   const [showManagerPinDialog, setShowManagerPinDialog] = useState(false);
   const [managerPin, setManagerPin] = useState<string | null>(null);
   const [managerPinError, setManagerPinError] = useState<string | null>(null);
@@ -253,6 +253,9 @@ export default function ViewOrderManagement() {
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
+      // Pending orders are hidden everywhere: sales complete at the counter, so only
+      // leftovers from the old online-payment flow are still Pending.
+      if (o.status === "pending") return false;
       const isWebOrder = o.type.toLowerCase() === "online" || o.source?.toLowerCase() === "e-commerce" || o.source?.toLowerCase() === "ecommerce";
       const isRefundStatus = o.status === "refund_requested" || o.status === "refunded";
       // Non-super users only ever see orders from their assigned branch
@@ -463,8 +466,9 @@ export default function ViewOrderManagement() {
     }
   };
 
-  const pendingApproval = filteredOrders.filter((o) => o.status === "pending" || o.status === "awaiting_stock");
-  const activeOrders = filteredOrders.filter((o) => o.status !== "pending" && o.status !== "awaiting_stock" && !["paid", "completed", "delivered", "rejected", "cancelled", "refund_requested", "refunded", "void_requested", "voided"].includes(o.status));
+  // There is no Pending tab, and Pending orders are filtered out above; pre-orders awaiting
+  // stock are listed under Active.
+  const activeOrders = filteredOrders.filter((o) => !["paid", "completed", "delivered", "rejected", "cancelled", "refund_requested", "refunded", "void_requested", "voided"].includes(o.status));
   const rejectedRefunds = filteredOrders
     .filter((o) => o.status === "completed" && (o.remarks?.toLowerCase().startsWith("refund rejected") || o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed")))
     .map((o) => ({ ...o, status: "rejected" as const }));
@@ -488,7 +492,6 @@ export default function ViewOrderManagement() {
   if (!isMounted) return <OrderManagementSkeleton />;
 
   const statusTabs: { key: typeof activeTab; label: string; count: number; destructive?: boolean }[] = [
-    { key: "pending", label: "Pending", count: pendingApproval.length },
     { key: "active", label: "Active", count: activeOrders.length },
     { key: "paid", label: "Paid", count: paidOrders.length },
     { key: "completed", label: "Completed", count: completedOrders.length },
@@ -497,7 +500,7 @@ export default function ViewOrderManagement() {
     { key: "cancelled", label: "Cancelled", count: cancelledOrders.length, destructive: true },
   ];
 
-  const currentOrders = activeTab === "pending" ? pendingApproval : activeTab === "active" ? activeOrders : activeTab === "paid" ? paidOrders : activeTab === "completed" ? completedOrders : activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : activeTab === "voids" ? (voidSubTab === "requested" ? voidRequests : voidSubTab === "voided" ? voidedOrders : rejectedVoids) : cancelledOrders;
+  const currentOrders = activeTab === "active" ? activeOrders : activeTab === "paid" ? paidOrders : activeTab === "completed" ? completedOrders : activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : activeTab === "voids" ? (voidSubTab === "requested" ? voidRequests : voidSubTab === "voided" ? voidedOrders : rejectedVoids) : cancelledOrders;
 
   return (
     <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in">

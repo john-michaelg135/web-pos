@@ -256,7 +256,7 @@ export function StockManagementSkeleton() {
 
 // ── Order Management ────────────────────────────────────────────────
 
-const ORDER_TABS = ["Pending", "Active", "Paid", "Completed", "Refunds", "Voids", "Cancelled"];
+const ORDER_TABS = ["Active", "Paid", "Completed", "Refunds", "Voids", "Cancelled"];
 
 /** Orders list content: the list table (default) or order cards (grid view / phones). */
 export function OrderListSkeleton({ viewMode = "list" }: { viewMode?: "grid" | "list" }) {

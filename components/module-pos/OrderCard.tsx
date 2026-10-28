@@ -16,6 +16,8 @@ const TYPE_BADGE: Record<string, React.CSSProperties> = {
   online: { background: "var(--badge-teal)", color: "var(--badge-teal-foreground)", borderColor: "color-mix(in oklch, var(--badge-teal-foreground) 20%, transparent)" },
 };
 
+const SHIPPED_BADGE = TYPE_BADGE.institutional;
+
 interface OrderCardProps {
   order: Order;
   primary: string;
@@ -63,6 +65,8 @@ onRejectVoid,
 
   const isWebOrder = order.type === "online" || order.source?.toLowerCase() === "e-commerce" || order.source?.toLowerCase() === "ecommerce";
   const isPending = order.status === "pending";
+  // Shipped orders are institutional deliveries, so they wear the institutional badge colour.
+  const isShipped = order.status === "shipped";
   const isRejected = order.status === "rejected";
   const isCompleted = order.status === "completed" || (isWebOrder && order.status === "delivered");
   const [showViewModal, setShowViewModal] = useState(false);
@@ -92,9 +96,9 @@ onRejectVoid,
   if (viewMode === "compact") {
     const itemCount = order.items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
     const statusStyle = {
-      background: isPending ? "#fafafa" : isRejected ? "#fef2f2" : isCompleted ? "#f4f4f5" : `${primary}0D`,
-      color: isPending ? "#71717a" : isRejected ? "#dc2626" : isCompleted ? "#18181b" : primary,
-      borderColor: isPending ? "#e4e4e7" : isRejected ? "#fee2e2" : isCompleted ? "#e4e4e7" : `${primary}26`,
+      background: isShipped ? SHIPPED_BADGE.background : isPending ? "#fafafa" : isRejected ? "#fef2f2" : isCompleted ? "#f4f4f5" : `${primary}0D`,
+      color: isShipped ? SHIPPED_BADGE.color : isPending ? "#71717a" : isRejected ? "#dc2626" : isCompleted ? "#18181b" : primary,
+      borderColor: isShipped ? SHIPPED_BADGE.borderColor : isPending ? "#e4e4e7" : isRejected ? "#fee2e2" : isCompleted ? "#e4e4e7" : `${primary}26`,
     };
     return (
       <>
@@ -181,9 +185,9 @@ onRejectVoid,
           </td>
           <td className="px-5 py-4 whitespace-nowrap align-middle">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase" style={{
-              background: isPending ? "#fafafa" : isRejected ? "#fef2f2" : isCompleted ? "#f4f4f5" : `${primary}08`,
-              color: isPending ? "#71717a" : isRejected ? "#dc2626" : isCompleted ? "#18181b" : primary,
-              border: `1px solid ${isPending ? "#e4e4e7" : isRejected ? "#fee2e2" : isCompleted ? "#e4e4e7" : `${primary}15`}`
+              background: isShipped ? SHIPPED_BADGE.background : isPending ? "#fafafa" : isRejected ? "#fef2f2" : isCompleted ? "#f4f4f5" : `${primary}08`,
+              color: isShipped ? SHIPPED_BADGE.color : isPending ? "#71717a" : isRejected ? "#dc2626" : isCompleted ? "#18181b" : primary,
+              border: `1px solid ${isShipped ? SHIPPED_BADGE.borderColor : isPending ? "#e4e4e7" : isRejected ? "#fee2e2" : isCompleted ? "#e4e4e7" : `${primary}15`}`
             }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
               {STATUS_LABELS[order.status]}
@@ -320,7 +324,9 @@ onRejectVoid={onRejectVoid}
           style={{
             padding: "8px 20px",
             borderRadius: 16,
-            background: isPending
+            background: isShipped
+              ? SHIPPED_BADGE.background
+              : isPending
               ? "#fafafa"
               : isRejected
               ? "#fef2f2"
@@ -328,7 +334,9 @@ onRejectVoid={onRejectVoid}
               ? "#f4f4f5"
               : `${primary}08`,
             border: `1px solid ${
-              isPending
+              isShipped
+                ? SHIPPED_BADGE.borderColor
+                : isPending
                 ? "#e4e4e7"
                 : isRejected
                 ? "#fee2e2"
@@ -336,7 +344,9 @@ onRejectVoid={onRejectVoid}
                 ? "#e4e4e7"
                 : `${primary}15`
             }`,
-            color: isPending
+            color: isShipped
+              ? SHIPPED_BADGE.color
+              : isPending
               ? "#71717a"
               : isRejected
               ? "#dc2626"
@@ -367,10 +377,10 @@ onRejectVoid={onRejectVoid}
         <div style={{ position: "relative", padding: isMobile ? "24px 0" : "24px 0 32px", marginBottom: 32 }}>
           {(() => {
             const currentPipeline: OrderStatus[] = isWebOrder
-              ? ["pending", "processing", "shipped", "delivered"]
+              ? ["processing", "shipped", "delivered"]
               : order.type === "institutional"
-              ? ["pending", "processing", "paid", "shipped", "completed"]
-              : ["pending", "processing", "completed"]; // walk-in / store
+              ? ["processing", "paid", "shipped", "completed"]
+              : ["processing", "completed"]; // walk-in / store
 
             let currentIndex = currentPipeline.indexOf(order.status);
             if (currentIndex === -1) currentIndex = 0;

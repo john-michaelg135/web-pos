@@ -95,10 +95,10 @@ onRejectVoid,
 
   // A partially paid order cannot move to Paid or beyond until the balance is confirmed.
   const allowedStatuses = (isWebOrder
-    ? ["pending", "processing", "shipped", "delivered"]
+    ? ["processing", "shipped", "delivered"]
     : isInstitutional
-    ? ["pending", "processing", "paid", "shipped", "completed"]
-    : ["pending", "processing", "completed"] // walk-in / store
+    ? ["processing", "paid", "shipped", "completed"]
+    : ["processing", "completed"] // walk-in / store
   ).filter((s) => !isPartiallyPaid || !["paid", "shipped", "completed"].includes(s)) as OrderStatus[];
 
   const pricing = useMemo(() => {
@@ -157,11 +157,20 @@ onRejectVoid,
             </h2>
             <span
               className="self-start sm:self-auto px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider whitespace-nowrap"
-              style={{
-                background: `${primary}15`,
-                color: primary,
-                border: `1px solid ${primary}30`
-              }}
+              style={
+                // Shipped orders use the institutional (indigo) badge colour, as in the order list.
+                order.status === "shipped"
+                  ? {
+                      background: "var(--badge-indigo)",
+                      color: "var(--badge-indigo-foreground)",
+                      border: "1px solid color-mix(in oklch, var(--badge-indigo-foreground) 20%, transparent)",
+                    }
+                  : {
+                      background: `${primary}15`,
+                      color: primary,
+                      border: `1px solid ${primary}30`,
+                    }
+              }
             >
               {STATUS_LABELS[order.status]}
             </span>
