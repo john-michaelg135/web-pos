@@ -343,7 +343,7 @@ function CashCount({ value }: { value: number | null }) {
 }
 
 function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-2xl bg-muted", className)} />;
+  return <div className={cn("animate-pulse rounded-2xl bg-primary/[0.07] dark:bg-primary/15", className)} />;
 }
 
 // ── Dashboard ───────────────────────────────────────────────────────

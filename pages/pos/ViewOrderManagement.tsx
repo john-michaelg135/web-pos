@@ -593,21 +593,36 @@ export default function ViewOrderManagement() {
       */}
 
       {/* Status Tabs */}
-      <div className={cn(
-        "flex overflow-x-auto gap-3",
-        isMobile && "-mx-6 px-6 gap-2 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      <div role="tablist" className={cn(
+        "flex overflow-x-auto gap-1 pb-3 border-b border-border",
+        isMobile && "-mx-6 px-6 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       )}>
-        {statusTabs.map(({ key, label, count, destructive }) => (
-          <Button key={key} variant="outline" size="sm" onClick={() => setActiveTab(key)} className={cn(
-            "rounded-xl text-xs font-bold uppercase whitespace-nowrap",
-            isMobile && "shrink-0 snap-start rounded-full px-3.5",
-            activeTab === key && !destructive && "border-primary bg-primary/10 text-primary",
-            activeTab === key && destructive && "border-destructive bg-destructive/10 text-destructive",
-            activeTab !== key && "text-muted-foreground"
-          )}>
-            {label} ({count})
-          </Button>
-        ))}
+        {statusTabs.map(({ key, label, count, destructive }) => {
+          const selected = activeTab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setActiveTab(key)}
+              className={cn(
+                "shrink-0 snap-start inline-flex items-center gap-2 h-10 px-4 rounded-lg text-sm whitespace-nowrap transition-colors",
+                selected && !destructive && "bg-primary/10 text-primary font-medium",
+                selected && destructive && "bg-destructive/10 text-destructive font-medium",
+                !selected && "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              )}
+            >
+              {label}
+              <span className={cn(
+                "min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs tabular-nums",
+                selected ? "bg-background text-foreground" : "bg-muted text-muted-foreground"
+              )}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Content */}

@@ -8,9 +8,8 @@ import {
   Building2,
   Users2,
   CreditCard,
-  Boxes,
   MapPin,
-  ShieldCheck,
+  LayoutGrid,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { MODULES } from "@/lib/portal/modules";
@@ -71,36 +70,36 @@ export const navItemsFor = (allowedModules: readonly string[]): NavItem[] =>
 export const systems: SystemItem[] = [
   {
     fullName: "Enterprise Portal",
-    desc: "Sign-in and access for every system",
-    icon: ShieldCheck,
+    desc: "All systems hub & app launcher",
+    icon: LayoutGrid,
     url: process.env.NEXT_PUBLIC_PORTAL_URL || "https://br-auth-three.vercel.app",
     active: false,
     isPortal: true,
   },
   {
-    fullName: "CRM",
+    fullName: "Customer Relationship Management",
     desc: "Contact profiles, tickets & marketing",
     icon: Building2,
     url: process.env.NEXT_PUBLIC_CRM_URL || "https://epic-crms.vercel.app",
     active: false,
   },
   {
-    fullName: "HRM",
+    fullName: "Human Resource Management",
     desc: "Staff directory & payroll",
     icon: Users2,
     url: process.env.NEXT_PUBLIC_HRM_URL || "https://hrms-arae.vercel.app",
     active: false,
   },
   {
-    fullName: "POS",
+    fullName: "Point of Sale",
     desc: "Retail & register checkout",
     icon: CreditCard,
     active: true,
   },
   {
-    fullName: "IMS",
-    desc: "Inventory & logistics",
-    icon: Boxes,
+    fullName: "Inventory Management System",
+    desc: "Inventory & stock management",
+    icon: Package,
     url: process.env.NEXT_PUBLIC_IMS_URL || "https://br-sims.vercel.app",
     active: false,
   },

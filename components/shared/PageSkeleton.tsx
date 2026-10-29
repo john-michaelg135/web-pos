@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 /** One pulsing placeholder block, in the owner dashboard's skeleton style. */
 export function Bone({ className, style }: { className?: string; style?: CSSProperties }) {
-  return <div aria-hidden className={cn("animate-pulse rounded-2xl bg-muted", className)} style={style} />;
+  return <div aria-hidden className={cn("animate-pulse rounded-2xl bg-primary/[0.07] dark:bg-primary/15", className)} style={style} />;
 }
 
 /** What a column holds, so its placeholder has the right shape. */
@@ -300,16 +300,17 @@ export function OrderManagementSkeleton() {
           <Bone className="h-12 w-28 rounded-xl" />
         </div>
       </div>
-      <div className="flex gap-3 overflow-hidden">
+      <div className="flex gap-1 overflow-hidden pb-3 border-b border-border">
         {ORDER_TABS.map((label, i) => (
           <span
             key={label}
             className={cn(
-              "h-8 px-3 inline-flex items-center rounded-xl border text-xs font-bold uppercase whitespace-nowrap",
-              i === 0 ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+              "shrink-0 h-10 px-4 inline-flex items-center gap-2 rounded-lg text-sm whitespace-nowrap",
+              i === 0 ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"
             )}
           >
             {label}
+            <Bone className="h-5 w-5 rounded-full" />
           </span>
         ))}
       </div>

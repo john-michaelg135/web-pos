@@ -100,15 +100,15 @@ export function Sidebar() {
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="w-72 sm:w-80 bg-popover border border-border text-popover-foreground z-[99999] p-2 space-y-1 shadow-xl rounded-xl"
+                  className="w-[calc(100vw-2rem)] max-w-[20rem] bg-popover border border-border text-popover-foreground z-[99999] p-1.5 space-y-0.5 shadow-xl rounded-xl"
                   align="start"
                   side="bottom"
                   sideOffset={6}
                 >
-                  <DropdownMenuLabel className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider px-3 py-1.5">
+                  <DropdownMenuLabel className="text-[11px] text-muted-foreground font-bold uppercase tracking-wider px-2.5 pt-1.5 pb-2">
                     Select Enterprise Module
                   </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="my-1 bg-border" />
+                  <DropdownMenuSeparator className="-mx-1.5 mt-0 mb-1 bg-border" />
                   {systems.map((sys) => {
                     const SysIcon = sys.icon;
                     return (
@@ -120,26 +120,26 @@ export function Sidebar() {
                           if (sys.isPortal) setReturning(url);
                           else window.location.assign(url);
                         }}
-                        className={`cursor-pointer text-xs flex items-center justify-between p-2.5 rounded-lg transition-all font-medium gap-3 ${
+                        className={`cursor-pointer flex items-center justify-between px-2.5 py-2 rounded-lg transition-colors gap-3 ${
                           sys.active
-                            ? "bg-violet-500/10 text-violet-700 dark:text-violet-300 font-semibold"
-                            : "hover:bg-accent hover:text-accent-foreground"
+                            ? "bg-violet-500/10 focus:bg-violet-500/10"
+                            : "hover:bg-accent focus:bg-accent"
                         }`}
                       >
                         <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
                           <div
-                            className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                            className={`size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                               sys.active
                                 ? "bg-violet-600 text-white shadow-xs"
-                                : "bg-muted text-muted-foreground"
+                                : "bg-violet-500/[0.07] text-zinc-600 dark:text-zinc-300"
                             }`}
                           >
-                            <SysIcon className="w-4 h-4 shrink-0" />
+                            <SysIcon className="size-4 shrink-0" strokeWidth={1.75} />
                           </div>
                           <div className="flex flex-col min-w-0 overflow-hidden flex-1 justify-center gap-0.5">
                             <span
-                              className={`font-semibold text-xs truncate leading-snug ${
-                                sys.active ? "text-foreground font-bold" : "text-foreground"
+                              className={`text-xs truncate leading-snug text-foreground ${
+                                sys.active ? "font-semibold" : "font-medium"
                               }`}
                             >
                               {sys.fullName}
@@ -150,8 +150,8 @@ export function Sidebar() {
                           </div>
                         </div>
                         {sys.active && (
-                          <div className="w-5 h-5 rounded-full bg-violet-600 text-white flex items-center justify-center shrink-0 ml-2 shadow-xs">
-                            <Check className="w-3 h-3 stroke-[3]" />
+                          <div className="size-5 rounded-full bg-violet-600 text-white flex items-center justify-center shrink-0 ml-2 shadow-xs">
+                            <Check className="size-3 stroke-[3]" />
                           </div>
                         )}
                       </DropdownMenuItem>
