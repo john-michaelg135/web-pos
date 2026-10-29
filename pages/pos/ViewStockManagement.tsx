@@ -290,7 +290,13 @@ export function ViewStockManagement() {
 
         {/* Receive Stock */}
         <TabsContent value="receive" className="space-y-4">
-          <StockReceivingForm onSuccess={handleRecordArrival} />
+          <StockReceivingForm
+            onSuccess={handleRecordArrival}
+            onReceived={() => {
+              fetchMovements();
+              setRefreshKey((prev) => prev + 1);
+            }}
+          />
         </TabsContent>
 
         {/* Stock History Log */}

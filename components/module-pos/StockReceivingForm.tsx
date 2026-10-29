@@ -4,35 +4,21 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { apiClient } from "@/components/module-pos/api";
 import { ProductResponseDto } from "@/components/module-pos/api/api";
-import { renderVariationBadges } from "@/components/module-pos/utils";
-import { useTheme as useRealTheme } from "@/context/ThemeContext";
 import { toast } from "sonner";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { useMyLocations } from "@/lib/useMyLocations";
 
 import { Bone, SkeletonRows } from "@/components/shared/PageSkeleton";
+import { TransferReceiveDialog, type PendingTransfer } from "@/components/module-pos/TransferReceiveDialog";
 
-const useTheme = () => {
-  try {
-    return useRealTheme();
-  } catch (e) {
-    return { theme: "light" as const, toggleTheme: () => {} };
-  }
-};
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-PH", { timeZone: "Asia/Manila", month: "short", day: "numeric", year: "numeric" });
 
-interface PendingTransfer {
-  transferId: number;
-  productId: number;
-  sku: string;
-  productName: string;
-  variationName: string;
-  destLocationId: number;
-  transferQuantity: number;
-  status: string;
-  notes: string;
-}
+const unitsIn = (t: PendingTransfer) => t.lines.reduce((sum, l) => sum + l.expectedQuantity, 0);
 
 interface StockReceivingFormProps {
+  /** An SCMS delivery was received into stock. */
+  onReceived: () => void;
   onSuccess: (data: {
     variationId: string;
     productName: string;
@@ -45,8 +31,9 @@ interface StockReceivingFormProps {
   }) => void;
 }
 
-export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
+export function StockReceivingForm({ onSuccess, onReceived }: StockReceivingFormProps) {
   const [transfers, setTransfers] = useState<PendingTransfer[]>([]);
+  const [receiving, setReceiving] = useState<PendingTransfer | null>(null);
   const [products, setProducts] = useState<ProductResponseDto[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,15 +48,6 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
 
   const { scope: locScope, locations: myLocations } = useMyLocations();
 
-  const { theme } = useTheme();
-  const dark = theme === "dark";
-  const border = dark ? "#2d3748" : "#e4e7ec";
-  const inputBg = dark ? "#1a2231" : "#ffffff";
-  const muted = dark ? "#8899aa" : "#667085";
-
-  const apiGatewayUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/";
-  const scmTransfersUrl = `${apiGatewayUrl.replace(/\/$/, "")}/api/scms/StockTransfers`;
-
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -81,19 +59,12 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
       const { data: locData } = await apiClient.apiPos.locationsList();
       setLocations(locData);
 
-      // Fetch SCM pending transfers
-      const scmResponse = await apiClient.instance.get("/api/scms/api/StockTransfers", {
-        baseURL: apiGatewayUrl
-      });
-      const payload = scmResponse.data;
-      if (payload.success && payload.data) {
-        setTransfers(payload.data);
-      } else {
-        setTransfers([]);
-      }
+      // Deliveries SCMS sent to the caller's branches that haven't been received yet
+      const { data: pending } = await apiClient.instance.get<PendingTransfer[]>("/api-pos/transfers/pending");
+      setTransfers(Array.isArray(pending) ? pending : []);
     } catch (err: any) {
-      console.error("Error loading pending transfers:", err);
-      toast.error(err.message || "Failed to retrieve pending deliveries from SCM.");
+      console.error("Error loading pending deliveries:", err);
+      toast.error(err?.response?.data?.message || "Couldn't load pending deliveries.");
     } finally {
       setIsLoading(false);
     }
@@ -129,33 +100,11 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
     const q = (searchTerm || "").toLowerCase().trim();
     if (!q) return true;
     return (
-      (t.productName || "").toLowerCase().includes(q) ||
-      (t.sku || "").toLowerCase().includes(q) ||
-      (t.notes || "").toLowerCase().includes(q)
+      t.transferId.toLowerCase().includes(q) ||
+      (t.destinationLocationName || "").toLowerCase().includes(q) ||
+      t.lines.some((l) => l.productName.toLowerCase().includes(q) || (l.sku || "").toLowerCase().includes(q))
     );
   });
-
-  const handleConfirm = (transfer: PendingTransfer) => {
-    const matchedVar = allVariations.find(
-      (v) => v.sku.toLowerCase() === transfer.sku.toLowerCase()
-    );
-
-    if (!matchedVar) {
-      toast.error("This product variation is not synced in POS catalog.");
-      return;
-    }
-
-    onSuccess({
-      variationId: matchedVar.variationId,
-      productName: matchedVar.productName,
-      variationName: matchedVar.variationName,
-      locationId: transfer.destLocationId,
-      quantity: transfer.transferQuantity,
-      reference: `SCM-TR-${transfer.transferId}`,
-      notes: transfer.notes || `SCM Stock Transfer ID: ${transfer.transferId}`,
-      transferId: transfer.transferId,
-    });
-  };
 
   const handleManualSubmit = () => {
     if (!manualVariationId || !manualLocationId || !manualQuantity) {
@@ -387,7 +336,7 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search SCM deliveries by product, SKU, or note…"
+          placeholder="Search by reference, branch, product or SKU…"
           maxLength={25}
           className="w-full sm:max-w-[320px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         />
@@ -396,54 +345,44 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
       {/* Phones: one card per delivery */}
       <ul className="md:hidden flex flex-col gap-2.5 m-0 p-0 list-none">
         {isLoading ? (
-          <li className="space-y-2.5" aria-label="Fetching pending deliveries from SCM">
+          <li className="space-y-2.5" aria-label="Loading pending deliveries">
             {[0, 1, 2].map((i) => (
               <Bone key={i} className="h-24 rounded-xl" />
             ))}
           </li>
         ) : filteredTransfers.length === 0 ? (
-          <li className="py-12 text-center text-sm text-gray-400 dark:text-gray-500">No pending deliveries found.</li>
+          <li className="py-12 text-center text-sm text-gray-400 dark:text-gray-500">No pending deliveries.</li>
         ) : (
           filteredTransfers.map((t) => {
-            const matchedVar = allVariations.find((v) => v.sku.toLowerCase() === t.sku.toLowerCase());
-            const destLoc = locations.find((l) => l.locationId === t.destLocationId);
-            const locationName = destLoc ? destLoc.locationName : `Location #${t.destLocationId}`;
+            const unmatched = t.lines.filter((l) => l.variationId == null).length;
             return (
               <li key={t.transferId} className="rounded-xl border border-gray-200 dark:border-gray-800 p-3.5 flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white m-0">{t.productName}</p>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <code className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">{t.sku}</code>
-                      {matchedVar ? (
-                        renderVariationBadges(matchedVar.variationName, muted, border, inputBg, true)
-                      ) : (
-                        <span className="text-[10px] font-semibold text-error-500 bg-error-50 dark:bg-error-500/10 px-2 py-0.5 rounded border border-error-200 dark:border-error-900/30">
-                          Not Synced in POS
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white m-0 font-mono">{t.transferId}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 m-0 mt-1">
+                      To {t.destinationLocationName} · {formatDate(t.transferDate)}
+                    </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-xl font-black leading-none text-gray-900 dark:text-white tabular-nums m-0">{t.transferQuantity}</p>
+                    <p className="text-xl font-black leading-none text-gray-900 dark:text-white tabular-nums m-0">{unitsIn(t)}</p>
                     <p className="text-[10px] text-gray-500 m-0 mt-1">units</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap text-[11px] text-gray-500 dark:text-gray-400">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300">To {locationName}</span>
-                  <span>·</span>
-                  <span className="font-mono">TR-{t.transferId}</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30">
-                    {t.status.toUpperCase()}
-                  </span>
-                </div>
-                {t.notes && <p className="text-xs text-gray-400 dark:text-gray-500 italic m-0">Note: {t.notes}</p>}
+                <ul className="m-0 p-0 list-none space-y-1">
+                  {t.lines.map((l) => (
+                    <li key={l.lineId} className="flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-300">
+                      <span className="min-w-0 truncate">{l.posProductName ?? l.productName}</span>
+                      <span className="tabular-nums shrink-0">{l.expectedQuantity}</span>
+                    </li>
+                  ))}
+                </ul>
+                {unmatched > 0 && <UnmatchedBadge count={unmatched} />}
                 <button
-                  onClick={() => handleConfirm(t)}
-                  disabled={!matchedVar}
-                  className="w-full h-10 text-xs font-bold text-white rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
+                  onClick={() => setReceiving(t)}
+                  className="w-full h-10 text-xs font-bold text-white rounded-lg bg-primary hover:bg-primary/90 shadow-sm transition-all"
                 >
-                  Confirm Receipt
+                  Receive
                 </button>
               </li>
             );
@@ -451,104 +390,80 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
         )}
       </ul>
 
-      {/* Table of SCM deliveries */}
+      {/* Table of pending deliveries */}
       <div className="hidden md:block border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Product Details
-                </th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">
-                  Quantity
-                </th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Destination
-                </th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Reference
-                </th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">
-                  Action
-                </th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reference</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Items</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider !text-right">Units</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destination</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider !text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {isLoading ? (
-                // Same columns as a delivery row: product, quantity, destination, reference, status, action.
-                <SkeletonRows columns={["stack", "num", "text", "short", "badge", "button"]} rows={5} cellClassName="px-6 py-4" />
+                // Same columns as a delivery row: reference, items, units, destination, status, action.
+                <SkeletonRows columns={["stack", "stack", "num", "text", "badge", "button"]} rows={5} cellClassName="px-6 py-4" />
               ) : filteredTransfers.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-12 text-center text-sm text-gray-400 dark:text-gray-500"
-                  >
-                    No pending deliveries found.
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400 dark:text-gray-500">
+                    No pending deliveries.
                   </td>
                 </tr>
               ) : (
                 filteredTransfers.map((t) => {
-                  const matchedVar = allVariations.find(
-                    (v) => v.sku.toLowerCase() === t.sku.toLowerCase()
-                  );
-                  const destLoc = locations.find((l) => l.locationId === t.destLocationId);
-                  const locationName = destLoc ? destLoc.locationName : `Location #${t.destLocationId}`;
-
+                  const unmatched = t.lines.filter((l) => l.variationId == null).length;
                   return (
-                    <tr
-                      key={t.transferId}
-                      className="hover:bg-gray-50/50 dark:hover:bg-gray-950/20 transition-colors"
-                    >
+                    <tr key={t.transferId} className="hover:bg-gray-50/50 dark:hover:bg-gray-950/20 transition-colors align-top">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-bold text-gray-900 dark:text-white">
-                          {t.productName}
+                        <div className="text-sm font-bold text-gray-900 dark:text-white font-mono">{t.transferId}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {formatDate(t.transferDate)}
+                          {t.sourceLocationName ? ` · from ${t.sourceLocationName}` : ""}
                         </div>
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <code className="text-[10px] font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                            {t.sku}
-                          </code>
-                          {matchedVar ? (
-                            renderVariationBadges(matchedVar.variationName, muted, border, inputBg, true)
-                          ) : (
-                            <span className="text-[10px] font-semibold text-error-500 bg-error-50 dark:bg-error-500/10 px-2 py-0.5 rounded border border-error-200 dark:border-error-900/30">
-                              Not Synced in POS
-                            </span>
-                          )}
-                        </div>
-                        {t.notes && (
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 italic">
-                            Note: {t.notes}
-                          </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <ul className="m-0 p-0 list-none space-y-1">
+                          {t.lines.map((l) => (
+                            <li key={l.lineId} className="text-sm text-gray-700 dark:text-gray-200">
+                              {l.posProductName ?? l.productName}
+                              {l.sku && (
+                                <code className="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                                  {l.sku}
+                                </code>
+                              )}
+                              <span className="ml-2 text-xs text-gray-500 tabular-nums">× {l.expectedQuantity}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {unmatched > 0 && (
+                          <div className="mt-2">
+                            <UnmatchedBadge count={unmatched} />
+                          </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right font-black text-sm text-gray-900 dark:text-white">
-                        {t.transferQuantity} units
-                      </td>
+                      <td className="px-6 py-4 text-right font-black text-sm text-gray-900 dark:text-white tabular-nums">{unitsIn(t)}</td>
                       <td className="px-6 py-4">
-                        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300">
-                          {locationName}
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                          {t.destinationLocationName}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-xs font-mono text-gray-500 dark:text-gray-400">
-                        TR-{t.transferId}
-                      </td>
                       <td className="px-6 py-4">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30 whitespace-nowrap">
                           {t.status.toUpperCase()}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-center">
                           <button
-                            onClick={() => handleConfirm(t)}
-                            disabled={!matchedVar}
-                            className="px-4 py-2 text-xs font-bold text-white rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm transition-all"
+                            onClick={() => setReceiving(t)}
+                            className="px-4 py-2 text-xs font-bold text-white rounded-lg bg-primary hover:bg-primary/90 shadow-sm transition-all"
                           >
-                            Confirm Receipt
+                            Receive
                           </button>
                         </div>
                       </td>
@@ -560,6 +475,23 @@ export function StockReceivingForm({ onSuccess }: StockReceivingFormProps) {
           </table>
         </div>
       </div>
+
+      <TransferReceiveDialog
+        transfer={receiving}
+        onClose={() => setReceiving(null)}
+        onReceived={() => {
+          loadData();
+          onReceived();
+        }}
+      />
     </div>
+  );
+}
+
+function UnmatchedBadge({ count }: { count: number }) {
+  return (
+    <span className="inline-block text-[10px] font-semibold text-error-500 bg-error-50 dark:bg-error-500/10 px-2 py-0.5 rounded border border-error-200 dark:border-error-900/30">
+      {count === 1 ? "1 item not in POS catalog" : `${count} items not in POS catalog`}
+    </span>
   );
 }
