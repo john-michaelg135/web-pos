@@ -264,6 +264,31 @@ export default function ViewLocationsManagement() {
     setBranchDialogOpen(true);
   };
 
+  // After a branch change, api-pos sends the branch list to SCMS and reports how it went
+  // in the X-Scms-Sync header. The change itself is saved either way.
+  const warnIfScmsSyncFailed = (response: { headers?: unknown }) => {
+    const headers = response.headers as Record<string, string | undefined> | undefined;
+    if (headers?.["x-scms-sync"] === "failed") {
+      toast.warning("Saved, but SCMS wasn't updated. Use \"Sync branches to SCMS\" to send it again.");
+    }
+  };
+
+  const [syncingScms, setSyncingScms] = useState(false);
+  const syncBranchesToScms = async () => {
+    try {
+      setSyncingScms(true);
+      const { data } = await apiClient.instance.post<{ message?: string; locationCount?: number }>(
+        "/api-pos/locations/sync-to-scms"
+      );
+      toast.success(`Sent ${data.locationCount ?? "all"} locations to SCMS.`);
+    } catch (err: unknown) {
+      console.error("Failed to sync branches to SCMS:", err);
+      toast.error(errorMessage(err, "Couldn't reach SCMS. Try again in a moment."));
+    } finally {
+      setSyncingScms(false);
+    }
+  };
+
   const saveBranch = async () => {
     const name = branchName.trim();
     if (!name) {
@@ -273,17 +298,19 @@ export default function ViewLocationsManagement() {
     try {
       setSavingBranch(true);
       if (editingBranch) {
-        await apiClient.apiPos.locationsUpdate(Number(editingBranch.locationId), {
+        const response = await apiClient.apiPos.locationsUpdate(Number(editingBranch.locationId), {
           locationName: name,
           locationType: branchType,
         });
         toast.success("Branch updated.");
+        warnIfScmsSyncFailed(response);
       } else {
-        await apiClient.apiPos.locationsCreate({
+        const response = await apiClient.apiPos.locationsCreate({
           locationName: name,
           locationType: branchType,
         });
         toast.success("Branch created.");
+        warnIfScmsSyncFailed(response);
       }
       setBranchDialogOpen(false);
       await loadLocations();
@@ -297,10 +324,11 @@ export default function ViewLocationsManagement() {
 
   const toggleBranchActive = async (branch: LocationResponseDto) => {
     try {
-      await apiClient.apiPos.locationsUpdate(Number(branch.locationId), {
+      const response = await apiClient.apiPos.locationsUpdate(Number(branch.locationId), {
         isActive: !branch.isActive,
       });
       toast.success(branch.isActive ? "Branch deactivated." : "Branch activated.");
+      warnIfScmsSyncFailed(response);
       await loadLocations();
     } catch (err: unknown) {
       console.error("Failed to toggle branch:", err);
@@ -407,9 +435,16 @@ export default function ViewLocationsManagement() {
                   hide it from sales and assignments without losing its history.
                 </p>
               </div>
-              <Button size="sm" onClick={openCreateBranch} className="gap-1.5 shrink-0">
-                <Plus className="w-4 h-4" /> Add Branch
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                {/* Sends every location (Commissary included) to SCMS: for the first sync, or a retry. */}
+                <Button size="sm" variant="outline" onClick={syncBranchesToScms} disabled={syncingScms} className="gap-1.5">
+                  {syncingScms && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Sync branches to SCMS
+                </Button>
+                <Button size="sm" onClick={openCreateBranch} className="gap-1.5">
+                  <Plus className="w-4 h-4" /> Add Branch
+                </Button>
+              </div>
             </CardHeader>
           </Card>
 
