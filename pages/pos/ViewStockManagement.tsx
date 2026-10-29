@@ -39,6 +39,7 @@ export function ViewStockManagement() {
 
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [locations, setLocations] = useState<any[]>([]);
+  const [inactiveLocationIds, setInactiveLocationIds] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -115,7 +116,10 @@ export function ViewStockManagement() {
 
     const fetchLocations = async () => {
       try {
-        const { data } = await apiClient.apiPos.locationsList();
+        const { data: allLocations } = await apiClient.apiPos.locationsList();
+        // Switched-off branches drop out of the picker and the stock list.
+        const data = allLocations.filter((l) => l.isActive !== false);
+        setInactiveLocationIds(allLocations.filter((l) => l.isActive === false).map((l) => Number(l.locationId)));
         if (!canSwitchLocation && assignedLocation) {
           // Assigned staff: lock to their own branch only.
           const matched = data.filter(
@@ -285,7 +289,7 @@ export function ViewStockManagement() {
               </div>
             </div>
           </div>
-          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} />
+          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} hiddenLocationIds={inactiveLocationIds} />
         </TabsContent>
 
         {/* Receive Stock */}

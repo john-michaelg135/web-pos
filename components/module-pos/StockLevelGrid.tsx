@@ -30,6 +30,8 @@ interface StockLevelGridProps {
   onAdjustStock?:   (stock: any) => void;
   /** When false (assigned staff), the grid is pinned to `selectedLocation` and hides Commissary. */
   canSwitchLocation?: boolean;
+  /** Locations to leave out, e.g. switched-off branches. */
+  hiddenLocationIds?: number[];
 }
 
 // Extends StockResponseDto with parsed fields
@@ -40,7 +42,7 @@ interface ParsedStock extends Omit<StockResponseDto, 'productName' | 'quantity'>
   quantity: number;
 }
 
-export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdjustStock, canSwitchLocation = true }: StockLevelGridProps) {
+export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdjustStock, canSwitchLocation = true, hiddenLocationIds = [] }: StockLevelGridProps) {
   const [stocks, setStocks] = useState<ParsedStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // Self-managed search state (mirrors ProductTable). Falls back to the controlled
@@ -82,6 +84,8 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
   }, []);
 
   const filteredStocks = stocks.filter((stock) => {
+    if (hiddenLocationIds.includes(Number(stock.locationId))) return false;
+
     // Scoped (non-admin/owner) users are pinned to a single branch: the parent
     // sets `selectedLocation` to their assigned branch and locks the picker, so
     // filtering on it here restricts the grid to that location. We also keep
