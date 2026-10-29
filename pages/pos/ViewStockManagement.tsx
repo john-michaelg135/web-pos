@@ -228,7 +228,7 @@ export function ViewStockManagement() {
               <span className="md:hidden">Stock levels, arrivals and history.</span>
               <span className="hidden md:inline">Monitor stock levels, manage adjustments, and record new arrivals.</span>
             </p>
-            <Badge variant="secondary" className="text-xs font-semibold whitespace-nowrap">
+            <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
               {canSwitchLocation
                 ? "All Locations"
                 : assignedLocation

@@ -255,7 +255,7 @@ export default function ViewProductManagement() {
           </h1>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <p className="text-sm text-muted-foreground">Manage products and variations</p>
-            <Badge variant="secondary" className="text-xs font-bold">
+            <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
               Global Catalog
             </Badge>
           </div>

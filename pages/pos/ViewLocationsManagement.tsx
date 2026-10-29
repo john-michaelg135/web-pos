@@ -415,11 +415,18 @@ export default function ViewLocationsManagement() {
       </div>
 
       <Tabs defaultValue="branches" className="w-full">
-        <TabsList>
-          <TabsTrigger value="branches" className="gap-2">
+        {/* Same switcher as Product Management's Products / Variations */}
+        <TabsList className="h-auto bg-muted p-1 rounded-xl w-full sm:w-fit">
+          <TabsTrigger
+            value="branches"
+            className="flex-1 sm:flex-none h-auto px-6 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+          >
             Branches
           </TabsTrigger>
-          <TabsTrigger value="staff" className="gap-2">
+          <TabsTrigger
+            value="staff"
+            className="flex-1 sm:flex-none h-auto px-6 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+          >
             Staff Assignment
           </TabsTrigger>
         </TabsList>

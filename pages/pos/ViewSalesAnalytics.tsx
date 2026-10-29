@@ -305,7 +305,7 @@ export function ViewSalesAnalytics() {
                 : "Starting cash, sales and the end-of-shift count for each shift."}
             </p>
             <span className="text-muted-foreground font-bold">&middot;</span>
-            <Badge variant="secondary" className="text-xs font-bold truncate max-w-[200px]">
+            <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs truncate max-w-[200px]">
               {locationLabel}
             </Badge>
             {showLocationSelector && !(activeTab === "money-audit" && isManagerUser) && (
