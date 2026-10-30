@@ -162,6 +162,7 @@ export default function ViewOrderManagement() {
       : [],
     createdAt: dto.createdAt || undefined,
     deliveryConfirmation: (dto as any).deliveryConfirmation ?? null,
+    hasRefundProof: !!(dto as any).hasRefundProof,
   });
 
   const fetchOrders = useCallback(async (targetLocId?: number) => {
@@ -372,7 +373,9 @@ export default function ViewOrderManagement() {
     try {
       const managerId = Number(authUser?.id) || 1;
       await requestManagerEndpoint(`order-management/orders/${orderToApprove.id}/approve-refund`, { approvedBy: managerId, pinCode: pin });
-      const isUnsellable = orderToApprove.remarks?.toLowerCase().startsWith("damaged/expired");
+      // Mirrors the backend: "(Unsellable)" reasons are refunded without restocking.
+      const reasonText = orderToApprove.remarks?.toLowerCase() ?? "";
+      const isUnsellable = reasonText.includes("(unsellable)") || reasonText.startsWith("damaged/expired");
       toast.success(
         <div className="flex flex-col gap-1 text-emerald-800 dark:text-emerald-200">
           <div className="font-bold">Refund approved!</div>
@@ -381,7 +384,7 @@ export default function ViewOrderManagement() {
             <span className="font-black text-red-500">- ₱{orderToApprove.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           {isUnsellable ? (
-            <div className="text-[11px] text-gray-500 dark:text-gray-400">Damaged/expired items were not returned to stock.</div>
+            <div className="text-[11px] text-gray-500 dark:text-gray-400">Unsellable items were not returned to stock.</div>
           ) : (
             <>
               <div className="text-[11px] text-gray-500 dark:text-gray-400">Restored inventory stocks:</div>
@@ -424,15 +427,15 @@ export default function ViewOrderManagement() {
     }
   };
 
-  const handleRequestRefundSubmit = async () => {
+  const handleRequestRefundSubmit = async (proofImage?: string) => {
     if (!selectedOrder || !refundReason.trim()) return;
     if (refundReason.trim().length > 500) { toast.error("Reason must not exceed 500 characters."); return; }
     if (/[<>]/.test(refundReason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
     try {
-      await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-refund`, { reason: refundReason });
+      await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-refund`, { reason: refundReason, proofImage });
       toast.success(`Refund requested successfully for Order ${selectedOrder.orderNumber || `#${selectedOrder.id}`}.`);
       fetchOrders();
-    } catch (err) { console.error("Failed to request refund:", err); toast.error("Failed to request refund."); }
+    } catch (err) { console.error("Failed to request refund:", err); toast.error(err instanceof Error && err.message ? err.message : "Failed to request refund."); }
     setShowRefundDialog(false); setRefundReason("");
   };
 

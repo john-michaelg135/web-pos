@@ -43,7 +43,8 @@ export type Order = {
   /** Numeric branch id — used for reliable location filtering (name can drift). */
   locationId?: number;
   isPreOrder: boolean;
-  paymentStatus: "pending" | "partial" | "paid";
+  /** "forfeited": a cancelled downpayment order whose downpayment was kept (non-refundable). */
+  paymentStatus: "pending" | "partial" | "paid" | "forfeited";
   paymentMethod?: string;
   /** Sum of successful payments recorded against the order. */
   amountPaid?: number;
@@ -65,6 +66,8 @@ export type Order = {
   /** ISO timestamp the order was placed (`date` is display-only). */
   createdAt?: string;
   deliveryConfirmation?: DeliveryConfirmation | null;
+  /** A refund request photo exists (fetched separately). */
+  hasRefundProof?: boolean;
 };
 
 /** Institutional proof of delivery. The photo is fetched separately when `hasProofImage`. */

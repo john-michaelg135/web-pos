@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
 import { Order } from "@/components/module-pos/types";
+import { shrinkImage } from "./ConfirmDeliveryDialog";
 
 interface RefundFormDialogProps {
   isOpen: boolean;
@@ -11,7 +12,7 @@ interface RefundFormDialogProps {
   order: Order | null;
   reason: string;
   setReason: (reason: string) => void;
-  onSubmit: () => void;
+  onSubmit: (proofImage?: string) => void;
   primary: string;
   muted: string;
   border: string;
@@ -37,18 +38,62 @@ export default function RefundFormDialog({
   isMobile,
 }: RefundFormDialogProps) {
   const isWebOrder = order?.type?.toLowerCase() === "online" || ["e-commerce", "ecommerce"].includes(order?.source?.toLowerCase() ?? "");
-  // In-store refunds go back to stock, except Damaged/Expired, which the backend
-  // keys off this exact text to skip the restock.
+  const isInstitutional = order?.type === "institutional";
+  const isGcashInstitutional = isInstitutional && order?.paymentMethod?.toLowerCase() === "gcash";
+  // Refunds go back to stock unless the reason says "(Unsellable)": the backend keys off
+  // that text to skip the restock. GCash institutional orders are only refundable once
+  // delivered, so their reasons are all about the goods received (none restock).
+  // Cash institutional orders refund like in-store. A shipped institutional order can only be
+  // refunded as a failed delivery, which is restocked because Lalamove returns the goods.
+  const isFailedDelivery = isInstitutional && order?.status === "shipped";
   const predefinedReasons = isWebOrder
     ? ["Item arrived damaged", "Wrong item received", "Item not as described", "Other"]
+    : isFailedDelivery
+    ? ["Item not delivered"]
+    : isGcashInstitutional
+    ? ["Damaged (Unsellable)", "Customization not followed (Unsellable)"]
     : ["Return (Sealed/Sellable Condition)", "Change of mind", "Damaged/Expired (Unsellable)"];
-  
+  // GCash-paid institutional refunds and failed deliveries need a photo as proof.
+  const requiresPhoto = isGcashInstitutional || isFailedDelivery;
+
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [mounted, setMounted] = useState(false);
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setProofImage(null);
+      setPhotoError("");
+      // A failed delivery has only one possible reason, so pick it for them.
+      if (isFailedDelivery) setReason("Item not delivered");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  const handlePhoto = async (file: File | undefined) => {
+    setPhotoError("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Choose an image file (JPG, PNG or a screenshot).");
+      return;
+    }
+    setIsProcessingPhoto(true);
+    try {
+      setProofImage(await shrinkImage(file));
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Couldn't process the photo.");
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  };
+
+  const canSubmit = !!reason.trim() && !!selectedOption && (!requiresPhoto || !!proofImage) && !isProcessingPhoto;
 
   useEffect(() => {
     if (isOpen) {
@@ -98,7 +143,7 @@ export default function RefundFormDialog({
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
-            Request Refund
+            {isFailedDelivery ? "Failed Delivery Refund" : "Request Refund"}
           </h2>
         </div>
 
@@ -178,6 +223,41 @@ export default function RefundFormDialog({
                 />
               )}
             </div>
+
+            {requiresPhoto && (
+              <div className="sm:col-span-2">
+                <span className="block text-sm font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  Proof Photo <span className="text-red-500">*</span>
+                </span>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  {isFailedDelivery
+                    ? "Required: Lalamove's failed-delivery screen or proof the item was returned. The items go back to stock once approved."
+                    : "Required for GCash-paid institutional orders, e.g. a photo of the damaged item or the customization that wasn't followed."}
+                </p>
+                {proofImage ? (
+                  <div className="flex items-start gap-3">
+                    <img src={proofImage} alt="Refund proof" className="w-24 h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
+                    <button type="button" onClick={() => setProofImage(null)} className="text-xs font-semibold text-red-600 hover:underline">
+                      Remove photo
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-1 px-4 py-5 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      {isProcessingPhoto ? "Processing photo..." : "Add a photo"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      disabled={isProcessingPhoto}
+                      onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }}
+                    />
+                  </label>
+                )}
+                {photoError && <p className="text-xs text-red-500 mt-1">{photoError}</p>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -190,10 +270,10 @@ export default function RefundFormDialog({
             Cancel
           </button>
           <button
-            onClick={onSubmit}
-            disabled={!reason.trim() || !selectedOption}
+            onClick={() => onSubmit(proofImage ?? undefined)}
+            disabled={!canSubmit}
             className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors shadow-sm ${
-              reason.trim() && selectedOption
+              canSubmit
                 ? "bg-red-500 hover:bg-red-600 cursor-pointer"
                 : "bg-gray-300 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
             }`}

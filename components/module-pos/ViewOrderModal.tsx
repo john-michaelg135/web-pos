@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
 import { DeliveryConfirmationInput, Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types";
-import { ConfirmDeliveryDialog, DeliveryConfirmationDetails } from "./ConfirmDeliveryDialog";
+import { ConfirmDeliveryDialog, DeliveryConfirmationDetails, ProofPhoto } from "./ConfirmDeliveryDialog";
 import { renderVariationBadges } from "./utils";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -95,20 +95,24 @@ onRejectVoid,
   const isPartiallyPaid = order.paymentStatus === "partial";
   const amountPaid = order.amountPaid ?? 0;
   const remainingBalance = Math.max(0, order.total - amountPaid);
-  const showPaymentSummary = isInstitutional && order.paymentMethod?.toLowerCase() === "gcash";
+  const isGcashInstitutional = isInstitutional && order.paymentMethod?.toLowerCase() === "gcash";
+  const showPaymentSummary = isGcashInstitutional;
+  const isShippedInstitutional = isInstitutional && order.status === "shipped";
 
   // Shipped institutional orders are completed through Confirm Delivery so the proof is recorded.
   const canConfirmDelivery = isInstitutional && order.status === "shipped" && isAuthorizedToEdit && !isPartiallyPaid && !!onConfirmDelivery;
 
   // A partially paid order cannot move to Paid or beyond until the balance is confirmed.
+  // Institutional orders reach Completed only through Confirm Delivery, and once Shipped
+  // they can't go back to Processing or Paid (the goods are already with the courier).
   const allowedStatuses = (isWebOrder
     ? ["processing", "shipped", "delivered"]
     : isInstitutional
-    ? ["processing", "paid", "shipped", "completed"]
+    ? (order.status === "shipped" ? ["shipped"] : order.status === "completed" ? [] : ["processing", "paid", "shipped"])
     : ["processing", "completed"] // walk-in / store
-  )
-    .filter((s) => !isPartiallyPaid || !["paid", "shipped", "completed"].includes(s))
-    .filter((s) => !(isInstitutional && order.status === "shipped" && s === "completed")) as OrderStatus[];
+  ).filter((s) => !isPartiallyPaid || !["paid", "shipped", "completed"].includes(s)) as OrderStatus[];
+  // Hide the changer when there's nowhere valid to move to (e.g. a Shipped institutional order).
+  const canChangeStatus = allowedStatuses.some((s) => s !== order.status);
 
   const pricing = useMemo(() => {
     if (!isPwdOrder) {
@@ -337,6 +341,8 @@ onRejectVoid,
                     ? "Fully Paid"
                     : isPartiallyPaid
                     ? `Downpayment (${order.total > 0 ? Math.round((amountPaid / order.total) * 100) : 0}%)`
+                    : order.paymentStatus === "forfeited"
+                    ? "Downpayment Forfeited"
                     : "Unpaid"}
                 </span>
               </div>
@@ -404,7 +410,7 @@ onRejectVoid,
           )}
 
           {/* Direct Status Changer (Admin / Order Manager / dev) */}
-          {isAuthorizedToEdit && order.status !== "refund_requested" && order.status !== "refunded" && order.status !== "rejected" && order.status !== "cancelled" && (
+          {isAuthorizedToEdit && canChangeStatus && order.status !== "refund_requested" && order.status !== "refunded" && order.status !== "rejected" && order.status !== "cancelled" && (
             <div className="p-4 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: border, background: `${border}10` }}>
               <div className="flex flex-col gap-1 w-full sm:w-auto">
                 <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>Change Order Status</p>
@@ -512,6 +518,18 @@ onRejectVoid,
                 <p className="text-xs font-medium text-red-700 dark:text-red-400 break-words [overflow-wrap:anywhere]">{order.remarks}</p>
               </div>
             )}
+
+            {order.hasRefundProof && (
+              <div className="mt-4 p-3 rounded-lg border flex flex-col gap-2" style={{ borderColor: border, background: `${border}10` }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider m-0" style={{ color: muted }}>Refund Proof Photo</p>
+                <ProofPhoto
+                  src={`/api/pos/order-management/orders/${order.id}/refund-proof`}
+                  alt="Refund proof"
+                  border={border}
+                  muted={muted}
+                />
+              </div>
+            )}
           </div>
 
           {/* Status History Logs Timeline */}
@@ -595,8 +613,10 @@ onRejectVoid,
         >
           {/* Actions Left: Cancel / Refund / Review Refund */}
           <div className="grid grid-cols-2 gap-2 empty:hidden sm:flex sm:items-center [&>button]:w-full sm:[&>button]:w-auto [&>button]:py-2.5 sm:[&>button]:py-2 [&>button:only-child]:col-span-2">
-            {/* Cancel Order Button: managers and administrators only; cashiers may not cancel orders */}
-            {isAuthorizedToEdit && ["pending", "awaiting_stock", "processing", "paid", "shipped", "ready_for_delivery"].includes(order.status) && onStatusUpdate && (
+            {/* Cancel Order Button: managers and administrators only. Only for institutional orders on a
+                GCash downpayment (client backed out; downpayment kept, stock returned). Paid orders use
+                Void, Failed Delivery or Refund instead. */}
+            {isAuthorizedToEdit && isInstitutional && isPartiallyPaid && ["pending", "awaiting_stock", "processing"].includes(order.status) && onStatusUpdate && (
               <button
                 onClick={() => setCancelToConfirm(true)}
                 className="px-4 py-2 text-xs font-bold uppercase text-red-600 border border-red-500/40 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 active:scale-95 transition-all"
@@ -635,8 +655,20 @@ onRejectVoid,
               </button>
             )}
 
-            {/* Request Refund Button: cashier capability (Order Management write). Visible if order paid/completed. */}
-            {canRequestRefund && (order.status === "completed" || order.paymentStatus === "paid") && !["refund_requested", "refunded", "cancelled", "rejected", "void_requested", "voided"].includes(order.status) && onRequestRefund && (
+            {/* Failed Delivery: Lalamove couldn't deliver a shipped institutional order. Files a refund
+                request ("Item not delivered", proof required); approval restocks the returned goods. */}
+            {canRequestRefund && isShippedInstitutional && onRequestRefund && (
+              <button
+                onClick={onRequestRefund}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
+              >
+                Failed Delivery
+              </button>
+            )}
+
+            {/* Request Refund Button: cashier capability (Order Management write). Visible if order paid/completed.
+                GCash institutional orders can only be refunded once delivered (Completed). */}
+            {canRequestRefund && (order.status === "completed" || (order.paymentStatus === "paid" && !isGcashInstitutional && !isShippedInstitutional)) && !["refund_requested", "refunded", "cancelled", "rejected", "void_requested", "voided"].includes(order.status) && onRequestRefund && (
               <button
                 onClick={onRequestRefund}
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
@@ -1012,7 +1044,9 @@ onRejectVoid,
             </div>
             <div style={{ padding: "24px" }}>
               <p style={{ margin: 0, fontSize: 14, color: muted }}>
-                Are you sure you want to cancel Order #{order.id}? This action cannot be undone.
+                Cancel Order {order.orderNumber ?? `#${order.id}`}? The downpayment of{" "}
+                <span style={{ fontWeight: "bold", color: text }}>₱{amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>{" "}
+                is non-refundable and stays in sales. The items go back to stock. This can't be undone.
               </p>
             </div>
             <div

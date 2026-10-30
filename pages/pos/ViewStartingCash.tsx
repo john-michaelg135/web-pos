@@ -27,8 +27,12 @@ export interface StartingCashRecord {
   endShiftAmount?: number | null;
   endShiftAt?: string | null;
   endShiftCashierName?: string | null;
+  /** Cash sales only (what went into the drawer). */
   successfulSalesAmount?: number | null;
+  /** Refunds on cash-paid orders (handed back from the drawer). */
   approvedRefundAmount?: number | null;
+  /** GCash and other non-cash payments: wallet money, not part of expected cash. */
+  nonCashSalesAmount?: number | null;
   expectedCash?: number | null;
   cashVariance?: number | null;
   cashShortage?: number | null;
@@ -354,8 +358,13 @@ export function ViewStartingCash({
                     <td className="px-5 py-3.5 print:px-2 print:py-2">
                       <div className="space-y-1.5">
                         <div><span className="text-muted-foreground">Starting:</span> <span className="font-semibold text-foreground">{peso(r.amount)}</span></div>
-                        <div><span className="text-muted-foreground">Sales:</span> <span className="text-foreground">{r.successfulSalesAmount == null ? "—" : peso(r.successfulSalesAmount)}</span></div>
-                        <div><span className="text-muted-foreground">Refunds:</span> <span className="text-foreground">{r.approvedRefundAmount == null ? "—" : peso(r.approvedRefundAmount)}</span></div>
+                        <div><span className="text-muted-foreground">Cash sales:</span> <span className="text-foreground">{r.successfulSalesAmount == null ? "—" : peso(r.successfulSalesAmount)}</span></div>
+                        <div><span className="text-muted-foreground">Cash refunds:</span> <span className="text-foreground">{r.approvedRefundAmount == null ? "—" : peso(r.approvedRefundAmount)}</span></div>
+                        {r.nonCashSalesAmount != null && r.nonCashSalesAmount !== 0 && (
+                          <div className="text-xs" title="GCash goes to the company wallet, so it isn't part of the expected cash in the drawer.">
+                            <span className="text-muted-foreground">GCash (not in drawer):</span> <span className="text-muted-foreground">{peso(r.nonCashSalesAmount)}</span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-foreground print:px-2 print:py-2">

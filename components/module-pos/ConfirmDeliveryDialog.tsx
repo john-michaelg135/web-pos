@@ -9,7 +9,7 @@ import { DeliveryConfirmation, DeliveryConfirmationInput, Order } from "@/compon
 const PROOF_MAX_SIDE = 1280;
 const PROOF_JPEG_QUALITY = 0.75;
 
-async function shrinkImage(file: File): Promise<string> {
+export async function shrinkImage(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -266,26 +266,6 @@ interface DeliveryConfirmationDetailsProps {
 
 // Read-only record shown on a completed institutional order.
 export function DeliveryConfirmationDetails({ orderId, confirmation, border, muted, text }: DeliveryConfirmationDetailsProps) {
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [photoState, setPhotoState] = useState<"idle" | "loading" | "error">("idle");
-  const [showFullPhoto, setShowFullPhoto] = useState(false);
-
-  // The photo isn't in the order list (it would make it heavy), so load it on demand.
-  useEffect(() => {
-    if (!confirmation.hasProofImage) return;
-    const controller = new AbortController();
-    setPhotoState("loading");
-    fetch(`/api/pos/order-management/orders/${orderId}/delivery-proof`, { cache: "no-store", credentials: "same-origin", signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const data = (await res.json()) as { proofImage?: string };
-        setPhoto(data.proofImage ?? null);
-        setPhotoState("idle");
-      })
-      .catch(() => { if (!controller.signal.aborted) setPhotoState("error"); });
-    return () => controller.abort();
-  }, [orderId, confirmation.hasProofImage]);
-
   const courierRef = confirmation.courierReference;
   const courierIsLink = !!courierRef && /^https?:\/\//i.test(courierRef);
 
@@ -314,25 +294,64 @@ export function DeliveryConfirmationDetails({ orderId, confirmation, border, mut
       </div>
 
       {confirmation.hasProofImage && (
-        <div className="shrink-0">
-          {photo ? (
-            <button type="button" onClick={() => setShowFullPhoto(true)} className="block" aria-label="View proof photo full size">
-              <img src={photo} alt="Proof of delivery" className="w-full sm:w-32 h-40 sm:h-32 object-cover rounded-lg border" style={{ borderColor: border }} />
-            </button>
-          ) : (
-            <div className="w-full sm:w-32 h-32 rounded-lg border flex items-center justify-center text-xs text-center px-2" style={{ borderColor: border, color: muted }}>
-              {photoState === "error" ? "Couldn't load photo" : "Loading photo..."}
-            </div>
-          )}
+        <ProofPhoto
+          src={`/api/pos/order-management/orders/${orderId}/delivery-proof`}
+          alt="Proof of delivery"
+          border={border}
+          muted={muted}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ProofPhotoProps {
+  /** Endpoint returning `{ proofImage: dataUrl }`. */
+  src: string;
+  alt: string;
+  border: string;
+  muted: string;
+}
+
+// Proof photos aren't in the order list (they'd make it heavy), so each loads on demand.
+// Tap the thumbnail to see it full size.
+export function ProofPhoto({ src, alt, border, muted }: ProofPhotoProps) {
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [showFull, setShowFull] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setPhoto(null);
+    setFailed(false);
+    fetch(src, { cache: "no-store", credentials: "same-origin", signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error();
+        const data = (await res.json()) as { proofImage?: string };
+        setPhoto(data.proofImage ?? null);
+      })
+      .catch(() => { if (!controller.signal.aborted) setFailed(true); });
+    return () => controller.abort();
+  }, [src]);
+
+  return (
+    <div className="shrink-0">
+      {photo ? (
+        <button type="button" onClick={() => setShowFull(true)} className="block w-full" aria-label={`View ${alt.toLowerCase()} full size`}>
+          <img src={photo} alt={alt} className="w-full sm:w-32 h-40 sm:h-32 object-cover rounded-lg border" style={{ borderColor: border }} />
+        </button>
+      ) : (
+        <div className="w-full sm:w-32 h-32 rounded-lg border flex items-center justify-center text-xs text-center px-2" style={{ borderColor: border, color: muted }}>
+          {failed ? "Couldn't load photo" : "Loading photo..."}
         </div>
       )}
 
-      {showFullPhoto && photo && createPortal(
+      {showFull && photo && createPortal(
         <div
-          onClick={() => setShowFullPhoto(false)}
+          onClick={() => setShowFull(false)}
           className="fixed inset-0 z-[100010] bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
         >
-          <img src={photo} alt="Proof of delivery" className="max-w-full max-h-full rounded-lg shadow-2xl" />
+          <img src={photo} alt={alt} className="max-w-full max-h-full rounded-lg shadow-2xl" />
         </div>,
         document.body
       )}
