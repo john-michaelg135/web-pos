@@ -2,43 +2,29 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Product, Variation, ProductCategory } from "@/components/module-pos/types";
-import { ProductTable } from "@/components/module-pos/ProductTable";
 import { VariationTable } from "@/components/module-pos/VariationTable";
-import { ProductFormDialog } from "@/components/module-pos/ProductFormDialog";
 import { VariationFormDialog } from "@/components/module-pos/VariationFormDialog";
-import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 import { apiClient } from "@/components/module-pos/api";
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 import { ProductManagementSkeleton, ProductTableSkeleton } from "@/components/shared/PageSkeleton";
 
-type ViewTab = "products" | "variations";
-
+// Products and variations come from IMS (SCMS product sync); POS only sets their selling prices.
 export default function ViewProductManagement() {
   const { user: authUser, isLoading: authLoading, canRead } = useAuth();
   const router = useRouter();
-  const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [variations, setVariations] = useState<Variation[]>([]);
-  const [activeTab, setActiveTab] = useState<ViewTab>("products");
-
-  // Dialog state
-  const [showProductDialog, setShowProductDialog] = useState(false);
-  const [showVariationDialog, setShowVariationDialog] = useState(false);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [editVariation, setEditVariation] = useState<Variation | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ type: "product" | "variation"; item: Product | Variation } | null>(null);
 
   const fetchProducts = async () => {
     try {
@@ -93,139 +79,33 @@ export default function ViewProductManagement() {
   };
 
   useEffect(() => {
-    setIsMounted(true);
     fetchProducts();
   }, []);
 
-  // Stats
-  const totalProducts = products.length;
-  const activeProducts = products.filter((p) => p.isActive).length;
-  const inactiveProducts = totalProducts - activeProducts;
-  const totalVariations = variations.length;
-  const activeVariations = variations.filter((v) => v.isActive).length;
-  const inactiveVariations = totalVariations - activeVariations;
+  // Stats: an active item without a price stays off the sales screen until it gets one.
+  const activeVariations = variations.filter((v) => v.isActive);
+  const needsPrice = activeVariations.filter((v) => v.price <= 0).length;
+  const stats = [
+    { label: "Active Items", value: activeVariations.length, color: "text-foreground" },
+    { label: "Priced", value: activeVariations.length - needsPrice, color: "text-success-600 dark:text-success-400" },
+    { label: "Needs Price", value: needsPrice, color: needsPrice > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground" },
+  ];
 
-  const stats =
-    activeTab === "products"
-      ? [
-          { label: "Total Products", value: totalProducts, color: "text-foreground" },
-          { label: "Active", value: activeProducts, color: "text-success-600 dark:text-success-400" },
-          { label: "Inactive", value: inactiveProducts, color: "text-muted-foreground" },
-        ]
-      : [
-          { label: "Total Variations", value: totalVariations, color: "text-foreground" },
-          { label: "Active", value: activeVariations, color: "text-success-600 dark:text-success-400" },
-          { label: "Inactive", value: inactiveVariations, color: "text-muted-foreground" },
-        ];
-
-  // ── Product CRUD ──────────────────────────────────────────────────
-
-  async function handleProductSubmit(data: Omit<Product, "id" | "createdAt">) {
+  // Only the price is editable here; everything else is owned by IMS.
+  async function handlePriceSubmit(data: Omit<Variation, "id">) {
+    if (!editVariation) return;
     try {
-      if (editProduct) {
-        await apiClient.apiPos.productCatalogProductsUpdate(Number(editProduct.id), {
-          productName: data.name,
-          productCategory: data.category,
-          productDescription: data.description,
-          isActive: data.isActive,
+      if (data.price !== editVariation.price) {
+        await apiClient.apiPos.productCatalogVariationsPriceUpdate(Number(editVariation.id), {
+          price: data.price,
         });
-        toast.success("Product updated successfully.");
-      } else {
-        await apiClient.apiPos.productCatalogProductsCreate({
-          productName: data.name,
-          productCategory: data.category,
-          productDescription: data.description,
-        });
-        toast.success("Product created successfully.");
       }
+      toast.success("Price updated.");
       fetchProducts();
-      setShowProductDialog(false);
-      setEditProduct(null);
-    } catch (error) {
-      console.error(error);
-      toast.error("An error occurred while saving the product.");
-    }
-  }
-
-  function openEditProduct(product: Product) {
-    setEditProduct(product);
-    setShowProductDialog(true);
-  }
-
-  function openAddProduct() {
-    setEditProduct(null);
-    setShowProductDialog(true);
-  }
-
-  function handleProductDelete(product: Product) {
-    setDeleteTarget({ type: "product", item: product });
-  }
-
-  // ── Variation CRUD ────────────────────────────────────────────────
-
-  async function handleVariationSubmit(data: Omit<Variation, "id">) {
-    try {
-      const variationName = `${data.sku}|${data.packagingType}|${data.size}`;
-
-      if (editVariation) {
-        await apiClient.apiPos.productCatalogVariationsUpdate(Number(editVariation.id), {
-          variationName,
-          isActive: data.isActive,
-        });
-        if (data.price !== editVariation.price) {
-          await apiClient.apiPos.productCatalogVariationsPriceUpdate(Number(editVariation.id), {
-            price: data.price,
-          });
-        }
-        toast.success("Variation updated successfully.");
-      } else {
-        await apiClient.apiPos.productCatalogProductsVariationsCreate(Number(data.productId), {
-          variationName,
-          initialPrice: data.price,
-        });
-        toast.success("Variation created successfully.");
-      }
-      fetchProducts();
-      setShowVariationDialog(false);
       setEditVariation(null);
     } catch (error) {
       console.error(error);
-      toast.error("An error occurred while saving the variation.");
-    }
-  }
-
-  function openEditVariation(variation: Variation) {
-    setEditVariation(variation);
-    setShowVariationDialog(true);
-  }
-
-  function openAddVariation() {
-    setEditVariation(null);
-    setShowVariationDialog(true);
-  }
-
-  function handleVariationDelete(variation: Variation) {
-    setDeleteTarget({ type: "variation", item: variation });
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget) return;
-    try {
-      if (deleteTarget.type === "product") {
-        const product = deleteTarget.item as Product;
-        await apiClient.apiPos.productCatalogProductsUpdate(Number(product.id), { isActive: false });
-        toast.success("Product deleted successfully.");
-      } else {
-        const variation = deleteTarget.item as Variation;
-        await apiClient.apiPos.productCatalogVariationsUpdate(Number(variation.id), { isActive: false });
-        toast.success("Variation deleted successfully.");
-      }
-      fetchProducts();
-    } catch (error) {
-      console.error(error);
-      toast.error("An error occurred while deleting.");
-    } finally {
-      setDeleteTarget(null);
+      toast.error("An error occurred while saving the price.");
     }
   }
 
@@ -248,22 +128,16 @@ export default function ViewProductManagement() {
   return (
     <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-headline-md font-bold tracking-tight text-foreground">
-            Product Management
-          </h1>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <p className="text-sm text-muted-foreground">Manage products and variations</p>
-            <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
-              Global Catalog
-            </Badge>
-          </div>
+      <div>
+        <h1 className="text-headline-md font-bold tracking-tight text-foreground">
+          Product Management
+        </h1>
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <p className="text-sm text-muted-foreground">Set selling prices for products from IMS</p>
+          <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
+            Pricing Configuration
+          </Badge>
         </div>
-        <Button onClick={activeTab === "products" ? openAddProduct : openAddVariation} className="w-full sm:w-auto">
-          <Plus className="h-4 w-4 mr-1.5" />
-          {activeTab === "products" ? "Add Product" : "Add Variation"}
-        </Button>
       </div>
 
       {/* Stat cards */}
@@ -280,73 +154,20 @@ export default function ViewProductManagement() {
         ))}
       </div>
 
-      {/* Tab switcher */}
-      <div className="flex items-center bg-muted p-1 rounded-xl w-full sm:w-fit">
-        <button
-          onClick={() => setActiveTab("products")}
-          className={cn(
-            "flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all",
-            activeTab === "products"
-              ? "bg-background text-primary shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Products
-        </button>
-        <button
-          onClick={() => setActiveTab("variations")}
-          className={cn(
-            "flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all",
-            activeTab === "variations"
-              ? "bg-background text-primary shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Variations
-        </button>
-      </div>
-
-      {/* Content */}
+      {/* Pricing table */}
       {isLoading ? (
-        <ProductTableSkeleton tab={activeTab} />
+        <ProductTableSkeleton tab="variations" />
       ) : (
-        <>
-          {activeTab === "products" && <ProductTable products={products} />}
-          {activeTab === "variations" && (
-            <VariationTable variations={variations} products={products} onEdit={openEditVariation} />
-          )}
-        </>
+        <VariationTable variations={variations} products={products} onEdit={setEditVariation} />
       )}
 
-      {/* Dialogs */}
-      <ProductFormDialog
-        isOpen={showProductDialog}
-        onClose={() => { setShowProductDialog(false); setEditProduct(null); }}
-        onSubmit={handleProductSubmit}
-        initial={editProduct}
-      />
-
       <VariationFormDialog
-        isOpen={showVariationDialog}
-        onClose={() => { setShowVariationDialog(false); setEditVariation(null); }}
-        onSubmit={handleVariationSubmit}
+        isOpen={editVariation !== null}
+        onClose={() => setEditVariation(null)}
+        onSubmit={handlePriceSubmit}
         initial={editVariation}
         products={products}
         existingSkus={variations.map((v) => v.sku.toUpperCase())}
-      />
-
-      <DeleteConfirmDialog
-        isOpen={deleteTarget !== null}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={confirmDelete}
-        title="Confirm Deletion"
-        message={
-          deleteTarget?.type === "product"
-            ? `Are you sure you want to soft-delete product ${(deleteTarget.item as Product).name}?`
-            : deleteTarget?.type === "variation"
-              ? `Are you sure you want to soft-delete variation ${(deleteTarget.item as Variation).sku}?`
-              : ""
-        }
       />
     </div>
   );

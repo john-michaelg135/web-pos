@@ -364,23 +364,18 @@ export function ProductManagementSkeleton() {
     <Shell label="Loading products">
       <PageTitle
         title="Product Management"
-        subtitle="Manage products and variations"
+        subtitle="Set selling prices for products from IMS"
         badge={false}
-        action={<Bone className="h-9 w-full sm:w-36 rounded-md" />}
       />
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {["Total Products", "Active", "Inactive"].map((label) => (
+        {["Active Items", "Priced", "Needs Price"].map((label) => (
           <div key={label} className="rounded-xl border border-border bg-card p-3 sm:p-5">
             <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2">{label}</div>
             <Bone className="h-8 w-14 rounded-lg" />
           </div>
         ))}
       </div>
-      <div className="flex items-center bg-muted p-1 rounded-xl w-full sm:w-fit">
-        <span className="flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-semibold bg-background text-primary shadow-sm">Products</span>
-        <span className="flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-semibold text-muted-foreground">Variations</span>
-      </div>
-      <ProductTableSkeleton />
+      <ProductTableSkeleton tab="variations" />
     </Shell>
   );
 }
