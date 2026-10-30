@@ -11,6 +11,7 @@ import {
   FileText,
   CheckCircle,
   ChevronDown,
+  Check,
   Calendar,
   X,
   Radar,
@@ -691,37 +692,28 @@ export default function ViewSalesProcessing() {
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
             {showOrderTypeDropdown && (
-              <div className="absolute top-full right-0 mt-1.5 bg-card border border-border rounded-xl shadow-lg z-[1000] min-w-[150px] overflow-hidden">
-                <button
-                  onClick={() => {
-                    setIsInstitutional(false);
-                    setIsPreOrder(false);
-                    setShowOrderTypeDropdown(false);
-                  }}
-                  className={cn(
-                    "w-full px-3.5 py-2.5 text-left text-xs font-semibold border-none cursor-pointer",
-                    !isInstitutional && !isPreOrder
-                      ? "bg-muted text-primary"
-                      : "bg-transparent text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  Walk-in
-                </button>
-                <button
-                  onClick={() => {
-                    setIsInstitutional(true);
-                    setIsPreOrder(false);
-                    setShowOrderTypeDropdown(false);
-                  }}
-                  className={cn(
-                    "w-full px-3.5 py-2.5 text-left text-xs font-semibold border-none cursor-pointer",
-                    isInstitutional
-                      ? "bg-muted text-primary"
-                      : "bg-transparent text-foreground hover:bg-muted/50"
-                  )}
-                >
-                  Institutional
-                </button>
+              <div className="absolute top-full right-0 mt-1.5 bg-card border border-border rounded-xl shadow-lg z-[1000] min-w-[160px] overflow-hidden p-1">
+                {/* Same look as CustomSelect: selected row tinted, check on the right. */}
+                {([
+                  { label: "Walk-in", selected: !isInstitutional && !isPreOrder, institutional: false },
+                  { label: "Institutional", selected: isInstitutional, institutional: true },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => {
+                      setIsInstitutional(opt.institutional);
+                      setIsPreOrder(false);
+                      setShowOrderTypeDropdown(false);
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left text-xs font-medium text-foreground border-none cursor-pointer transition-colors",
+                      opt.selected ? "bg-primary/10" : "bg-transparent hover:bg-muted"
+                    )}
+                  >
+                    {opt.label}
+                    {opt.selected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  </button>
+                ))}
               </div>
             )}
           </div>

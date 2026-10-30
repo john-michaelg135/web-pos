@@ -158,9 +158,11 @@ export function CustomSelect({
             overflow: "hidden",
             maxHeight: 250,
             overflowY: "auto",
+            padding: 4,
           }}
           className="custom-scrollbar"
         >
+          {/* Selected row: light brand tint with the check on the right; others tint grey on hover. */}
           {options.map((opt) => {
             const isSelected = opt.value === value;
             return (
@@ -176,46 +178,41 @@ export function CustomSelect({
                   onChange(opt.value);
                   setIsOpen(false);
                 }}
+                className={isSelected ? "bg-primary/10" : "bg-transparent hover:bg-muted"}
                 style={{
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 8,
                   width: "100%",
-                  padding: "10px 14px",
+                  padding: "8px 10px",
+                  borderRadius: 8,
                   textAlign: "left",
-                  background: isSelected ? (dark ? "#2d3748" : "#f4f4f5") : "transparent",
                   color: text,
                   border: "none",
                   fontSize: 13,
-                  fontWeight: isSelected ? 700 : 500,
+                  fontWeight: 500,
                   cursor: "pointer",
                   transition: "background 0.15s",
                 }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = dark ? "#2d3748" : "#f4f4f5";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = "transparent";
-                  }
-                }}
               >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ flexShrink: 0, opacity: isSelected ? 1 : 0 }}
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span>{opt.label}</span>
+                <span style={{ minWidth: 0 }}>{opt.label}</span>
+                {isSelected && (
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-primary"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
               </button>
             );
           })}
