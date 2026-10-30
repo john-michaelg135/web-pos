@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
 
 interface DeleteConfirmDialogProps {
@@ -19,13 +20,15 @@ export function DeleteConfirmDialog({
   message,
   confirmVariant = "danger"
 }: DeleteConfirmDialogProps) {
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const confirmBtnBg = confirmVariant === "brand"
     ? "bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
     : "bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/30";
 
-  return (
+  // Rendered into <body> so the overlay covers the whole screen (sidebar and header too);
+  // inside the page, an animated ancestor would confine "fixed" to the content area.
+  return createPortal(
     <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-900 w-full max-w-4xl mx-4 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
         {/* Header */}
@@ -56,7 +59,8 @@ export function DeleteConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
