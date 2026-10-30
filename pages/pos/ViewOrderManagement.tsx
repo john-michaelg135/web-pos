@@ -595,7 +595,7 @@ export default function ViewOrderManagement() {
       {/* Status Tabs */}
       <div role="tablist" className={cn(
         "flex overflow-x-auto gap-1 pb-3 border-b border-border",
-        isMobile && "-mx-6 px-6 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        isMobile && "-mx-6 px-6 scroll-px-6 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       )}>
         {statusTabs.map(({ key, label, count, destructive }) => {
           const selected = activeTab === key;

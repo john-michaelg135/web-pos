@@ -434,15 +434,15 @@ export default function ViewLocationsManagement() {
         {/* ── Branches ── */}
         <TabsContent value="branches" className="mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
-              <div className="space-y-1.5">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 space-y-0">
+              <div className="space-y-1.5 min-w-0">
                 <CardTitle className="text-base">Branches</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   The stores, bazaars and commissary your business sells from. Switch a branch off to
                   hide it from sales and assignments without losing its history.
                 </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                 {/* Sends every location (Commissary included) to SCMS: for the first sync, or a retry. */}
                 <Button size="sm" variant="outline" onClick={syncBranchesToScms} disabled={syncingScms} className="gap-1.5">
                   {syncingScms && <Loader2 className="w-4 h-4 animate-spin" />}
