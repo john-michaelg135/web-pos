@@ -3,7 +3,8 @@
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
-import { Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types";
+import { ConfirmDeliveryDialog, DeliveryConfirmationDetails } from "./ConfirmDeliveryDialog";
 import { renderVariationBadges } from "./utils";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -21,6 +22,7 @@ interface ViewOrderModalProps {
   cardBg: string;
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onCompletePayment?: () => Promise<boolean | void>;
+  onConfirmDelivery?: (details: DeliveryConfirmationInput) => Promise<boolean>;
   onRequestRefund?: () => void;
 onRequestVoid?: () => void;
 onApplyVoid?: () => void;
@@ -40,6 +42,7 @@ export function ViewOrderModal({
   cardBg,
   onStatusUpdate,
   onCompletePayment,
+  onConfirmDelivery,
   onRequestRefund,
 onRequestVoid,
 onApplyVoid,
@@ -60,6 +63,7 @@ onRejectVoid,
   const [cancelToConfirm, setCancelToConfirm] = useState(false);
   const [completePaymentToConfirm, setCompletePaymentToConfirm] = useState(false);
   const [isCompletingPayment, setIsCompletingPayment] = useState(false);
+  const [showConfirmDelivery, setShowConfirmDelivery] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -93,13 +97,18 @@ onRejectVoid,
   const remainingBalance = Math.max(0, order.total - amountPaid);
   const showPaymentSummary = isInstitutional && order.paymentMethod?.toLowerCase() === "gcash";
 
+  // Shipped institutional orders are completed through Confirm Delivery so the proof is recorded.
+  const canConfirmDelivery = isInstitutional && order.status === "shipped" && isAuthorizedToEdit && !isPartiallyPaid && !!onConfirmDelivery;
+
   // A partially paid order cannot move to Paid or beyond until the balance is confirmed.
   const allowedStatuses = (isWebOrder
     ? ["processing", "shipped", "delivered"]
     : isInstitutional
     ? ["processing", "paid", "shipped", "completed"]
     : ["processing", "completed"] // walk-in / store
-  ).filter((s) => !isPartiallyPaid || !["paid", "shipped", "completed"].includes(s)) as OrderStatus[];
+  )
+    .filter((s) => !isPartiallyPaid || !["paid", "shipped", "completed"].includes(s))
+    .filter((s) => !(isInstitutional && order.status === "shipped" && s === "completed")) as OrderStatus[];
 
   const pricing = useMemo(() => {
     if (!isPwdOrder) {
@@ -362,6 +371,36 @@ onRejectVoid,
                 </div>
               )}
             </div>
+          )}
+
+          {/* Institutional: record proof of delivery and complete the order */}
+          {canConfirmDelivery && (
+            <div className="p-4 rounded-xl border mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: `${primary}40`, background: `${primary}0D` }}>
+              <div className="flex flex-col gap-1">
+                <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>Delivered?</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 m-0">
+                  Record who received it, with the Lalamove proof or a signed receipt, to complete the order.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConfirmDelivery(true)}
+                className="px-4 py-2 text-xs font-black uppercase rounded-lg text-white active:scale-95 transition-all whitespace-nowrap"
+                style={{ background: primary }}
+              >
+                Confirm Delivery
+              </button>
+            </div>
+          )}
+
+          {order.deliveryConfirmation && (
+            <DeliveryConfirmationDetails
+              orderId={order.id}
+              confirmation={order.deliveryConfirmation}
+              border={border}
+              muted={muted}
+              text={text}
+            />
           )}
 
           {/* Direct Status Changer (Admin / Order Manager / dev) */}
@@ -791,6 +830,15 @@ onRejectVoid,
         `}</style>
         </div>
       </div>
+
+      {onConfirmDelivery && (
+        <ConfirmDeliveryDialog
+          isOpen={showConfirmDelivery}
+          onClose={() => setShowConfirmDelivery(false)}
+          order={order}
+          onSubmit={onConfirmDelivery}
+        />
+      )}
 
       {/* Status Change Confirmation Modal */}
       {statusToConfirm && (

@@ -36,12 +36,12 @@ export default function RefundFormDialog({
   inputBg,
   isMobile,
 }: RefundFormDialogProps) {
-  const predefinedReasons = [
-    "Item arrived damaged",
-    "Wrong item received",
-    "Item not as described",
-    "Other"
-  ];
+  const isWebOrder = order?.type?.toLowerCase() === "online" || ["e-commerce", "ecommerce"].includes(order?.source?.toLowerCase() ?? "");
+  // In-store refunds go back to stock, except Damaged/Expired, which the backend
+  // keys off this exact text to skip the restock.
+  const predefinedReasons = isWebOrder
+    ? ["Item arrived damaged", "Wrong item received", "Item not as described", "Other"]
+    : ["Return (Sealed/Sellable Condition)", "Change of mind", "Damaged/Expired (Unsellable)"];
   
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [mounted, setMounted] = useState(false);
@@ -54,7 +54,7 @@ export default function RefundFormDialog({
     if (isOpen) {
       if (predefinedReasons.includes(reason)) {
         setSelectedOption(reason);
-      } else if (reason.trim() !== "") {
+      } else if (reason.trim() !== "" && predefinedReasons.includes("Other")) {
         setSelectedOption("Other");
       } else {
         setSelectedOption("");

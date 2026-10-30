@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
 import { Search, Filter, LayoutGrid, List } from "lucide-react";
-import { Order, OrderStatus, STATUS_LABELS } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, Order, OrderStatus, STATUS_LABELS } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
 import VoidFormDialog from "@/components/module-pos/VoidFormDialog";
@@ -160,6 +160,8 @@ export default function ViewOrderManagement() {
     statusHistory: (dto as any).statusHistory
       ? (dto as any).statusHistory.map((h: any) => ({ id: h.id, orderId: h.orderId, oldStatus: h.oldStatus, newStatus: h.newStatus, changedBy: h.changedBy, remarks: h.remarks, createdAt: h.createdAt }))
       : [],
+    createdAt: dto.createdAt || undefined,
+    deliveryConfirmation: (dto as any).deliveryConfirmation ?? null,
   });
 
   const fetchOrders = useCallback(async (targetLocId?: number) => {
@@ -370,6 +372,7 @@ export default function ViewOrderManagement() {
     try {
       const managerId = Number(authUser?.id) || 1;
       await requestManagerEndpoint(`order-management/orders/${orderToApprove.id}/approve-refund`, { approvedBy: managerId, pinCode: pin });
+      const isUnsellable = orderToApprove.remarks?.toLowerCase().startsWith("damaged/expired");
       toast.success(
         <div className="flex flex-col gap-1 text-emerald-800 dark:text-emerald-200">
           <div className="font-bold">Refund approved!</div>
@@ -377,12 +380,18 @@ export default function ViewOrderManagement() {
             <span className="text-gray-500 dark:text-gray-400">Amount deducted from sales:</span>
             <span className="font-black text-red-500">- ₱{orderToApprove.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
-          <div className="text-[11px] text-gray-500 dark:text-gray-400">Restored inventory stocks:</div>
-          <div className="text-[11px] flex flex-col gap-0.5 mt-1 border-t pt-1 border-emerald-500/20">
-            {orderToApprove.items.map((item, idx) => (
-              <div key={idx} className="flex justify-between gap-4"><span>{item.name} ({item.variation})</span><span className="font-bold">+{item.quantity} qty</span></div>
-            ))}
-          </div>
+          {isUnsellable ? (
+            <div className="text-[11px] text-gray-500 dark:text-gray-400">Damaged/expired items were not returned to stock.</div>
+          ) : (
+            <>
+              <div className="text-[11px] text-gray-500 dark:text-gray-400">Restored inventory stocks:</div>
+              <div className="text-[11px] flex flex-col gap-0.5 mt-1 border-t pt-1 border-emerald-500/20">
+                {orderToApprove.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between gap-4"><span>{item.name} ({item.variation})</span><span className="font-bold">+{item.quantity} qty</span></div>
+                ))}
+              </div>
+            </>
+          )}
         </div>,
         { duration: 10000 }
       );
@@ -462,6 +471,21 @@ export default function ViewOrderManagement() {
     } catch (err) {
       console.error("Failed to complete payment:", err);
       toast.error(err instanceof Error && err.message ? err.message : "Failed to complete payment.");
+      return false;
+    }
+  };
+
+  // Institutional: Shipped → Completed with proof of delivery.
+  const confirmDelivery = async (orderId: string, details: DeliveryConfirmationInput): Promise<boolean> => {
+    try {
+      const managerId = Number(authUser?.id) || 1;
+      await requestManagerEndpoint(`order-management/orders/${orderId}/confirm-institutional-delivery`, { ...details, confirmedBy: managerId });
+      toast.success("Delivery confirmed. The order is now completed.");
+      fetchOrders();
+      return true;
+    } catch (err) {
+      console.error("Failed to confirm delivery:", err);
+      toast.error(err instanceof Error && err.message ? err.message : "Failed to confirm delivery.");
       return false;
     }
   };
@@ -676,6 +700,7 @@ export default function ViewOrderManagement() {
                   onRejectRefund={() => handleRejectRefund(order)}
                   onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
                   onCompletePayment={() => completePayment(order.id)}
+                  onConfirmDelivery={(details: DeliveryConfirmationInput) => confirmDelivery(order.id, details)}
                   isMobile
                   viewMode="compact"
                 />
@@ -712,6 +737,7 @@ export default function ViewOrderManagement() {
                         onRejectRefund={() => handleRejectRefund(order)}
                         onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
                         onCompletePayment={() => completePayment(order.id)}
+                        onConfirmDelivery={(details: DeliveryConfirmationInput) => confirmDelivery(order.id, details)}
                         isMobile={isMobile}
                         viewMode="list"
                       />
@@ -738,6 +764,7 @@ export default function ViewOrderManagement() {
                   onRejectRefund={() => handleRejectRefund(order)}
                   onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
                   onCompletePayment={() => completePayment(order.id)}
+                  onConfirmDelivery={(details: DeliveryConfirmationInput) => confirmDelivery(order.id, details)}
                   isMobile={isMobile}
                   viewMode="grid"
                 />

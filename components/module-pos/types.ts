@@ -62,6 +62,31 @@ export type Order = {
   seniorPwdProvince?: string;
   seniorPwdZipCode?: string;
   statusHistory?: OrderStatusHistory[];
+  /** ISO timestamp the order was placed (`date` is display-only). */
+  createdAt?: string;
+  deliveryConfirmation?: DeliveryConfirmation | null;
+};
+
+/** Institutional proof of delivery. The photo is fetched separately when `hasProofImage`. */
+export type DeliveryConfirmation = {
+  receivedBy: string;
+  deliveredAt: string;
+  courierReference?: string | null;
+  notes?: string | null;
+  hasProofImage: boolean;
+  confirmedBy?: number | null;
+  confirmedByName?: string | null;
+  confirmedAt: string;
+};
+
+export type DeliveryConfirmationInput = {
+  receivedBy: string;
+  /** ISO timestamp (UTC). */
+  deliveredAt: string;
+  courierReference?: string;
+  /** Shrunk image as a data URL. */
+  proofImage?: string;
+  notes?: string;
 };
 
 export const STATUS_PIPELINE: OrderStatus[] = [

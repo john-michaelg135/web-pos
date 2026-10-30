@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ViewOrderModal } from "./ViewOrderModal";
 
 import { CalenderIcon } from "@/icons/index";
-import { Order, OrderStatus, STATUS_LABELS, STATUS_PIPELINE } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, Order, OrderStatus, STATUS_LABELS, STATUS_PIPELINE } from "@/components/module-pos/types";
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 
@@ -29,6 +29,7 @@ interface OrderCardProps {
 
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onCompletePayment?: () => Promise<boolean | void>;
+  onConfirmDelivery?: (details: DeliveryConfirmationInput) => Promise<boolean>;
   onRequestRefund?: () => void;
 onRequestVoid?: () => void;
 onApplyVoid?: () => void;
@@ -49,6 +50,7 @@ export default function OrderCard({
   inputBg,
   onStatusUpdate,
   onCompletePayment,
+  onConfirmDelivery,
   onRequestRefund,
 onRequestVoid,
 onApplyVoid,
@@ -83,6 +85,7 @@ onRejectVoid,
       cardBg={cardBg}
       onStatusUpdate={onStatusUpdate}
       onCompletePayment={onCompletePayment}
+      onConfirmDelivery={onConfirmDelivery}
       onRequestRefund={onRequestRefund}
       onApplyRefund={onApplyRefund}
       onRequestVoid={onRequestVoid}
@@ -219,6 +222,7 @@ onRejectVoid,
           cardBg={cardBg}
           onStatusUpdate={onStatusUpdate}
           onCompletePayment={onCompletePayment}
+          onConfirmDelivery={onConfirmDelivery}
           onRequestRefund={onRequestRefund}
           onApplyRefund={onApplyRefund}
 onRequestVoid={onRequestVoid}
@@ -566,6 +570,7 @@ onRejectVoid={onRejectVoid}
         cardBg={cardBg}
         onStatusUpdate={onStatusUpdate}
         onCompletePayment={onCompletePayment}
+        onConfirmDelivery={onConfirmDelivery}
         onRequestRefund={onRequestRefund}
         onApplyRefund={onApplyRefund}
 onRequestVoid={onRequestVoid}
