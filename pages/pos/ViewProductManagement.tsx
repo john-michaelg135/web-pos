@@ -166,9 +166,6 @@ export default function ViewProductManagement() {
         </h1>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <p className="text-sm text-muted-foreground">Set selling prices for products from IMS</p>
-          <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
-            Pricing Configuration
-          </Badge>
           <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs truncate max-w-[240px]">
             {locationLabel}
           </Badge>
@@ -187,6 +184,14 @@ export default function ViewProductManagement() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Pricing section */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">Pricing Configuration</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Selling prices for each product variation. Products and variations come from IMS; use Edit Price to change what the POS charges.
+        </p>
       </div>
 
       {/* Pricing table */}
