@@ -81,6 +81,8 @@ export default function ViewSalesProcessing() {
   const [shiftClosed, setShiftClosed] = useState(false);
   // The owner opens POS-PROBE from here but doesn't ring up sales, so selling is locked for them.
   const ownerOnly = isSuperUser(authUser?.role);
+  // Managers and the owner see items with no price yet (to know what to price); cashiers don't.
+  const canSeeUnset = probeRoleFor(authUser?.role) !== null;
   const salesLocked = shiftClosed || ownerOnly;
   const [products, setProducts] = useState<Product[]>(mockProducts);
   // False until the first product-grid response (or failure), so the catalog shows a skeleton, not a blank panel.
@@ -1014,59 +1016,35 @@ export default function ViewSalesProcessing() {
           <CardContent className={cn(isMobile ? "p-3" : "p-5", !isMobile && "flex-1 min-h-0 overflow-y-auto custom-scrollbar [scrollbar-gutter:stable]")}>
             {!productsLoaded ? (
               <ProductCatalogSkeleton view={catalogView} isMobile={isMobile} />
-            ) : catalogView === "grid" ? (
-              // One "Ube Products" group, same as the list view (SCMS categories aren't shown here).
-              <div className={cn(isMobile ? "mb-5" : "mb-7")}>
-                <div className={cn("flex items-center gap-4", isMobile ? "mb-3" : "mb-4")}>
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Ube Products</h3>
-                  <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
-                </div>
-                <div className={cn("grid gap-5", isMobile ? "grid-cols-1 gap-3" : "grid-cols-[repeat(auto-fill,minmax(330px,1fr))]")}>
-                  {products.map((product) => (
-                    <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} isMobile={isMobile} />
-                  ))}
-                </div>
-              </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-4 mb-2">
-                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Ube Products</h3>
-                  <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
-                </div>
-                {products.map((product) => {
-                  const isOutOfStock = product.stock <= 0;
-                  const unsellable = isOutOfStock || !product.hasPrice;
-                  return (
-                    <button
-                      key={product.id}
-                      onClick={() => !unsellable && addToCart(product)}
-                      disabled={unsellable}
-                      className={cn(
-                        "flex items-center gap-3 py-3 px-4 text-left transition-all rounded-xl border",
-                        unsellable
-                          ? "opacity-50 cursor-not-allowed border-border bg-muted/30"
-                          : "border-border bg-card hover:border-foreground/20 hover:shadow-sm cursor-pointer"
-                      )}
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-input border border-border flex items-center justify-center text-lg shrink-0">
-                        {product.category === "Ube Halaya" ? "🍠" : "🫙"}
+              // Priced items under "Ube Products"; items with no price yet under "Unset Price",
+              // shown to managers and the owner only (cashiers can't sell or price them).
+              [
+                { label: "Ube Products", items: products.filter((p) => p.hasPrice) },
+                { label: "Unset Price", items: canSeeUnset ? products.filter((p) => !p.hasPrice) : [] },
+              ]
+                .filter((group) => group.items.length > 0 || group.label === "Ube Products")
+                .map((group) => (
+                  <div key={group.label} className={cn(isMobile ? "mb-5" : "mb-7")}>
+                    <div className={cn("flex items-center gap-4", isMobile ? "mb-3" : "mb-4")}>
+                      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{group.label}</h3>
+                      <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+                    </div>
+                    {catalogView === "grid" ? (
+                      <div className={cn("grid grid-cols-1", isMobile ? "gap-3" : "gap-4")}>
+                        {group.items.map((product) => (
+                          <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} isMobile={isMobile} />
+                        ))}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
-                        <div className="mt-0.5">
-                          {renderVariationBadges(product.variation, "hsl(var(--muted-foreground))", "#d4d4d8", "#ebebeb", true)}
-                        </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {group.items.map((product) => (
+                          <ProductRow key={product.id} product={product} onAdd={() => addToCart(product)} />
+                        ))}
                       </div>
-                      <div className="text-right shrink-0 pl-3">
-                        <p className="text-sm font-bold text-foreground">{product.hasPrice ? `₱${product.price}` : "No price set"}</p>
-                        <p className={cn("text-[10px] font-medium", isOutOfStock ? "text-destructive" : "text-muted-foreground")}>
-                          {isOutOfStock ? "Out of stock" : `${product.stock} left`}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                  </div>
+                ))
             )}
           </CardContent>
         </Card>
@@ -1785,8 +1763,10 @@ function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: ()
       className={cn(
         "flex items-center gap-3.5 border border-border rounded-xl transition-all",
         isMobile ? "p-2.5" : "p-3.5",
-        unsellable
+        isOutOfStock
           ? "bg-muted/50 opacity-60 cursor-not-allowed"
+          : !product.hasPrice
+          ? "bg-card opacity-85 cursor-not-allowed"
           : "bg-card cursor-pointer hover:shadow-lg hover:border-primary/30"
       )}
     >
@@ -1801,7 +1781,7 @@ function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: ()
           <h3 className={cn(
             "font-bold m-0 leading-tight",
             isMobile ? "text-sm" : "text-base",
-            unsellable ? "text-muted-foreground" : "text-foreground"
+            isOutOfStock ? "text-muted-foreground" : "text-foreground"
           )}>
             {product.name}
           </h3>
@@ -1815,17 +1795,53 @@ function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: ()
             {isOutOfStock ? "OUT OF STOCK" : `Remaining Stocks: ${product.stock}`}
           </Badge>
         </div>
-        <div className={cn("mt-1 mb-1.5", unsellable && "opacity-70")}>
+        <div className={cn("mt-1 mb-1.5", isOutOfStock && "opacity-70")}>
           {renderVariationBadges(product.variation, "hsl(var(--muted-foreground))", "#d4d4d8", "#ebebeb", false)}
         </div>
         <p className={cn(
           "font-bold m-0",
           isMobile ? "text-base" : "text-lg",
-          unsellable ? "text-muted-foreground" : "text-primary"
+          isOutOfStock ? "text-muted-foreground" : "text-primary"
         )}>
-          {product.hasPrice ? `₱${product.price}` : "No price set"}
+          {product.hasPrice ? `₱${product.price}` : "Unset"}
         </p>
       </div>
     </div>
+  );
+}
+
+function ProductRow({ product, onAdd }: { product: Product; onAdd: () => void }) {
+  const isOutOfStock = product.stock <= 0;
+  const unsellable = isOutOfStock || !product.hasPrice;
+  return (
+    <button
+      onClick={() => !unsellable && onAdd()}
+      disabled={unsellable}
+      title={!product.hasPrice ? "Set a price in Product Management to sell this item." : undefined}
+      className={cn(
+        "flex items-center gap-3 py-3 px-4 text-left transition-all rounded-xl border border-border",
+        isOutOfStock
+          ? "opacity-50 cursor-not-allowed bg-muted/30"
+          : !product.hasPrice
+          ? "opacity-85 cursor-not-allowed bg-card"
+          : "bg-card hover:border-foreground/20 hover:shadow-sm cursor-pointer"
+      )}
+    >
+      <div className="w-10 h-10 rounded-lg bg-input border border-border flex items-center justify-center text-lg shrink-0">
+        {product.category === "Ube Halaya" ? "🍠" : "🫙"}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
+        <div className="mt-0.5">
+          {renderVariationBadges(product.variation, "hsl(var(--muted-foreground))", "#d4d4d8", "#ebebeb", true)}
+        </div>
+      </div>
+      <div className="text-right shrink-0 pl-3">
+        <p className="text-sm font-bold text-foreground">{product.hasPrice ? `₱${product.price}` : "Unset"}</p>
+        <p className={cn("text-[10px] font-medium", isOutOfStock ? "text-destructive" : "text-muted-foreground")}>
+          {isOutOfStock ? "Out of stock" : `${product.stock} left`}
+        </p>
+      </div>
+    </button>
   );
 }

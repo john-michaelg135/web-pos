@@ -474,7 +474,7 @@ export function ProductCatalogSkeleton({ view = "grid", isMobile = false }: { vi
   return (
     <div role="status" aria-label="Loading products">
       {heading}
-      <div className={cn("grid", isMobile ? "grid-cols-1 gap-3" : "gap-5 grid-cols-[repeat(auto-fill,minmax(330px,1fr))]")}>
+      <div className={cn("grid grid-cols-1", isMobile ? "gap-3" : "gap-4")}>
         {Array.from({ length: 4 }, (_, i) => (
           // Same shape as a product card: icon tile, name, variation badges and price, stock pill.
           <div key={i} className={cn("flex items-center gap-3.5 border border-border rounded-xl bg-card", isMobile ? "p-2.5" : "p-3.5")}>
