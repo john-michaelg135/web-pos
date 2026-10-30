@@ -668,7 +668,6 @@ export default function ViewSalesProcessing() {
     }
   };
 
-  const categories = Array.from(new Set(products.map(p => p.category)));
 
   const renderCart = (
     <Card className={cn("shadow-none border-border overflow-hidden flex flex-col", isMobile ? "h-full rounded-none rounded-t-2xl" : "rounded-2xl h-full min-h-0")}>
@@ -1016,23 +1015,18 @@ export default function ViewSalesProcessing() {
             {!productsLoaded ? (
               <ProductCatalogSkeleton view={catalogView} isMobile={isMobile} />
             ) : catalogView === "grid" ? (
-              <>
-                {categories.map((category) => (
-                  <div key={category} className={cn(isMobile ? "mb-5" : "mb-7")}>
-                    <div className={cn("flex items-center gap-4", isMobile ? "mb-3" : "mb-4")}>
-                      <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">{category}</h3>
-                      <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
-                    </div>
-                    <div className={cn("grid gap-5", isMobile ? "grid-cols-1 gap-3" : "grid-cols-[repeat(auto-fill,minmax(330px,1fr))]")}>
-                      {products
-                        .filter((p) => p.category === category)
-                        .map((product) => (
-                          <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} isMobile={isMobile} />
-                        ))}
-                    </div>
-                  </div>
-                ))}
-              </>
+              // One "Ube Products" group, same as the list view (SCMS categories aren't shown here).
+              <div className={cn(isMobile ? "mb-5" : "mb-7")}>
+                <div className={cn("flex items-center gap-4", isMobile ? "mb-3" : "mb-4")}>
+                  <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">Ube Products</h3>
+                  <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+                </div>
+                <div className={cn("grid gap-5", isMobile ? "grid-cols-1 gap-3" : "grid-cols-[repeat(auto-fill,minmax(330px,1fr))]")}>
+                  {products.map((product) => (
+                    <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} isMobile={isMobile} />
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-4 mb-2">

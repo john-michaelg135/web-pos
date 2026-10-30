@@ -9,6 +9,7 @@ import { VariationTable } from "@/components/module-pos/VariationTable";
 import { VariationFormDialog } from "@/components/module-pos/VariationFormDialog";
 import { apiClient } from "@/components/module-pos/api";
 import { useAuth } from "@/context/AuthContext";
+import { useMyLocations } from "@/lib/useMyLocations";
 import { POS_MODULES } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,11 +26,29 @@ export default function ViewProductManagement() {
   const [products, setProducts] = useState<Product[]>([]);
   const [variations, setVariations] = useState<Variation[]>([]);
   const [editVariation, setEditVariation] = useState<Variation | null>(null);
+  // Variations with a stock record at each location, for branch staff's view.
+  const [stockedAt, setStockedAt] = useState<Map<number, Set<string>> | null>(null);
+  const { scope, locations: myLocations, isLoading: locationsLoading } = useMyLocations();
 
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const { data } = await apiClient.apiPos.productCatalogProductsList();
+      const [{ data }, stockResult] = await Promise.all([
+        apiClient.apiPos.productCatalogProductsList(),
+        apiClient.apiPos.inventoryStockAllList().catch((err) => {
+          console.error("Failed to load stock locations:", err);
+          return null;
+        }),
+      ]);
+      if (stockResult) {
+        const byLocation = new Map<number, Set<string>>();
+        stockResult.data.forEach((s) => {
+          const loc = Number(s.locationId);
+          if (!byLocation.has(loc)) byLocation.set(loc, new Set());
+          byLocation.get(loc)!.add(String(s.variationId));
+        });
+        setStockedAt(byLocation);
+      }
 
       const mappedProducts: Product[] = [];
       const mappedVariations: Variation[] = [];
@@ -82,8 +101,21 @@ export default function ViewProductManagement() {
     fetchProducts();
   }, []);
 
+  // Branch staff see only what their branch(es) carry: items with a stock record there.
+  // The owner sees the whole catalog, so items can be priced before their first delivery.
+  // If the stock list couldn't load, fall back to the full catalog rather than an empty page.
+  const assignedOnly = scope === "assigned" && stockedAt !== null;
+  const carriedIds = new Set(myLocations.flatMap((l) => [...(stockedAt?.get(Number(l.locationId)) ?? [])]));
+  const visibleVariations = assignedOnly ? variations.filter((v) => carriedIds.has(v.id)) : variations;
+  const visibleProducts = assignedOnly
+    ? products.filter((p) => visibleVariations.some((v) => v.productId === p.id))
+    : products;
+  const locationLabel = scope === "assigned"
+    ? myLocations.map((l) => l.locationName).filter(Boolean).join(", ") || "Your branch"
+    : "All Locations";
+
   // Stats: an active item without a price stays off the sales screen until it gets one.
-  const activeVariations = variations.filter((v) => v.isActive);
+  const activeVariations = visibleVariations.filter((v) => v.isActive);
   const needsPrice = activeVariations.filter((v) => v.price <= 0).length;
   const stats = [
     { label: "Active Items", value: activeVariations.length, color: "text-foreground" },
@@ -137,6 +169,9 @@ export default function ViewProductManagement() {
           <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
             Pricing Configuration
           </Badge>
+          <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs truncate max-w-[240px]">
+            {locationLabel}
+          </Badge>
         </div>
       </div>
 
@@ -155,10 +190,10 @@ export default function ViewProductManagement() {
       </div>
 
       {/* Pricing table */}
-      {isLoading ? (
+      {isLoading || locationsLoading ? (
         <ProductTableSkeleton tab="variations" />
       ) : (
-        <VariationTable variations={variations} products={products} onEdit={setEditVariation} />
+        <VariationTable variations={visibleVariations} products={visibleProducts} onEdit={setEditVariation} />
       )}
 
       <VariationFormDialog
