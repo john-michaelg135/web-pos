@@ -538,7 +538,6 @@ export default function ViewOrderManagement() {
             <h1 className="text-headline-md font-bold tracking-tight text-foreground">Order Management</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <p className="text-sm text-muted-foreground">Track and manage all orders</p>
-              <span className="text-muted-foreground font-bold">&middot;</span>
               <Badge variant="secondary" className="bg-primary/10 text-primary text-xs font-bold">
                 {locationIndicator}
               </Badge>

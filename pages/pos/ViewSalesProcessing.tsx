@@ -935,7 +935,6 @@ export default function ViewSalesProcessing() {
         <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Processing</h1>
         <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
           <span>Process walk-in and institutional orders</span>
-          <span>·</span>
           <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs whitespace-nowrap">
             {scope === "all"
               ? "All Locations"

@@ -502,7 +502,6 @@ export function SalesProcessingSkeleton() {
           <h1 className="text-headline-md font-bold tracking-tight text-foreground">Sales Processing</h1>
           <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
             <span>Process walk-in and institutional orders</span>
-            <span>·</span>
             <Bone className="h-5 w-40 rounded-md" />
           </div>
         </div>

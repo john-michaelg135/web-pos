@@ -155,21 +155,8 @@ export function StockReceivingForm({ onSuccess, onReceived }: StockReceivingForm
             Confirm stock arrivals sent from the commissary.
           </p>
         </div>
-        <div className="grid grid-cols-[1fr_auto] sm:flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => setShowManualDialog(true)}
-            className="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-xl text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
-          >
-            <svg
-              style={{ width: 16, height: 16, marginRight: 8, display: "inline-block", verticalAlign: "middle" }}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Receive Stock
-          </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Manual "Add Receive Stock" is hidden: stock now arrives only through SCMS deliveries. */}
           <button
             onClick={loadData}
             disabled={isLoading}

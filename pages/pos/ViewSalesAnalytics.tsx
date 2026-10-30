@@ -304,7 +304,6 @@ export function ViewSalesAnalytics() {
                 ? "Company sales for a period, compared with the period before."
                 : "Starting cash, sales and the end-of-shift count for each shift."}
             </p>
-            <span className="text-muted-foreground font-bold">&middot;</span>
             <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs truncate max-w-[200px]">
               {locationLabel}
             </Badge>
