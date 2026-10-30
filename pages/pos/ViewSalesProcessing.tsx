@@ -54,6 +54,8 @@ type Product = {
   price: number;
   stock: number;
   category: string;
+  /** False when no selling price is set yet; shown but can't be sold. */
+  hasPrice: boolean;
 };
 
 type CartItem = Product & { quantity: number };
@@ -110,7 +112,7 @@ export default function ViewSalesProcessing() {
         // withCredentials omitted on purpose: api-pos uses Bearer auth, not the
         // NextAuth cookie. Sending the large session cookie here causes HTTP 431
         // for cashier accounts with big tokens.
-        const response = await axios.get(`/api-pos/order-entry/product-grid?locationId=${locationIdVal}&_t=${Date.now()}`);
+        const response = await axios.get(`/api-pos/order-entry/product-grid?locationId=${locationIdVal}&includeUnpriced=true&_t=${Date.now()}`);
 
         if (response.data) {
           const data = response.data;
@@ -120,7 +122,8 @@ export default function ViewSalesProcessing() {
             variation: p.variationName || "Unknown",
             price: Number(p.price) || 0,
             stock: Number(p.stockQuantity) || 0,
-            category: p.productCategory || "Uncategorized"
+            category: p.productCategory || "Uncategorized",
+            hasPrice: p.hasPrice !== false,
           }));
           setProducts(mapped);
         } else {
@@ -247,6 +250,10 @@ export default function ViewSalesProcessing() {
   const addToCart = (product: Product) => {
     if (shiftClosed) {
       toast.error("This shift has ended. Sales are disabled.");
+      return;
+    }
+    if (!product.hasPrice) {
+      toast.error("This item has no price yet. Set it in Product Management first.");
       return;
     }
     if (product.stock === 0) {
@@ -1034,14 +1041,15 @@ export default function ViewSalesProcessing() {
                 </div>
                 {products.map((product) => {
                   const isOutOfStock = product.stock <= 0;
+                  const unsellable = isOutOfStock || !product.hasPrice;
                   return (
                     <button
                       key={product.id}
-                      onClick={() => !isOutOfStock && addToCart(product)}
-                      disabled={isOutOfStock}
+                      onClick={() => !unsellable && addToCart(product)}
+                      disabled={unsellable}
                       className={cn(
                         "flex items-center gap-3 py-3 px-4 text-left transition-all rounded-xl border",
-                        isOutOfStock
+                        unsellable
                           ? "opacity-50 cursor-not-allowed border-border bg-muted/30"
                           : "border-border bg-card hover:border-foreground/20 hover:shadow-sm cursor-pointer"
                       )}
@@ -1056,7 +1064,7 @@ export default function ViewSalesProcessing() {
                         </div>
                       </div>
                       <div className="text-right shrink-0 pl-3">
-                        <p className="text-sm font-bold text-foreground">₱{product.price}</p>
+                        <p className="text-sm font-bold text-foreground">{product.hasPrice ? `₱${product.price}` : "No price set"}</p>
                         <p className={cn("text-[10px] font-medium", isOutOfStock ? "text-destructive" : "text-muted-foreground")}>
                           {isOutOfStock ? "Out of stock" : `${product.stock} left`}
                         </p>
@@ -1775,13 +1783,15 @@ export default function ViewSalesProcessing() {
 function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: () => void; isMobile: boolean }) {
   const isOutOfStock = product.stock <= 0;
   const isLow = product.stock > 0 && product.stock <= 15;
+  const unsellable = isOutOfStock || !product.hasPrice;
   return (
     <div
-      onClick={isOutOfStock ? undefined : onAdd}
+      onClick={unsellable ? undefined : onAdd}
+      title={!product.hasPrice ? "Set a price in Product Management to sell this item." : undefined}
       className={cn(
         "flex items-center gap-3.5 border border-border rounded-xl transition-all",
         isMobile ? "p-2.5" : "p-3.5",
-        isOutOfStock
+        unsellable
           ? "bg-muted/50 opacity-60 cursor-not-allowed"
           : "bg-card cursor-pointer hover:shadow-lg hover:border-primary/30"
       )}
@@ -1797,7 +1807,7 @@ function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: ()
           <h3 className={cn(
             "font-bold m-0 leading-tight",
             isMobile ? "text-sm" : "text-base",
-            isOutOfStock ? "text-muted-foreground" : "text-foreground"
+            unsellable ? "text-muted-foreground" : "text-foreground"
           )}>
             {product.name}
           </h3>
@@ -1811,15 +1821,15 @@ function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: ()
             {isOutOfStock ? "OUT OF STOCK" : `Remaining Stocks: ${product.stock}`}
           </Badge>
         </div>
-        <div className={cn("mt-1 mb-1.5", isOutOfStock && "opacity-70")}>
+        <div className={cn("mt-1 mb-1.5", unsellable && "opacity-70")}>
           {renderVariationBadges(product.variation, "hsl(var(--muted-foreground))", "#d4d4d8", "#ebebeb", false)}
         </div>
         <p className={cn(
           "font-bold m-0",
           isMobile ? "text-base" : "text-lg",
-          isOutOfStock ? "text-muted-foreground" : "text-primary"
+          unsellable ? "text-muted-foreground" : "text-primary"
         )}>
-          ₱{product.price}
+          {product.hasPrice ? `₱${product.price}` : "No price set"}
         </p>
       </div>
     </div>
