@@ -269,7 +269,7 @@ export default function ViewLocationsManagement() {
   const warnIfScmsSyncFailed = (response: { headers?: unknown }) => {
     const headers = response.headers as Record<string, string | undefined> | undefined;
     if (headers?.["x-scms-sync"] === "failed") {
-      toast.warning("Saved, but SCMS wasn't updated. Use \"Sync branches to SCMS\" to send it again.");
+      toast.warning("Saved, but IMS wasn't updated. Use \"Sync branches to IMS\" to send it again.");
     }
   };
 
@@ -280,10 +280,10 @@ export default function ViewLocationsManagement() {
       const { data } = await apiClient.instance.post<{ message?: string; locationCount?: number }>(
         "/api-pos/locations/sync-to-scms"
       );
-      toast.success(`Sent ${data.locationCount ?? "all"} locations to SCMS.`);
+      toast.success(`Sent ${data.locationCount ?? "all"} locations to IMS.`);
     } catch (err: unknown) {
-      console.error("Failed to sync branches to SCMS:", err);
-      toast.error(errorMessage(err, "Couldn't reach SCMS. Try again in a moment."));
+      console.error("Failed to sync branches to IMS:", err);
+      toast.error(errorMessage(err, "Couldn't reach IMS. Try again in a moment."));
     } finally {
       setSyncingScms(false);
     }
@@ -446,7 +446,7 @@ export default function ViewLocationsManagement() {
                 {/* Sends every location (Commissary included) to SCMS: for the first sync, or a retry. */}
                 <Button size="sm" variant="outline" onClick={syncBranchesToScms} disabled={syncingScms} className="gap-1.5">
                   {syncingScms && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Sync branches to SCMS
+                  Sync branches to IMS
                 </Button>
                 <Button size="sm" onClick={openCreateBranch} className="gap-1.5">
                   <Plus className="w-4 h-4" /> Add Branch

@@ -140,7 +140,7 @@ export function TransferReceiveDialog({
           <div className="space-y-3">
             <p className="text-sm text-foreground m-0">
               Add <span className="font-semibold">{totals.received} units</span> to {transfer?.destinationLocationName}&apos;s stock?
-              {totals.damaged > 0 && <> {totals.damaged} damaged units will be reported to SCMS and not added.</>}
+              {totals.damaged > 0 && <> {totals.damaged} damaged units will be reported to IMS and not added.</>}
               {totals.received + totals.damaged < totals.expected && (
                 <> {totals.expected - totals.received - totals.damaged} units will be reported missing.</>
               )}
@@ -165,7 +165,7 @@ export function TransferReceiveDialog({
           <div className="space-y-4">
             {unmatched.length > 0 && (
               <p className="text-sm m-0 rounded-xl border border-error-200 dark:border-error-900/40 bg-error-50 dark:bg-error-500/10 text-error-700 dark:text-error-400 px-3.5 py-2.5">
-                {unmatched.length === 1 ? "1 item isn't" : `${unmatched.length} items aren't`} in the POS catalog yet. Ask SCMS to sync
+                {unmatched.length === 1 ? "1 item isn't" : `${unmatched.length} items aren't`} in the POS catalog yet. Ask IMS to sync
                 the product, then refresh.
               </p>
             )}

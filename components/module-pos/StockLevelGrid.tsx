@@ -375,7 +375,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                           disabled
                           className="w-full py-2.5 text-xs font-semibold rounded-lg cursor-not-allowed bg-muted text-muted-foreground border border-border"
                         >
-                          Read-only (SCMS)
+                          Read-only (IMS)
                         </button>
                       ) : (
                         <button
