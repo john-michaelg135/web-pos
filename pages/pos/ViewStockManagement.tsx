@@ -89,8 +89,18 @@ export function ViewStockManagement() {
   const fetchInventoryMovements = async () => {
     try {
       setIsInventoryLoading(true);
+      const selectedLocationId = locations.find(
+        (location) => location.locationName === selectedLocation
+      )?.locationId;
+
+      // Assigned users must wait until their branch has been resolved. Sending
+      // "All" without a branch causes the API to reject the request with 400.
+      if (!canSwitchLocation && !selectedLocationId) {
+        return;
+      }
+
       const params = selectedLocation !== "All"
-        ? { locationId: String(locations.find((location) => location.locationName === selectedLocation)?.locationId ?? "") }
+        ? { locationId: String(selectedLocationId) }
         : {};
       const { data } = await apiClient.instance.get("/api-pos/inventory/stock/movements", { params });
       setInventoryMovements(Array.isArray(data) ? data : []);
