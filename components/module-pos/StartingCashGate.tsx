@@ -36,7 +36,8 @@ const peso = (n: number) =>
 const sanitizeMoney = (raw: string) => {
   const cleaned = raw.replace(/[^0-9.]/g, "");
   const [whole, ...rest] = cleaned.split(".");
-  return rest.length === 0 ? whole : `${whole}.${rest.join("").slice(0, 2)}`;
+  const limitedWhole = whole.slice(0, 6);
+  return rest.length === 0 ? limitedWhole : `${limitedWhole}.${rest.join("").slice(0, 2)}`;
 };
 
 const errorMessage = (err: any, fallback: string) => {
@@ -124,8 +125,8 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
 
   const handleSave = async () => {
     const value = parseFloat(amount);
-    if (isNaN(value) || value < 0) {
-      toast.error("Enter the starting cash in the drawer (0 or more).");
+    if (isNaN(value) || value < 0 || amount.split(".")[0].length > 6) {
+      toast.error("Enter starting cash from 0 to 999,999.");
       return;
     }
     setIsSaving(true);
@@ -261,6 +262,7 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
                     onChange={(e) => setAmount(sanitizeMoney(e.target.value))}
                     onKeyDown={(e) => e.key === "Enter" && !isSaving && handleSave()}
                     placeholder="e.g. 2000.00"
+                    maxLength={9}
                     style={{
                       width: "100%",
                       padding: "10px 14px",

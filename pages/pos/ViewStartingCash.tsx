@@ -165,8 +165,9 @@ export function ViewStartingCash({
 
   const handleAddStartingCash = async () => {
     const value = parseFloat(modalAmount);
-    if (isNaN(value) || value < 0) {
-      toast.error("Enter a valid starting cash amount (0 or more).");
+    const wholeDigits = modalAmount.split(".")[0] ?? "";
+    if (isNaN(value) || value < 0 || wholeDigits.length > 6) {
+      toast.error("Enter a starting cash amount from 0 to 999,999.");
       return;
     }
     const targetLoc = effectiveLocationId || selectedBranchId || branchLocations[0]?.locationId;
@@ -539,10 +540,12 @@ export function ViewStartingCash({
                     onChange={(e) => {
                       const cleaned = e.target.value.replace(/[^0-9.]/g, "");
                       const [whole, ...rest] = cleaned.split(".");
-                      setModalAmount(rest.length === 0 ? whole : `${whole}.${rest.join("").slice(0, 2)}`);
+                      const limitedWhole = whole.slice(0, 6);
+                      setModalAmount(rest.length === 0 ? limitedWhole : `${limitedWhole}.${rest.join("").slice(0, 2)}`);
                     }}
                     onKeyDown={(e) => e.key === "Enter" && !isSubmitting && handleAddStartingCash()}
                     placeholder="e.g. 2000.00"
+                    maxLength={9}
                     style={{
                       width: "100%",
                       padding: "10px 14px",
