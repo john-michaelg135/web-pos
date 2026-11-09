@@ -13,6 +13,7 @@ import { apiClient } from "@/components/module-pos/api";
 import { StockLevelGrid } from "@/components/module-pos/StockLevelGrid";
 import { StockReceivingForm } from "@/components/module-pos/StockReceivingForm";
 import { StockMovementTable } from "@/components/module-pos/StockMovementTable";
+import { StockInventoryMovement } from "@/components/module-pos/StockInventoryTable";
 import StockAdjustmentFormDialog from "@/components/module-pos/StockAdjustmentFormDialog";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
@@ -49,6 +50,8 @@ export function ViewStockManagement() {
   const [adjustmentReason, setAdjustmentReason] = useState("");
 
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [inventoryMovements, setInventoryMovements] = useState<StockInventoryMovement[]>([]);
+  const [isInventoryLoading, setIsInventoryLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingArrivalData, setPendingArrivalData] = useState<{
     variationId: string;
@@ -61,21 +64,7 @@ export function ViewStockManagement() {
     transferId: number;
   } | null>(null);
 
-  const [adjustments, setAdjustments] = useState<any[]>([]);
-  const [isAdjustmentsLoading, setIsAdjustmentsLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-
-  const fetchAdjustments = async () => {
-    try {
-      setIsAdjustmentsLoading(true);
-      const { data } = await apiClient.apiPos.inventoryAdjustmentsList();
-      setAdjustments(data);
-    } catch (err) {
-      console.error("Failed to fetch adjustments:", err);
-    } finally {
-      setIsAdjustmentsLoading(false);
-    }
-  };
 
   const fetchMovements = async () => {
     try {
@@ -97,21 +86,24 @@ export function ViewStockManagement() {
     }
   };
 
-  const handleApproveAdjustment = async (id: number) => {
+  const fetchInventoryMovements = async () => {
     try {
-      await apiClient.apiPos.inventoryAdjustmentsApproveUpdate2(id, { approvedBy: 1 });
-      toast.success("Adjustment approved successfully!");
-      fetchAdjustments();
-      setRefreshKey((prev) => prev + 1);
+      setIsInventoryLoading(true);
+      const params = selectedLocation !== "All"
+        ? { locationId: String(locations.find((location) => location.locationName === selectedLocation)?.locationId ?? "") }
+        : {};
+      const { data } = await apiClient.instance.get("/api-pos/inventory/stock/movements", { params });
+      setInventoryMovements(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Failed to approve adjustment:", err);
-      toast.error("Failed to approve adjustment.");
+      console.error("Failed to fetch stock inventory:", err);
+      toast.error("Failed to load stock inventory.");
+    } finally {
+      setIsInventoryLoading(false);
     }
   };
 
   useEffect(() => {
     setIsMounted(true);
-    fetchAdjustments();
     fetchMovements();
 
     const fetchLocations = async () => {
@@ -140,7 +132,8 @@ export function ViewStockManagement() {
 
   useEffect(() => {
     if (activeTab === "history") fetchMovements();
-  }, [activeTab]);
+    fetchInventoryMovements();
+  }, [activeTab, selectedLocation, locations]);
 
   const handleAdjustStock = (stock: StockLevel) => {
     setSelectedStock(stock);
@@ -168,9 +161,10 @@ export function ViewStockManagement() {
         reason: adjustmentReason.trim(),
         submittedBy: 1,
       });
-      toast.success("Stock adjustment submitted for approval.");
+      toast.success("Stock request submitted.");
       setShowAdjustmentDialog(false);
-      fetchAdjustments();
+      fetchInventoryMovements();
+      setRefreshKey((prev) => prev + 1);
     } catch (err) {
       console.error("Failed to submit adjustment:", err);
       toast.error("Failed to submit adjustment.");
@@ -194,6 +188,7 @@ export function ViewStockManagement() {
       });
       toast.success("Stock received successfully!");
       fetchMovements();
+      fetchInventoryMovements();
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
       console.error("Error posting arrival:", err);
@@ -298,6 +293,7 @@ export function ViewStockManagement() {
             onSuccess={handleRecordArrival}
             onReceived={() => {
               fetchMovements();
+              fetchInventoryMovements();
               setRefreshKey((prev) => prev + 1);
             }}
           />
@@ -326,6 +322,11 @@ export function ViewStockManagement() {
         cardBg="#ffffff"
         inputBg="#ffffff"
         isMobile={isMobile}
+        movements={inventoryMovements.filter((movement) =>
+          movement.variationId === Number(selectedStock?.variationId) &&
+          movement.locationId === Number(selectedStock?.locationId)
+        )}
+        isMovementsLoading={isInventoryLoading}
       />
 
       <DeleteConfirmDialog

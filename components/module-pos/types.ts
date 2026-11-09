@@ -148,6 +148,8 @@ export interface Variation {
 
 export interface StockLevel {
   variationId: string;
+  productName?: string;
+  variationName?: string;
   location:    string;
   locationId?: number;
   quantity:    number;
