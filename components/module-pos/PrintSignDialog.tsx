@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { Eraser, Printer } from "lucide-react";
+import { Eraser, ImageUp, Printer, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,7 +16,9 @@ export function PrintSignDialog({
   title,
   notes,
   signerName,
+  savedSignature,
   onConfirm,
+  onSaveSignature,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -24,11 +26,15 @@ export function PrintSignDialog({
   title: string;
   notes: string[];
   signerName: string;
+  savedSignature?: string | null;
   onConfirm: (signature: string) => void;
+  onSaveSignature?: (signature: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasInk, setHasInk] = useState(false);
+  const [signatureSource, setSignatureSource] = useState<"saved" | "draw" | "upload">("draw");
+  const [uploadedSignature, setUploadedSignature] = useState<string | null>(null);
 
   // Size the canvas to its box at the screen's pixel density so strokes stay crisp.
   const setUpCanvas = useCallback(() => {
@@ -52,9 +58,11 @@ export function PrintSignDialog({
     const id = window.setTimeout(() => {
       setUpCanvas();
       setHasInk(false);
+      setSignatureSource(savedSignature ? "saved" : "draw");
+      setUploadedSignature(null);
     }, 50);
     return () => window.clearTimeout(id);
-  }, [open, setUpCanvas]);
+  }, [open, setUpCanvas, savedSignature]);
 
   // Pointer position in the canvas's own pixels, so the ink lands under the pointer at any size.
   const point = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -67,6 +75,7 @@ export function PrintSignDialog({
   };
 
   const start = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (signatureSource !== "draw") return;
     const ctx = e.currentTarget.getContext("2d");
     if (!ctx) return;
     // Don't let the drag select text on the page behind.
@@ -83,7 +92,7 @@ export function PrintSignDialog({
   };
 
   const move = (e: PointerEvent<HTMLCanvasElement>) => {
-    if (!drawing.current) return;
+    if (!drawing.current || signatureSource !== "draw") return;
     const ctx = e.currentTarget.getContext("2d");
     if (!ctx) return;
     const { x, y } = point(e);
@@ -101,12 +110,50 @@ export function PrintSignDialog({
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasInk(false);
+    setSignatureSource("draw");
   };
 
   const confirm = () => {
     const canvas = canvasRef.current;
+    if (signatureSource === "saved" && savedSignature) {
+      onConfirm(savedSignature);
+      return;
+    }
+    if (signatureSource === "upload" && uploadedSignature) {
+      onConfirm(uploadedSignature);
+      return;
+    }
     if (!canvas || !hasInk) return;
-    onConfirm(canvas.toDataURL("image/png"));
+    const signature = canvas.toDataURL("image/png");
+    onSaveSignature?.(signature);
+    onConfirm(signature);
+  };
+
+  const useSavedSignature = () => {
+    if (!savedSignature) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setSignatureSource("saved");
+    setHasInk(false);
+  };
+
+  const handleUpload = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 2 * 1024 * 1024) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") return;
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      onSaveSignature?.(reader.result);
+      setUploadedSignature(reader.result);
+      setSignatureSource("upload");
+      setHasInk(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -135,15 +182,23 @@ export function PrintSignDialog({
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground m-0">
                 Signature of {signerName || "the person printing"}
               </p>
-              <Button type="button" variant="ghost" size="sm" className="gap-1.5 h-8" onClick={clear} disabled={!hasInk}>
-                <Eraser className="h-3.5 w-3.5" />
-                Clear
-              </Button>
+              <div className="flex items-center gap-1">
+                {savedSignature && (
+                  <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5" onClick={useSavedSignature}>
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Use saved
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5" onClick={clear} disabled={!hasInk && signatureSource !== "saved"}>
+                  <Eraser className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+              </div>
             </div>
             <div className="relative rounded-xl border border-dashed border-border bg-card select-none">
               <canvas
                 ref={canvasRef}
-                className="block h-40 w-full touch-none cursor-crosshair rounded-xl"
+                className={`block h-40 w-full rounded-xl ${signatureSource === "draw" ? "touch-none cursor-crosshair" : "pointer-events-none cursor-default"}`}
                 onPointerDown={start}
                 onPointerMove={move}
                 onPointerUp={end}
@@ -151,17 +206,32 @@ export function PrintSignDialog({
                 onPointerLeave={end}
                 aria-label="Signature pad"
               />
-              {!hasInk && (
+              {signatureSource === "saved" && savedSignature ? (
+                <img src={savedSignature} alt="Saved signature preview" className="pointer-events-none absolute inset-6 h-[calc(100%-3rem)] w-[calc(100%-3rem)] object-contain" />
+              ) : signatureSource === "upload" && uploadedSignature ? (
+                <img src={uploadedSignature} alt="Uploaded signature preview" className="pointer-events-none absolute inset-6 h-[calc(100%-3rem)] w-[calc(100%-3rem)] object-contain" />
+              ) : !hasInk && (
                 <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
                   Sign here with your mouse, finger or pen
                 </span>
               )}
               <div className="pointer-events-none absolute left-6 right-6 bottom-8 border-b border-foreground/30" />
             </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-primary">
+                <ImageUp className="h-4 w-4" />
+                Upload signature photo
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => handleUpload(event.target.files?.[0])} />
+              </label>
+              <span className="text-xs text-muted-foreground">PNG, JPG, or WEBP up to 2 MB</span>
+            </div>
           </div>
         </div>
 
         <DialogFooter className="gap-2">
+          <p className="mr-auto text-left text-xs text-muted-foreground">
+            By clicking Confirm &amp; Print, you certify that you have reviewed and approved this report.
+          </p>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

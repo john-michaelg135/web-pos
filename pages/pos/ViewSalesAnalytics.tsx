@@ -78,6 +78,20 @@ export function ViewSalesAnalytics() {
   // Print / PDF first asks for a signature; it is placed on the printout's sign-off line.
   const [isSigning, setIsSigning] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
+
+  useEffect(() => {
+    const signerKey = authUser?.username;
+    if (!signerKey || typeof window === "undefined") return;
+    setSavedSignature(window.localStorage.getItem(`sales-report-signature:${signerKey}`));
+  }, [authUser?.username]);
+
+  const saveSignature = (value: string) => {
+    const signerKey = authUser?.username;
+    if (!signerKey) return;
+    window.localStorage.setItem(`sales-report-signature:${signerKey}`, value);
+    setSavedSignature(value);
+  };
 
   const [locationName, setLocationName] = useState<string | null>(null);
   const [filterLocation, setFilterLocation] = useState<number | undefined>(undefined);
@@ -425,6 +439,8 @@ export function ViewSalesAnalytics() {
         title={activeTab === "money-audit" ? "Money Audit Report" : "Sales Report"}
         notes={activeTab === "money-audit" ? MONEY_AUDIT_NOTES : SALES_REPORT_NOTES}
         signerName={reportMeta.preparedBy}
+        savedSignature={savedSignature}
+        onSaveSignature={saveSignature}
         onConfirm={(signed) => {
           setSignature(signed);
           setIsSigning(false);
