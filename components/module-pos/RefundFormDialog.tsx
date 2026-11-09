@@ -40,21 +40,23 @@ export default function RefundFormDialog({
   const isWebOrder = order?.type?.toLowerCase() === "online" || ["e-commerce", "ecommerce"].includes(order?.source?.toLowerCase() ?? "");
   const isInstitutional = order?.type === "institutional";
   const isGcashInstitutional = isInstitutional && order?.paymentMethod?.toLowerCase() === "gcash";
+  const isPaidInstitutional = isInstitutional &&
+    ["cash", "gcash"].includes(order?.paymentMethod?.toLowerCase() ?? "");
   // Refunds go back to stock unless the reason says "(Unsellable)": the backend keys off
-  // that text to skip the restock. GCash institutional orders are only refundable once
+  // that text to skip the restock. Paid institutional orders are only refundable once
   // delivered, so their reasons are all about the goods received (none restock).
-  // Cash institutional orders refund like in-store. A shipped institutional order can only be
+  // A shipped institutional order can only be
   // refunded as a failed delivery, which is restocked because Lalamove returns the goods.
   const isFailedDelivery = isInstitutional && order?.status === "shipped";
   const predefinedReasons = isWebOrder
     ? ["Item arrived damaged", "Wrong item received", "Item not as described", "Other"]
     : isFailedDelivery
     ? ["Item not delivered"]
-    : isGcashInstitutional
+    : isPaidInstitutional
     ? ["Damaged (Unsellable)", "Customization not followed (Unsellable)"]
     : ["Return (Sealed/Sellable Condition)", "Change of mind", "Damaged/Expired (Unsellable)"];
-  // GCash-paid institutional refunds and failed deliveries need a photo as proof.
-  const requiresPhoto = isGcashInstitutional || isFailedDelivery;
+  // Paid institutional refunds and failed deliveries need a photo as proof.
+  const requiresPhoto = isPaidInstitutional || isFailedDelivery;
 
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [mounted, setMounted] = useState(false);
@@ -232,7 +234,7 @@ export default function RefundFormDialog({
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                   {isFailedDelivery
                     ? "Required: Lalamove's failed-delivery screen or proof the item was returned. The items go back to stock once approved."
-                    : "Required for GCash-paid institutional orders, e.g. a photo of the damaged item or the customization that wasn't followed."}
+                    : "Required for paid institutional orders, e.g. a photo of the damaged item or the customization that wasn't followed."}
                 </p>
                 {proofImage ? (
                   <div className="flex items-start gap-3">

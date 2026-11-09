@@ -31,6 +31,7 @@ const typeLabel: Record<string, string> = {
   Receipt: "Addition",
   Sale: "Sale deduction",
   Refund: "Refund return",
+  Loss: "System loss",
   Adjustment: "Adjustment",
 };
 

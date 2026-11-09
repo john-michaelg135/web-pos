@@ -283,6 +283,7 @@ export default function StockAdjustmentFormDialog({
 }
 
 function formatMovementType(value: string) {
+  if (value === "Loss") return "System loss";
   return value.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 

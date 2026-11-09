@@ -95,7 +95,7 @@ export default function ApproveRefundDialog({
                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
                 <span>
-                  Are you sure you want to approve this refund? Approving will permanently mark this order as <strong>Refunded</strong>, deduct the amount from sales, and automatically restore all items back into the inventory stock.
+                  Are you sure you want to approve this refund? Approving will permanently mark this order as <strong>Refunded.</strong>
                 </span>
               </div>
             </div>

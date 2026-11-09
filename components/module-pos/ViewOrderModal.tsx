@@ -666,9 +666,9 @@ onRejectVoid,
               </button>
             )}
 
-            {/* Request Refund Button: cashier capability (Order Management write). Visible if order paid/completed.
-                GCash institutional orders can only be refunded once delivered (Completed). */}
-            {canRequestRefund && (order.status === "completed" || (order.paymentStatus === "paid" && !isGcashInstitutional && !isShippedInstitutional)) && !["refund_requested", "refunded", "cancelled", "rejected", "void_requested", "voided"].includes(order.status) && onRequestRefund && (
+            {/* Request Refund Button: cashier capability (Order Management write). Paid
+                institutional orders become eligible after delivery (Completed). */}
+            {canRequestRefund && (order.status === "completed" || (!isInstitutional && order.paymentStatus === "paid" && !isShippedInstitutional)) && !["refund_requested", "refunded", "cancelled", "rejected", "void_requested", "voided"].includes(order.status) && onRequestRefund && (
               <button
                 onClick={onRequestRefund}
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
