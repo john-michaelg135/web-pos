@@ -71,6 +71,14 @@ const toTitleCase = (str: string) => {
     .trim();
 };
 
+const getVariationWeightKg = (variationName: string): number | null => {
+  const match = variationName.match(/(\d+(?:[.,]\d+)?)\s*(kg|g)\b/i);
+  if (!match) return null;
+  const value = Number(match[1].replace(",", "."));
+  if (!Number.isFinite(value) || value <= 0) return null;
+  return match[2].toLowerCase() === "kg" ? value : value / 1000;
+};
+
 export default function ViewSalesProcessing() {
   const { user: authUser, isLoading: authLoading, canRead } = useAuth();
   const { scope, locations: myLocations, isLoading: locationsLoading } = useMyLocations();
@@ -331,6 +339,13 @@ export default function ViewSalesProcessing() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * (Number(item.quantity) || 0), 0);
+  const institutionalWeightKg = useMemo(
+    () => cart.reduce((sum, item) => {
+      const packageWeightKg = getVariationWeightKg(item.variation);
+      return sum + (packageWeightKg ?? 0) * (Number(item.quantity) || 0);
+    }, 0),
+    [cart]
+  );
 
   const pwdDetails = useMemo(() => {
     if (!isSeniorPWD) {
@@ -385,6 +400,9 @@ export default function ViewSalesProcessing() {
 
     const newErrors: Record<string, string> = {};
     if (isInstitutional) {
+      if (institutionalWeightKg < 20) {
+        newErrors.institutionalWeight = `Institutional orders require at least 20 kg. Current order: ${institutionalWeightKg.toFixed(3).replace(/\.?0+$/, "")} kg.`;
+      }
       const resolvedContact = isOrg ? toTitleCase(orgName).trim() : toTitleCase(contactPerson).trim();
       const normStreet = toTitleCase(street);
       const normBarangay = toTitleCase(barangay);
@@ -882,6 +900,16 @@ export default function ViewSalesProcessing() {
 
         {/* Totals */}
         <div>
+          {isInstitutional && (
+            <div className={cn(
+              "mb-2 rounded-lg border px-3 py-2 text-[10px] font-bold",
+              institutionalWeightKg >= 20
+                ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-700"
+                : "border-amber-500/30 bg-amber-500/5 text-amber-700"
+            )}>
+              Institutional weight: {institutionalWeightKg.toFixed(3).replace(/\.?0+$/, "")} kg / 20 kg minimum
+            </div>
+          )}
           <div className="flex justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mb-1">
             <span>Subtotal</span>
             <span className="text-foreground">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -905,7 +933,7 @@ export default function ViewSalesProcessing() {
         </div>
 
         <Button
-          disabled={cart.length === 0 || salesLocked}
+          disabled={cart.length === 0 || salesLocked || (isInstitutional && institutionalWeightKg < 20)}
           onClick={handleCheckout}
           className="w-full h-10 rounded-xl text-sm font-bold uppercase tracking-[0.1em]"
         >
@@ -1408,6 +1436,15 @@ export default function ViewSalesProcessing() {
             <DialogTitle className="text-base sm:text-lg font-bold">
               Institutional Details
             </DialogTitle>
+            <p className={cn(
+              "text-xs font-semibold",
+              institutionalWeightKg >= 20 ? "text-emerald-700" : "text-amber-700"
+            )}>
+              Product weight: {institutionalWeightKg.toFixed(3).replace(/\.?0+$/, "")} kg / 20 kg minimum
+            </p>
+            {errors.institutionalWeight && (
+              <p className="text-xs font-semibold text-destructive">{errors.institutionalWeight}</p>
+            )}
           </DialogHeader>
 
           <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto flex-1">
@@ -1643,6 +1680,10 @@ export default function ViewSalesProcessing() {
               onClick={() => {
                 let isValid = true;
                 const newErrors: any = {};
+                if (institutionalWeightKg < 20) {
+                  newErrors.institutionalWeight = `Institutional orders require at least 20 kg. Current order: ${institutionalWeightKg.toFixed(3).replace(/\.?0+$/, "")} kg.`;
+                  isValid = false;
+                }
                 const normOrg = toTitleCase(orgName).trim();
                 const normFirst = toTitleCase(contactFirstName).trim();
                 const normMiddle = toTitleCase(contactMiddleName).trim();
