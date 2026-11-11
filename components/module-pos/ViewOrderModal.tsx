@@ -629,10 +629,10 @@ onRejectVoid,
                   ₱{pricing.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
-              {(order.refundedAmount ?? 0) > 0 && order.status !== "refunded" && (
+              {(order.refundedAmount ?? 0) > 0 && (
                 <>
                   <div className="flex justify-between items-center text-red-500">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Refunded ({refundMethodOf(order)})</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider">Refunded via {refundMethodOf(order)}</span>
                     <span className="text-sm font-bold">- ₱{(order.refundedAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between items-center">
