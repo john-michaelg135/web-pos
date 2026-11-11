@@ -129,6 +129,12 @@ export function PrintSignDialog({
     onConfirm(signature);
   };
 
+  // A saved or uploaded signature counts too, not only fresh ink on the pad.
+  const canConfirm =
+    signatureSource === "saved" ? !!savedSignature
+    : signatureSource === "upload" ? !!uploadedSignature
+    : hasInk;
+
   const useSavedSignature = () => {
     if (!savedSignature) return;
     const canvas = canvasRef.current;
@@ -235,7 +241,7 @@ export function PrintSignDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" className="gap-2" onClick={confirm} disabled={!hasInk}>
+          <Button type="button" className="gap-2" onClick={confirm} disabled={!canConfirm}>
             <Printer className="h-4 w-4" />
             Confirm &amp; print
           </Button>
