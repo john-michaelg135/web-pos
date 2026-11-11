@@ -40,6 +40,9 @@ const LEGACY_COLORS = {
   inputBg: "#fafafa",
 };
 
+/** The order list loads this many days at a time (see "Load more" under the list). */
+const ORDER_HISTORY_STEP_DAYS = 30;
+
 const peso = (n: number) => `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const orderLabel = (order: Order) => order.orderNumber || `#${order.id}`;
 /** A pop-up product line: name, packaging and size (the SKU is left out). */
@@ -191,6 +194,10 @@ export default function ViewOrderManagement() {
     refundDeadline: (dto as any).refundDeadline ?? null,
   });
 
+  // How far back the list goes. Older orders that still need action always load (the server
+  // adds them), so this only limits finished history. null = everything.
+  const [historyDays, setHistoryDays] = useState<number | null>(ORDER_HISTORY_STEP_DAYS);
+
   const fetchOrders = useCallback(async (targetLocId?: number) => {
     try {
       setIsLoading(true);
@@ -199,7 +206,12 @@ export default function ViewOrderManagement() {
         ...headers,
         ...(locId ? { "X-Location-Id": String(locId) } : {}),
       };
-      const queryParams = !canSwitchLocation && locId ? { LocationId: locId } : undefined;
+      const queryParams = {
+        ...(!canSwitchLocation && locId ? { LocationId: locId } : {}),
+        ...(historyDays != null
+          ? { DateFrom: new Date(Date.now() - historyDays * 86_400_000).toISOString(), IncludeOpen: true }
+          : {}),
+      };
       const { data } = await apiClient.apiPos.orderManagementOrdersList(queryParams, { headers: reqHeaders });
       setOrders(data.map(mapToFrontendOrder));
     } catch (error) {
@@ -208,7 +220,7 @@ export default function ViewOrderManagement() {
     } finally {
       setIsLoading(false);
     }
-  }, [assignedLocation?.locationId, canSwitchLocation, headers]);
+  }, [assignedLocation?.locationId, canSwitchLocation, headers, historyDays]);
 
   const requestManagerEndpoint = async (path: string, body?: unknown) => {
     const response = await fetch(`/api/pos/${path}`, {
@@ -831,6 +843,23 @@ export default function ViewOrderManagement() {
             {currentOrders.length === 0 && (
               <div className="col-span-full text-center py-12 text-muted-foreground">
                 No {activeTab === "refunds" ? (refundSubTab === "requested" ? "refund request" : refundSubTab === "refunded" ? "refunded" : "rejected") : activeTab === "voids" ? (voidSubTab === "requested" ? "void request" : "voided") : activeTab} orders found.
+              </div>
+            )}
+          </div>
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm">
+            <p className="m-0 text-muted-foreground">
+              {historyDays != null
+                ? <>Showing orders from the last <span className="font-semibold text-foreground">{historyDays} days</span>, plus any older order that still needs action.</>
+                : <>Showing <span className="font-semibold text-foreground">all orders</span>.</>}
+            </p>
+            {historyDays != null && (
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" disabled={isLoading} onClick={() => setHistoryDays(historyDays + ORDER_HISTORY_STEP_DAYS)}>
+                  Load {ORDER_HISTORY_STEP_DAYS} more days
+                </Button>
+                <Button variant="ghost" size="sm" disabled={isLoading} onClick={() => setHistoryDays(null)}>
+                  Show all
+                </Button>
               </div>
             )}
           </div>

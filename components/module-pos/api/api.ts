@@ -1901,6 +1901,8 @@ export class Api<
      */
     orderManagementOrdersList: (
       query?: {
+        /** With DateFrom: also return older orders that still need action. */
+        IncludeOpen?: boolean;
         OrderStatus?: string;
         OrderSource?: string;
         OrderType?: string;
