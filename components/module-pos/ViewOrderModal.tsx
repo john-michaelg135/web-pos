@@ -82,6 +82,8 @@ onRejectVoid,
   const canApproveRefund = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const canRejectRefund = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const canRequestRefund = can(POS_MODULES.ORDER_MANAGEMENT, "write");
+  // An order gets one approved refund: once part of it is refunded it can't be voided or refunded again.
+  const isPartlyRefunded = (order?.refundedAmount ?? 0) > 0;
   const canRequestVoid = can(POS_MODULES.ORDER_MANAGEMENT, "write");
   const canApproveVoid = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const canRejectVoid = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
@@ -459,6 +461,7 @@ onRejectVoid,
                       ₱{(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
+                  <RefundNote item={item} orderRefunded={order.status === "refunded"} />
                 </li>
               ))}
             </ul>
@@ -489,6 +492,7 @@ onRejectVoid,
                       </td>
                       <td className="px-4 py-3 text-sm font-bold text-left" style={{ color: text }}>
                         {item.quantity}
+                        <RefundNote item={item} orderRefunded={order.status === "refunded"} />
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-left" style={{ color: muted }}>
                         ₱{item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -548,7 +552,7 @@ onRejectVoid,
                       {STATUS_LABELS[history.oldStatus.toLowerCase() as OrderStatus] || history.oldStatus} → {STATUS_LABELS[history.newStatus.toLowerCase() as OrderStatus] || history.newStatus}
                     </p>
                     <p className="text-[11px] text-gray-500 mt-0.5 m-0">
-                      {new Date(history.createdAt).toLocaleString()} {history.changedBy ? `by User #${history.changedBy}` : "(System)"}
+                      {new Date(history.createdAt).toLocaleString()} {history.changedByName ? `by ${history.changedByName}` : history.changedBy && history.changedBy >= 1000 ? `by User #${history.changedBy}` : history.changedBy ? "(user not recorded)" : "(System)"}
                     </p>
                     {history.remarks && (
                       <p className="text-xs mt-1 italic p-2 rounded-lg bg-gray-100 dark:bg-gray-800/50 m-0" style={{ color: text }}>
@@ -586,6 +590,18 @@ onRejectVoid,
                   ₱{pricing.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
+              {(order.refundedAmount ?? 0) > 0 && order.status !== "refunded" && (
+                <>
+                  <div className="flex justify-between items-center text-red-500">
+                    <span className="text-[11px] font-bold uppercase tracking-wider">Refunded</span>
+                    <span className="text-sm font-bold">- ₱{(order.refundedAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: muted }}>Net Sale</span>
+                    <span className="text-sm font-bold" style={{ color: text }}>₱{(pricing.total - (order.refundedAmount ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </>
+              )}
               {order.amountTendered != null && (
                 <>
                   <div className="flex justify-between items-center mt-2">
@@ -626,7 +642,7 @@ onRejectVoid,
             )}
 
             {/* Request Void Button (For pending/completed orders) */}
-            {canRequestVoid && !["void_requested", "voided", "refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestVoid && (
+            {canRequestVoid && !isPartlyRefunded && !["void_requested", "voided", "refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestVoid && (
               <button
                 onClick={onRequestVoid}
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-orange-600 rounded-lg hover:bg-orange-700 active:scale-95 transition-all shadow-sm"
@@ -668,7 +684,7 @@ onRejectVoid,
 
             {/* Request Refund Button: cashier capability (Order Management write). Paid
                 institutional orders become eligible after delivery (Completed). */}
-            {canRequestRefund && (order.status === "completed" || (!isInstitutional && order.paymentStatus === "paid" && !isShippedInstitutional)) && !["refund_requested", "refunded", "cancelled", "rejected", "void_requested", "voided"].includes(order.status) && onRequestRefund && (
+            {canRequestRefund && !isPartlyRefunded && (order.status === "completed" || (!isInstitutional && order.paymentStatus === "paid" && !isShippedInstitutional)) && !["refund_requested", "refunded", "cancelled", "rejected", "void_requested", "voided"].includes(order.status) && onRequestRefund && (
               <button
                 onClick={onRequestRefund}
                 className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
@@ -1082,4 +1098,16 @@ onRejectVoid,
   );
 
   return createPortal(modalContent, document.body);
+}
+
+/** "2 refunded · 1 awaiting refund" under an order line. Nothing for a whole-order refund (the status says it). */
+function RefundNote({ item, orderRefunded }: { item: Order["items"][number]; orderRefunded: boolean }) {
+  const refunded = item.refundedQuantity ?? 0;
+  const waiting = item.pendingRefundQuantity ?? 0;
+  if (orderRefunded || (refunded === 0 && waiting === 0)) return null;
+  return (
+    <span className="block mt-0.5 text-[11px] font-semibold text-red-500">
+      {[refunded > 0 ? `${refunded} refunded` : null, waiting > 0 ? `${waiting} awaiting refund` : null].filter(Boolean).join(" · ")}
+    </span>
+  );
 }

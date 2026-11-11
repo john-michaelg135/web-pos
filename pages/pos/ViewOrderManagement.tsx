@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
 import { Search, Filter, LayoutGrid, List } from "lucide-react";
-import { DeliveryConfirmationInput, Order, OrderStatus, STATUS_LABELS } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, Order, OrderStatus, STATUS_LABELS, latestRefundWasRejected, pendingRefundLines } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
 import VoidFormDialog from "@/components/module-pos/VoidFormDialog";
@@ -14,7 +14,7 @@ import ApproveRefundDialog from "@/components/module-pos/ApproveRefundDialog";
 import ApproveVoidDialog from "@/components/module-pos/ApproveVoidDialog";
 import OrderFilters from "@/components/module-pos/OrderFilters";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
-import { OrderManagementResponseDto } from "../../components/module-pos/api/api";
+import { OrderManagementResponseDto, RefundItemDto } from "../../components/module-pos/api/api";
 import { toast } from "sonner";
 import { apiClient } from "@/components/module-pos/api";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
@@ -131,7 +131,15 @@ export default function ViewOrderManagement() {
     source: dto.orderSource,
     customer: (dto as any).seniorPwdName ? (dto as any).seniorPwdName : (dto.contactPerson ? dto.contactPerson : (dto.customerId ? `Customer ${dto.customerId}` : "Customer")),
     items: dto.items && dto.items.length > 0
-      ? dto.items.map((i) => ({ name: i.productName || "Order Item", variation: i.variationName || "Standard", quantity: Number(i.quantity) || 1, price: Number(i.unitPrice) || 0 }))
+      ? dto.items.map((i) => ({
+          variationId: i.variationId != null ? Number(i.variationId) : undefined,
+          name: i.productName || "Order Item",
+          variation: i.variationName || "Standard",
+          quantity: Number(i.quantity) || 1,
+          price: Number(i.unitPrice) || 0,
+          refundedQuantity: Number((i as { refundedQuantity?: number }).refundedQuantity) || 0,
+          pendingRefundQuantity: Number((i as { pendingRefundQuantity?: number }).pendingRefundQuantity) || 0,
+        }))
       : [{ name: "Order Items", variation: "Mixed", quantity: 1, price: Number(dto.totalAmount) || 0 }],
     total: Number(dto.totalAmount) || 0,
     status: (dto.orderStatus?.toLowerCase().replace(" ", "_") as OrderStatus) || "pending",
@@ -158,11 +166,13 @@ export default function ViewOrderManagement() {
     seniorPwdProvince: (dto as any).seniorPwdProvince || "",
     seniorPwdZipCode: (dto as any).seniorPwdZipCode || "",
     statusHistory: (dto as any).statusHistory
-      ? (dto as any).statusHistory.map((h: any) => ({ id: h.id, orderId: h.orderId, oldStatus: h.oldStatus, newStatus: h.newStatus, changedBy: h.changedBy, remarks: h.remarks, createdAt: h.createdAt }))
+      ? (dto as any).statusHistory.map((h: any) => ({ id: h.id, orderId: h.orderId, oldStatus: h.oldStatus, newStatus: h.newStatus, changedBy: h.changedBy, changedByName: h.changedByName ?? null, remarks: h.remarks, createdAt: h.createdAt }))
       : [],
     createdAt: dto.createdAt || undefined,
     deliveryConfirmation: (dto as any).deliveryConfirmation ?? null,
     hasRefundProof: !!(dto as any).hasRefundProof,
+    refundedAmount: Number((dto as any).refundedAmount) || 0,
+    pendingRefundAmount: Number((dto as any).pendingRefundAmount) || 0,
   });
 
   const fetchOrders = useCallback(async (targetLocId?: number) => {
@@ -376,12 +386,16 @@ export default function ViewOrderManagement() {
       // Mirrors the backend: "(Unsellable)" reasons are refunded without restocking.
       const reasonText = orderToApprove.remarks?.toLowerCase() ?? "";
       const isUnsellable = reasonText.includes("(unsellable)") || reasonText.startsWith("damaged/expired");
+      const refunded = pendingRefundLines(orderToApprove);
+      const refundedAmount = refunded.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const isPartial = refunded.reduce((sum, item) => sum + item.quantity, 0)
+        < orderToApprove.items.reduce((sum, item) => sum + item.quantity - (item.refundedQuantity ?? 0), 0);
       toast.success(
         <div className="flex flex-col gap-1 text-emerald-800 dark:text-emerald-200">
-          <div className="font-bold">Refund approved!</div>
+          <div className="font-bold">{isPartial ? "Partial refund approved!" : "Refund approved!"}</div>
           <div className="text-[11px] flex items-center justify-between border-b pb-1 mb-1 border-emerald-500/20">
             <span className="text-gray-500 dark:text-gray-400">Amount deducted from sales:</span>
-            <span className="font-black text-red-500">- ₱{orderToApprove.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span className="font-black text-red-500">- ₱{refundedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           {isUnsellable ? (
             <div className="text-[11px] text-gray-500 dark:text-gray-400">Unsellable items were not returned to stock.</div>
@@ -389,7 +403,7 @@ export default function ViewOrderManagement() {
             <>
               <div className="text-[11px] text-gray-500 dark:text-gray-400">Restored inventory stocks:</div>
               <div className="text-[11px] flex flex-col gap-0.5 mt-1 border-t pt-1 border-emerald-500/20">
-                {orderToApprove.items.map((item, idx) => (
+                {refunded.map((item, idx) => (
                   <div key={idx} className="flex justify-between gap-4"><span>{item.name} ({item.variation})</span><span className="font-bold">+{item.quantity} qty</span></div>
                 ))}
               </div>
@@ -427,12 +441,13 @@ export default function ViewOrderManagement() {
     }
   };
 
-  const handleRequestRefundSubmit = async (proofImage?: string) => {
+  const handleRequestRefundSubmit = async (proofImage: string | undefined, items: RefundItemDto[] | undefined) => {
     if (!selectedOrder || !refundReason.trim()) return;
     if (refundReason.trim().length > 500) { toast.error("Reason must not exceed 500 characters."); return; }
     if (/[<>]/.test(refundReason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
+    if (items && items.length === 0) { toast.error("Choose at least one item to refund."); return; }
     try {
-      await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-refund`, { reason: refundReason, proofImage });
+      await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-refund`, { reason: refundReason, proofImage, items });
       toast.success(`Refund requested successfully for Order ${selectedOrder.orderNumber || `#${selectedOrder.id}`}.`);
       fetchOrders();
     } catch (err) { console.error("Failed to request refund:", err); toast.error(err instanceof Error && err.message ? err.message : "Failed to request refund."); }
@@ -497,12 +512,13 @@ export default function ViewOrderManagement() {
   // stock are listed under Active.
   const activeOrders = filteredOrders.filter((o) => !["paid", "completed", "delivered", "rejected", "cancelled", "refund_requested", "refunded", "void_requested", "voided"].includes(o.status));
   const rejectedRefunds = filteredOrders
-    .filter((o) => o.status === "completed" && (o.remarks?.toLowerCase().startsWith("refund rejected") || o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed")))
+    .filter((o) => o.status === "completed" && latestRefundWasRejected(o))
     .map((o) => ({ ...o, status: "rejected" as const }));
-  const completedOrders = filteredOrders.filter((o) => ["completed", "delivered"].includes(o.status) && !(o.remarks?.toLowerCase().startsWith("refund rejected") || o.statusHistory?.some(h => h.oldStatus === "Refund Requested" && h.newStatus === "Completed")));
+  const completedOrders = filteredOrders.filter((o) => ["completed", "delivered"].includes(o.status) && !latestRefundWasRejected(o));
   const paidOrders = filteredOrders.filter((o) => o.status === "paid");
   const refundRequests = filteredOrders.filter((o) => o.status === "refund_requested");
-  const refundedOrders = filteredOrders.filter((o) => o.status === "refunded");
+  // Fully refunded orders, plus orders with some items refunded (those stay Completed too).
+  const refundedOrders = filteredOrders.filter((o) => o.status === "refunded" || (o.status !== "refund_requested" && (o.refundedAmount ?? 0) > 0));
   const voidRequests = filteredOrders.filter((o) => o.status === "void_requested");
   const voidedOrders = filteredOrders.filter((o) => o.status === "voided");
   const rejectedVoids = filteredOrders

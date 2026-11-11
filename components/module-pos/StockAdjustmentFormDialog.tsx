@@ -206,7 +206,9 @@ export default function StockAdjustmentFormDialog({
                             <p className={`m-0 text-base font-black tabular-nums ${movement.quantityDelta > 0 ? "text-emerald-600" : "text-destructive"}`}>
                               {movement.quantityDelta > 0 ? "+" : ""}{movement.quantityDelta}
                             </p>
-                            <p className="m-0 mt-0.5 text-[11px] text-muted-foreground">{movement.quantityBefore} → {movement.quantityAfter}</p>
+                            <p className="m-0 mt-0.5 text-[11px] text-muted-foreground">
+                              {movement.movementType === "Loss" ? `Written off · ${movement.quantityAfter} in stock` : `${movement.quantityBefore} → ${movement.quantityAfter}`}
+                            </p>
                           </div>
                         </div>
                       </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Order } from "@/components/module-pos/types";
+import { Order, pendingRefundLines } from "@/components/module-pos/types";
 
 interface ApproveRefundDialogProps {
   isOpen: boolean;
@@ -41,6 +41,13 @@ export default function ApproveRefundDialog({
   }, [isOpen]);
 
   if (!isOpen || !order || !mounted) return null;
+
+  const requested = pendingRefundLines(order);
+  const requestedAmount = requested.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const requestedUnits = requested.reduce((sum, item) => sum + item.quantity, 0);
+  const unitsLeft = order.items.reduce((sum, item) => sum + item.quantity - (item.refundedQuantity ?? 0), 0);
+  const isPartial = requestedUnits < unitsLeft;
+  const money = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const dialogContent = (
     <div className="fixed inset-0 z-[100010] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -82,9 +89,28 @@ export default function ApproveRefundDialog({
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                 Amount to Refund
               </label>
-              <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm font-bold text-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 select-none">
-                ₱{order.total.toLocaleString()}
+              <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm font-bold text-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 select-none tabular-nums">
+                ₱{money(requestedAmount)}
+                {isPartial && <span className="ml-2 text-xs font-semibold text-gray-500 dark:text-gray-400">of ₱{money(order.total)}</span>}
               </div>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                Items Being Refunded
+              </label>
+              <ul className="m-0 p-0 list-none rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
+                {requested.map((item, idx) => (
+                  <li key={idx} className="flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm">
+                    <span className="min-w-0 break-words text-gray-800 dark:text-gray-200">
+                      {item.name} <span className="text-gray-500 dark:text-gray-400">({item.variation})</span>
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums text-gray-800 dark:text-gray-200">
+                      {item.quantity} × ₱{money(item.price)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <div className="sm:col-span-2 mt-2">
@@ -95,7 +121,11 @@ export default function ApproveRefundDialog({
                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
                 <span>
-                  Are you sure you want to approve this refund? Approving will permanently mark this order as <strong>Refunded.</strong>
+                  {isPartial ? (
+                    <>Are you sure you want to approve this partial refund? Only the items above are refunded; the order keeps its current status for the rest of its items.</>
+                  ) : (
+                    <>Are you sure you want to approve this refund? Approving will permanently mark this order as <strong>Refunded.</strong></>
+                  )}
                 </span>
               </div>
             </div>

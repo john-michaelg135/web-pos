@@ -124,7 +124,7 @@ export function StockInventoryTable({
                 </td>
                 <td className="whitespace-nowrap px-4 py-4"><Delta movement={movement} /></td>
                 <td className="whitespace-nowrap px-4 py-4 text-sm font-bold tabular-nums text-foreground">
-                  {movement.quantityBefore} → {movement.quantityAfter}
+                  {movement.movementType === "Loss" ? `Written off · ${movement.quantityAfter} in stock` : `${movement.quantityBefore} → ${movement.quantityAfter}`}
                 </td>
                 <td className="max-w-[220px] px-4 py-4 text-xs text-muted-foreground">
                   {movement.reference ?? movement.notes ?? "—"}

@@ -20,6 +20,8 @@ export type OrderStatusHistory = {
   oldStatus: string;
   newStatus: string;
   changedBy?: number | null;
+  /** Name of the staff member behind changedBy, when known. */
+  changedByName?: string | null;
   remarks?: string | null;
   createdAt: string;
 };
@@ -31,10 +33,16 @@ export type Order = {
   type: "walk-in" | "store" | "online" | "institutional";
   customer: string;
   items: {
+    /** Missing only on the placeholder line shown when an order came back without items. */
+    variationId?: number;
     name: string;
     variation: string;
     quantity: number;
     price: number;
+    /** Units already refunded. */
+    refundedQuantity?: number;
+    /** Units in a refund request awaiting a manager. */
+    pendingRefundQuantity?: number;
   }[];
   total: number;
   status: OrderStatus;
@@ -68,6 +76,10 @@ export type Order = {
   deliveryConfirmation?: DeliveryConfirmation | null;
   /** A refund request photo exists (fetched separately). */
   hasRefundProof?: boolean;
+  /** Value of the items already refunded. */
+  refundedAmount?: number;
+  /** Value of the items in a refund request awaiting a manager. */
+  pendingRefundAmount?: number;
 };
 
 /** Institutional proof of delivery. The photo is fetched separately when `hasProofImage`. */
@@ -172,4 +184,37 @@ export interface AnalyticsData {
   date:  string;
   sales: number;
   orders: number;
+}
+
+/**
+ * The items and quantities in the refund request awaiting a manager. Requests filed before
+ * item refunds existed carry no per-item counts, so they cover everything not yet refunded.
+ */
+export function pendingRefundLines(order: Order): Order["items"] {
+  const pending = order.items
+    .filter((item) => (item.pendingRefundQuantity ?? 0) > 0)
+    .map((item) => ({ ...item, quantity: item.pendingRefundQuantity ?? 0 }));
+  if (pending.length > 0) return pending;
+  return order.items
+    .map((item) => ({ ...item, quantity: item.quantity - (item.refundedQuantity ?? 0) }))
+    .filter((item) => item.quantity > 0);
+}
+
+/** Units of each item that can still be refunded (bought, minus refunded, minus awaiting approval). */
+export function refundableQuantity(item: Order["items"][number]): number {
+  return Math.max(0, item.quantity - (item.refundedQuantity ?? 0) - (item.pendingRefundQuantity ?? 0));
+}
+
+/**
+ * Whether the order's latest refund request was rejected. A partial refund approval also
+ * returns the order to Completed, so the history remark tells the two apart.
+ */
+export function latestRefundWasRejected(order: Order): boolean {
+  const decisions = (order.statusHistory ?? []).filter((h) => h.oldStatus === "Refund Requested");
+  const latest = decisions.reduce<OrderStatusHistory | null>(
+    (last, h) => (!last || new Date(h.createdAt) > new Date(last.createdAt) ? h : last),
+    null,
+  );
+  if (latest) return (latest.remarks ?? "").toLowerCase().startsWith("refund rejected");
+  return (order.remarks ?? "").toLowerCase().startsWith("refund rejected");
 }

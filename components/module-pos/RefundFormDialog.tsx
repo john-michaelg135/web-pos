@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
-import { Order } from "@/components/module-pos/types";
+import { Order, refundableQuantity } from "@/components/module-pos/types";
+import type { RefundItemDto } from "@/components/module-pos/api/api";
 import { shrinkImage } from "./ConfirmDeliveryDialog";
 
 interface RefundFormDialogProps {
@@ -12,7 +13,8 @@ interface RefundFormDialogProps {
   order: Order | null;
   reason: string;
   setReason: (reason: string) => void;
-  onSubmit: (proofImage?: string) => void;
+  /** `items` is undefined when the order has no per-item data; the server then refunds everything left. */
+  onSubmit: (proofImage: string | undefined, items: RefundItemDto[] | undefined) => void;
   primary: string;
   muted: string;
   border: string;
@@ -95,7 +97,36 @@ export default function RefundFormDialog({
     }
   };
 
-  const canSubmit = !!reason.trim() && !!selectedOption && (!requiresPhoto || !!proofImage) && !isProcessingPhoto;
+  // Units being returned, by line. Starts at everything that can still be refunded.
+  const [quantities, setQuantities] = useState<number[]>([]);
+  const lines = order?.items ?? [];
+  // Orders that came back without item data can only be refunded whole.
+  const itemized = lines.length > 0 && lines.every((item) => item.variationId != null);
+  // A failed delivery returns the whole shipment.
+  const canPickItems = itemized && !isFailedDelivery;
+  const chosen = lines.map((item, idx) => (canPickItems ? quantities[idx] ?? 0 : refundableQuantity(item)));
+  const chosenUnits = chosen.reduce((sum, qty) => sum + qty, 0);
+  const refundAmount = itemized
+    ? lines.reduce((sum, item, idx) => sum + item.price * chosen[idx], 0)
+    : order?.total ?? 0;
+  const remainingUnits = lines.reduce((sum, item) => sum + refundableQuantity(item), 0);
+  const isPartial = itemized && chosenUnits < remainingUnits;
+  const setQuantity = (idx: number, qty: number) =>
+    setQuantities((prev) => lines.map((item, i) => (i === idx ? Math.max(0, Math.min(refundableQuantity(item), qty)) : prev[i] ?? 0)));
+
+  const canSubmit = !!reason.trim() && !!selectedOption && (!requiresPhoto || !!proofImage) && !isProcessingPhoto && (!itemized || chosenUnits > 0);
+
+  const submit = () => {
+    if (!itemized) {
+      onSubmit(proofImage ?? undefined, undefined);
+      return;
+    }
+    // The same variation can appear on two lines; the server adds them up.
+    const items = lines
+      .map((item, idx) => ({ variationId: item.variationId as number, quantity: chosen[idx] }))
+      .filter((item) => item.quantity > 0);
+    onSubmit(proofImage ?? undefined, items);
+  };
 
   // Pick the radio that matches the saved reason only when the dialog opens. Doing this on every
   // reason change undid a click on "Other" (which clears the reason so it can be typed), so
@@ -105,6 +136,7 @@ export default function RefundFormDialog({
   if (isOpen !== wasOpen) {
     setWasOpen(isOpen);
     if (isOpen) {
+      setQuantities((order?.items ?? []).map(refundableQuantity));
       setSelectedOption(
         predefinedReasons.includes(reason)
           ? reason
@@ -178,10 +210,86 @@ export default function RefundFormDialog({
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                 Amount to Refund
               </label>
-              <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm font-bold text-red-500 bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900 select-none">
-                ₱{order.total.toLocaleString()}
+              <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm font-bold text-red-500 bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900 select-none tabular-nums">
+                ₱{refundAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {isPartial && <span className="ml-2 text-xs font-semibold text-gray-500 dark:text-gray-400">of ₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
               </div>
             </div>
+
+            {itemized && (
+              <div className="sm:col-span-2 mt-2">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <span className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    Items to Refund <span className="text-red-500">*</span>
+                  </span>
+                  {canPickItems && (
+                    <div className="flex items-center gap-3 text-xs font-semibold">
+                      <button type="button" className="text-primary hover:underline" onClick={() => setQuantities(lines.map(refundableQuantity))}>All items</button>
+                      <button type="button" className="text-gray-500 dark:text-gray-400 hover:underline" onClick={() => setQuantities(lines.map(() => 0))}>Clear</button>
+                    </div>
+                  )}
+                </div>
+                {isFailedDelivery && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">A failed delivery refunds the whole shipment.</p>
+                )}
+                <ul className="m-0 p-0 list-none rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-200 dark:divide-slate-700">
+                  {lines.map((item, idx) => {
+                    const max = refundableQuantity(item);
+                    const qty = chosen[idx];
+                    const done = item.refundedQuantity ?? 0;
+                    const waiting = item.pendingRefundQuantity ?? 0;
+                    return (
+                      <li key={idx} className="flex items-center justify-between gap-3 px-3.5 py-3">
+                        <div className="min-w-0">
+                          <p className="m-0 text-sm font-semibold text-slate-800 dark:text-slate-200 break-words">
+                            {item.name} <span className="font-normal text-gray-500 dark:text-gray-400">({item.variation})</span>
+                          </p>
+                          <p className="m-0 mt-0.5 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+                            ₱{item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each · bought {item.quantity}
+                            {done > 0 && ` · ${done} already refunded`}
+                            {waiting > 0 && ` · ${waiting} awaiting approval`}
+                          </p>
+                        </div>
+                        {max === 0 ? (
+                          <span className="shrink-0 text-xs font-semibold text-gray-500 dark:text-gray-400">Nothing left to refund</span>
+                        ) : canPickItems ? (
+                          <div className="shrink-0 flex items-center gap-1.5" role="group" aria-label={`Units of ${item.name} to refund`}>
+                            <button
+                              type="button"
+                              aria-label="One fewer"
+                              disabled={qty <= 0}
+                              onClick={() => setQuantity(idx, qty - 1)}
+                              className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-base font-bold text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              −
+                            </button>
+                            <span className="w-14 text-center text-sm font-bold tabular-nums text-slate-800 dark:text-slate-200">
+                              {qty} / {max}
+                            </span>
+                            <button
+                              type="button"
+                              aria-label="One more"
+                              disabled={qty >= max}
+                              onClick={() => setQuantity(idx, qty + 1)}
+                              className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-base font-bold text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="shrink-0 text-sm font-bold tabular-nums text-slate-800 dark:text-slate-200">{max}</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {isPartial && chosenUnits > 0 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    Partial refund: only these items are refunded. An order can be refunded only once, so the rest of it can’t be refunded later.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="sm:col-span-2 mt-2">
               <label className="block text-sm font-bold text-slate-800 dark:text-slate-200 mb-3">
@@ -276,7 +384,7 @@ export default function RefundFormDialog({
             Cancel
           </button>
           <button
-            onClick={() => onSubmit(proofImage ?? undefined)}
+            onClick={submit}
             disabled={!canSubmit}
             className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors shadow-sm ${
               canSubmit

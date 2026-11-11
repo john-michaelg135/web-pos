@@ -750,6 +750,14 @@ export interface RejectOrderDto {
 
 export interface RequestRefundDto {
   reason?: string;
+  proofImage?: string | null;
+  /** Items and quantities being returned. Empty or missing refunds everything not yet refunded. */
+  items?: RefundItemDto[] | null;
+}
+
+export interface RefundItemDto {
+  variationId: number;
+  quantity: number;
 }
 
 export interface RevenueSummaryDto {
