@@ -1,18 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
-  Ban,
   Info,
-  Globe,
-  PackageCheck,
   RefreshCw,
-  RotateCcw,
-  Wallet,
 } from "lucide-react";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { useAuth } from "@/context/AuthContext";
@@ -40,16 +34,6 @@ interface OwnerDashboard {
   salesByBranch: { locationId: number; name: string; sales: number; orders: number }[];
   topProducts: { productName: string; variationName: string; unitsSold: number; sales: number }[];
   salesByChannel: { channel: string; sales: number; orders: number }[];
-  attention: {
-    unpaidBalanceAmount: number;
-    unpaidBalanceOrders: number;
-    readyToShip: number;
-    onlineOrdersToApprove: number;
-    refundRequests: number;
-    voidRequests: number;
-    lowStockCount: number;
-    lowStockItems: { productName: string; variationName: string; branchName: string; quantity: number; reorderLevel: number }[];
-  };
   branchesToday: { locationId: number; name: string; shiftStatus: string; salesToday: number; cashOverShort: number | null }[];
 }
 
@@ -58,6 +42,11 @@ const PERIODS: { value: Period; label: string; compareTo: string }[] = [
   { value: "week", label: "This Week", compareTo: "same days last week" },
   { value: "month", label: "This Month", compareTo: "same days last month" },
 ];
+
+// "Today" refreshes itself on this interval; week and month totals barely move, so they wait for Refresh.
+const TODAY_REFRESH_MS = 5 * 60_000;
+// Coming back to the tab reloads "Today" only if the numbers are at least this old.
+const STALE_ON_RETURN_MS = 60_000;
 
 const CHANNEL_COLORS: Record<string, string> = {
   "Walk-in": "var(--primary)",
@@ -276,33 +265,6 @@ function SalesTrend({ data, period, compareTo }: { data: OwnerDashboard["trend"]
   );
 }
 
-function AttentionRow({ icon, tone, title, detail, href }: {
-  icon: ReactNode;
-  tone: "warning" | "destructive" | "info" | "purple";
-  title: string;
-  detail: string;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-3 rounded-xl border border-border p-3 hover:bg-muted/60 transition-colors no-underline"
-    >
-      <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-        style={{ background: `var(--badge-${tone})`, color: `var(--badge-${tone}-foreground)` }}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-foreground">{title}</span>
-        <span className="block text-xs text-muted-foreground truncate">{detail}</span>
-      </span>
-      <ArrowUpRight className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
-    </Link>
-  );
-}
-
 // Table look shared with the Order Management and Location Management tables.
 const TH = "px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider";
 const TR = "hover:bg-muted/10 transition-colors border-b border-border last:border-b-0";
@@ -358,10 +320,14 @@ export default function OwnerDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Set by the Refresh button so the next load bypasses the server's short cache.
+  const forceFresh = useRef(false);
+  const lastLoadedAt = useRef(0);
 
   const isOwner = !!user?.isSuperUser;
 
   const refresh = useCallback(() => {
+    forceFresh.current = true;
     setIsLoading(true);
     setReloadKey((k) => k + 1);
   }, []);
@@ -383,6 +349,10 @@ export default function OwnerDashboard() {
       try {
         const params = new URLSearchParams({ period });
         if (branch !== "all") params.set("locationId", branch);
+        if (forceFresh.current) {
+          params.set("fresh", "true");
+          forceFresh.current = false;
+        }
         const response = await fetch(`/api-pos/dashboard/owner?${params}`, { cache: "no-store", credentials: "same-origin" });
         if (!response.ok) {
           throw new Error(
@@ -395,6 +365,7 @@ export default function OwnerDashboard() {
         if (cancelled) return;
         setData(next);
         setError(null);
+        lastLoadedAt.current = Date.now();
         // The branch list comes from the all-branches view, so it stays complete when one branch is picked.
         if (branch === "all") {
           setBranches(next.branchesToday.map((b) => ({ value: String(b.locationId), label: b.name })));
@@ -410,14 +381,23 @@ export default function OwnerDashboard() {
     };
   }, [isOwner, period, branch, reloadKey]);
 
-  // Keep the numbers fresh while the dashboard is left open.
+  // Keep "Today" fresh while the dashboard is left open, and catch up when the owner comes back to the tab.
   useEffect(() => {
-    if (!isOwner) return;
+    if (!isOwner || period !== "today") return;
     const id = window.setInterval(() => {
       if (document.visibilityState === "visible") setReloadKey((k) => k + 1);
-    }, 120_000);
-    return () => window.clearInterval(id);
-  }, [isOwner]);
+    }, TODAY_REFRESH_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastLoadedAt.current >= STALE_ON_RETURN_MS) {
+        setReloadKey((k) => k + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [isOwner, period]);
 
   const compareTo = PERIODS.find((p) => p.value === period)!.compareTo;
   const periodLabel = PERIODS.find((p) => p.value === period)!.label;
@@ -429,75 +409,6 @@ export default function OwnerDashboard() {
     () => (data ? Math.max(0, ...data.salesByBranch.map((b) => b.sales)) : 0),
     [data],
   );
-
-  const attention = data?.attention;
-  const attentionRows = attention
-    ? [
-        attention.unpaidBalanceOrders > 0 && (
-          <AttentionRow
-            key="balance"
-            icon={<Wallet className="h-4 w-4" />}
-            tone="warning"
-            title={`${peso(attention.unpaidBalanceAmount)} still to collect`}
-            detail={`${count(attention.unpaidBalanceOrders)} institutional ${attention.unpaidBalanceOrders === 1 ? "order has" : "orders have"} paid only the downpayment`}
-            href="/order-management"
-          />
-        ),
-        attention.readyToShip > 0 && (
-          <AttentionRow
-            key="ship"
-            icon={<PackageCheck className="h-4 w-4" />}
-            tone="purple"
-            title={`${count(attention.readyToShip)} ${attention.readyToShip === 1 ? "order" : "orders"} ready to ship`}
-            detail="Fully paid and waiting for delivery"
-            href="/order-management"
-          />
-        ),
-        attention.onlineOrdersToApprove > 0 && (
-          <AttentionRow
-            key="online"
-            icon={<Globe className="h-4 w-4" />}
-            tone="info"
-            title={`${count(attention.onlineOrdersToApprove)} new online ${attention.onlineOrdersToApprove === 1 ? "order" : "orders"}`}
-            detail="Waiting to be accepted"
-            href="/order-management"
-          />
-        ),
-        attention.refundRequests > 0 && (
-          <AttentionRow
-            key="refund"
-            icon={<RotateCcw className="h-4 w-4" />}
-            tone="destructive"
-            title={`${count(attention.refundRequests)} refund ${attention.refundRequests === 1 ? "request" : "requests"}`}
-            detail="Waiting for approval"
-            href="/order-management"
-          />
-        ),
-        attention.voidRequests > 0 && (
-          <AttentionRow
-            key="void"
-            icon={<Ban className="h-4 w-4" />}
-            tone="destructive"
-            title={`${count(attention.voidRequests)} void ${attention.voidRequests === 1 ? "request" : "requests"}`}
-            detail="A sale someone wants to cancel"
-            href="/order-management"
-          />
-        ),
-        attention.lowStockCount > 0 && (
-          <AttentionRow
-            key="stock"
-            icon={<AlertTriangle className="h-4 w-4" />}
-            tone="warning"
-            title={`${count(attention.lowStockCount)} ${attention.lowStockCount === 1 ? "product is" : "products are"} running low`}
-            detail={attention.lowStockItems
-              .slice(0, 3)
-              .map((s) => `${s.productName}${describeVariation(s.variationName) ? ` (${describeVariation(s.variationName)})` : ""} at ${s.branchName}`)
-              .join(", ")}
-            href="/stock-management"
-          />
-        ),
-      ].filter(Boolean)
-    : [];
 
   // The route guard already sends everyone else elsewhere; this keeps the page empty if they slip through.
   if (!isOwner) return null;
@@ -591,27 +502,10 @@ export default function OwnerDashboard() {
             </p>
           </div>
 
-          {/* Trend + attention */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <Panel
-              title="Money collected over time"
-              subtitle={period === "today" ? "By the hour" : "By the day"}
-              className="xl:col-span-2"
-            >
-              <SalesTrend data={data.trend} period={period} compareTo={compareTo} />
-            </Panel>
-            <Panel title="Needs your attention" subtitle="Things waiting on someone right now">
-              {attentionRows.length > 0 ? (
-                <div className="flex flex-col gap-2">{attentionRows}</div>
-              ) : (
-                <div className="flex flex-col items-center justify-center text-center py-10">
-                  <PackageCheck className="h-8 w-8 mb-2" style={{ color: "var(--metric-positive)" }} aria-hidden />
-                  <p className="text-sm font-semibold text-foreground m-0">All clear</p>
-                  <p className="text-xs text-muted-foreground m-0 mt-1">Nothing is waiting on you.</p>
-                </div>
-              )}
-            </Panel>
-          </div>
+          {/* Trend */}
+          <Panel title="Money collected over time" subtitle={period === "today" ? "By the hour" : "By the day"}>
+            <SalesTrend data={data.trend} period={period} compareTo={compareTo} />
+          </Panel>
 
           {/* Branches, products, channels */}
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
