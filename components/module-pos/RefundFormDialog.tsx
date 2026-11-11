@@ -97,17 +97,21 @@ export default function RefundFormDialog({
 
   const canSubmit = !!reason.trim() && !!selectedOption && (!requiresPhoto || !!proofImage) && !isProcessingPhoto;
 
-  useEffect(() => {
+  // Pick the radio that matches the saved reason only when the dialog opens. Doing this on every
+  // reason change undid a click on "Other" (which clears the reason so it can be typed), so
+  // "Other" needed two clicks before its text box appeared.
+  // Starts closed, so a dialog that mounts already open still picks up the saved reason.
+  const [wasOpen, setWasOpen] = useState(false);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
     if (isOpen) {
-      if (predefinedReasons.includes(reason)) {
-        setSelectedOption(reason);
-      } else if (reason.trim() !== "" && predefinedReasons.includes("Other")) {
-        setSelectedOption("Other");
-      } else {
-        setSelectedOption("");
-      }
+      setSelectedOption(
+        predefinedReasons.includes(reason)
+          ? reason
+          : reason.trim() !== "" && predefinedReasons.includes("Other") ? "Other" : ""
+      );
     }
-  }, [isOpen, reason]);
+  }
 
   if (!isOpen || !order || !mounted) return null;
 
@@ -207,7 +211,7 @@ export default function RefundFormDialog({
                           setReason("");
                         }
                       }}
-                      className="w-4 h-4 text-slate-600 border-slate-300 focus:ring-slate-500 cursor-pointer"
+                      className="w-4 h-4 accent-primary cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                     />
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{option}</span>
                   </label>
