@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
-import { DeliveryConfirmationInput, Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, Order, STATUS_LABELS, OrderStatus, formatRefundDeadline, refundMethodOf } from "@/components/module-pos/types";
 import { ConfirmDeliveryDialog, DeliveryConfirmationDetails, ProofPhoto } from "./ConfirmDeliveryDialog";
 import { renderVariationBadges } from "./utils";
 import { toast } from "@/lib/toast";
@@ -84,6 +84,27 @@ onRejectVoid,
   const canRequestRefund = can(POS_MODULES.ORDER_MANAGEMENT, "write");
   // An order gets one approved refund: once part of it is refunded it can't be voided or refunded again.
   const isPartlyRefunded = (order?.refundedAmount ?? 0) > 0;
+  // Nobody approves their own refund or void request (the server refuses it too).
+  const ownRequest = !!order?.requestedByCurrentUser;
+  const ownRequestKind = order?.status === "void_requested" ? "void" : "refund";
+  // Refund window from the server (RefundPolicy). Closed if it had already passed when this
+  // modal mounted, or once a timer fires at the deadline (so a page left open still updates).
+  // The server refuses late requests either way.
+  const refundDeadline = order?.refundDeadline ?? null;
+  const [mountedAt] = useState(() => Date.now());
+  const [closedDeadline, setClosedDeadline] = useState<string | null>(null);
+  useEffect(() => {
+    if (!refundDeadline) return;
+    const wait = Date.parse(refundDeadline) - Date.now();
+    if (wait > 2_147_483_647) return; // beyond setTimeout's range; the window is days, not weeks
+    const id = window.setTimeout(() => setClosedDeadline(refundDeadline), Math.max(0, wait));
+    return () => window.clearTimeout(id);
+  }, [refundDeadline]);
+  const refundWindowClosed =
+    !!refundDeadline && (mountedAt >= Date.parse(refundDeadline) || closedDeadline === refundDeadline);
+  const refundDeadlineText = refundDeadline ? formatRefundDeadline(refundDeadline) : null;
+  const showRefundWindow =
+    !!refundDeadlineText && !isPartlyRefunded && ["completed", "delivered", "paid"].includes(order?.status ?? "");
   const canRequestVoid = can(POS_MODULES.ORDER_MANAGEMENT, "write");
   const canApproveVoid = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const canRejectVoid = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
@@ -445,6 +466,24 @@ onRejectVoid,
             </div>
           )}
 
+          {ownRequest && (order.status === "refund_requested" || order.status === "void_requested") && (canApproveRefund || canApproveVoid) && (
+            <div
+              id="own-request-note"
+              role="note"
+              className="mb-8 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+            >
+              <svg viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <p className="m-0">
+                <span className="font-bold">You requested this {ownRequestKind}</span>, so a different manager has to approve it.
+                You can still reject it to withdraw the request.
+              </p>
+            </div>
+          )}
+
           {/* Items Section */}
           <div>
             <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: muted }}>Order Items</h3>
@@ -593,7 +632,7 @@ onRejectVoid,
               {(order.refundedAmount ?? 0) > 0 && order.status !== "refunded" && (
                 <>
                   <div className="flex justify-between items-center text-red-500">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Refunded</span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider">Refunded ({refundMethodOf(order)})</span>
                     <span className="text-sm font-bold">- ₱{(order.refundedAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -601,6 +640,16 @@ onRejectVoid,
                     <span className="text-sm font-bold" style={{ color: text }}>₱{(pricing.total - (order.refundedAmount ?? 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </>
+              )}
+              {showRefundWindow && (
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: muted }}>
+                    {refundWindowClosed ? "Refund window ended" : "Refundable until"}
+                  </span>
+                  <span className={`text-xs font-bold text-right ${refundWindowClosed ? "text-red-500" : ""}`} style={refundWindowClosed ? undefined : { color: text }}>
+                    {refundDeadlineText}
+                  </span>
+                </div>
               )}
               {order.amountTendered != null && (
                 <>
@@ -655,7 +704,10 @@ onRejectVoid,
             {order.status === "void_requested" && onApplyVoid && canApproveVoid && (
               <button
                 onClick={onApplyVoid}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-primary rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
+                disabled={ownRequest}
+                aria-describedby={ownRequest ? "own-request-note" : undefined}
+                title={ownRequest ? "You requested this void. A different manager has to approve it." : undefined}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-primary rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary disabled:active:scale-100"
               >
                 Approve Void
               </button>
@@ -687,7 +739,9 @@ onRejectVoid,
             {canRequestRefund && !isPartlyRefunded && (order.status === "completed" || (!isInstitutional && order.paymentStatus === "paid" && !isShippedInstitutional)) && !["refund_requested", "refunded", "cancelled", "rejected", "void_requested", "voided"].includes(order.status) && onRequestRefund && (
               <button
                 onClick={onRequestRefund}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
+                disabled={refundWindowClosed}
+                title={refundWindowClosed && refundDeadlineText ? `The refund window ended on ${refundDeadlineText}.` : undefined}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600 disabled:active:scale-100"
               >
                 Request Refund
               </button>
@@ -697,7 +751,10 @@ onRejectVoid,
             {order.status === "refund_requested" && onApplyRefund && canApproveRefund && (
               <button
                 onClick={onApplyRefund}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-primary rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
+                disabled={ownRequest}
+                aria-describedby={ownRequest ? "own-request-note" : undefined}
+                title={ownRequest ? "You requested this refund. A different manager has to approve it." : undefined}
+                className="px-4 py-2 text-xs font-bold uppercase text-white bg-primary rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary disabled:active:scale-100"
               >
                 Approve Refund
               </button>

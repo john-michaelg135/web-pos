@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
 import { Search, Filter, LayoutGrid, List } from "lucide-react";
-import { DeliveryConfirmationInput, Order, OrderStatus, STATUS_LABELS, latestRefundWasRejected, pendingRefundLines } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, Order, OrderStatus, REFUND_METHOD_HINT, STATUS_LABELS, latestRefundWasRejected, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
 import VoidFormDialog from "@/components/module-pos/VoidFormDialog";
@@ -186,6 +186,9 @@ export default function ViewOrderManagement() {
     hasRefundProof: !!(dto as any).hasRefundProof,
     refundedAmount: Number((dto as any).refundedAmount) || 0,
     pendingRefundAmount: Number((dto as any).pendingRefundAmount) || 0,
+    requestedByCurrentUser: !!(dto as any).requestedByCurrentUser,
+    refundMethod: (dto as any).refundMethod === "GCash" ? "GCash" : (dto as any).refundMethod === "Cash" ? "Cash" : undefined,
+    refundDeadline: (dto as any).refundDeadline ?? null,
   });
 
   const fetchOrders = useCallback(async (targetLocId?: number) => {
@@ -417,11 +420,14 @@ export default function ViewOrderManagement() {
       toast.success(
         {
           title: isPartial ? "Partial refund approved" : "Refund approved",
-          meta: `${orderLabel(orderToApprove)} · −${peso(refundedAmount)}`,
+          meta: `${orderLabel(orderToApprove)} · −${peso(refundedAmount)} · ${refundMethodOf(orderToApprove)}`,
           details: isUnsellable
             ? itemRows(refunded, (item) => `${item.quantity} written off`, "negative")
             : itemRows(refunded, (item) => `+${item.quantity} restocked`, "positive"),
-          note: isUnsellable ? "Unsellable items aren't returned to stock." : undefined,
+          note: [
+            `${REFUND_METHOD_HINT[refundMethodOf(orderToApprove)]}: ${peso(refundedAmount)}.`,
+            isUnsellable ? "Unsellable items aren't returned to stock." : null,
+          ].filter(Boolean).join(" "),
         },
         { duration: 8000 },
       );

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { variationLabel } from "@/components/module-pos/utils";
 import { CloseLineIcon } from "@/icons/index";
-import { Order, refundableQuantity } from "@/components/module-pos/types";
+import { Order, REFUND_METHOD_HINT, refundMethodOf, refundableQuantity } from "@/components/module-pos/types";
 import type { RefundItemDto } from "@/components/module-pos/api/api";
 import { shrinkImage } from "./ConfirmDeliveryDialog";
 
@@ -214,6 +214,16 @@ export default function RefundFormDialog({
               <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm font-bold text-red-500 bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900 select-none tabular-nums">
                 ₱{refundAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 {isPartial && <span className="ml-2 text-xs font-semibold text-gray-500 dark:text-gray-400">of ₱{order.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                Refund Via
+              </label>
+              <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 select-none">
+                <span className="font-bold text-gray-900 dark:text-white">{refundMethodOf(order)}</span>
+                <span className="text-gray-500 dark:text-gray-400"> · {REFUND_METHOD_HINT[refundMethodOf(order)]}</span>
               </div>
             </div>
 

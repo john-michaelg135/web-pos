@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { variationLabel } from "@/components/module-pos/utils";
 import PinInput from "@/components/module-pos/PinInput";
-import { Order, pendingRefundLines } from "@/components/module-pos/types";
+import { Order, REFUND_METHOD_HINT, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
 
 interface ApproveRefundDialogProps {
   isOpen: boolean;
@@ -94,6 +94,16 @@ export default function ApproveRefundDialog({
               <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm font-bold text-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 select-none tabular-nums">
                 ₱{money(requestedAmount)}
                 {isPartial && <span className="ml-2 text-xs font-semibold text-gray-500 dark:text-gray-400">of ₱{money(order.total)}</span>}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                Refund Via
+              </label>
+              <div className="w-full px-3.5 py-2.5 rounded-xl border text-sm bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 select-none">
+                <span className="font-bold text-gray-900 dark:text-white">{refundMethodOf(order)}</span>
+                <span className="text-gray-500 dark:text-gray-400"> · {REFUND_METHOD_HINT[refundMethodOf(order)]}</span>
               </div>
             </div>
 

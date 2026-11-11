@@ -80,6 +80,12 @@ export type Order = {
   refundedAmount?: number;
   /** Value of the items in a refund request awaiting a manager. */
   pendingRefundAmount?: number;
+  /** The signed-in user filed the waiting refund or void request, so they can't approve it. */
+  requestedByCurrentUser?: boolean;
+  /** How a refund is paid out: the way the order was paid. */
+  refundMethod?: "Cash" | "GCash";
+  /** ISO time the refund window closes (exclusive); set by the server's RefundPolicy. */
+  refundDeadline?: string | null;
 };
 
 /** Institutional proof of delivery. The photo is fetched separately when `hasProofImage`. */
@@ -217,4 +223,27 @@ export function latestRefundWasRejected(order: Order): boolean {
   );
   if (latest) return (latest.remarks ?? "").toLowerCase().startsWith("refund rejected");
   return (order.remarks ?? "").toLowerCase().startsWith("refund rejected");
+}
+
+/** Refunds go back the way the customer paid: cash from the drawer, or to their GCash. */
+export function refundMethodOf(order: Order): "Cash" | "GCash" {
+  if (order.refundMethod) return order.refundMethod;
+  return ["cash", "cod", "cash on delivery"].includes(order.paymentMethod?.trim().toLowerCase() ?? "") ? "Cash" : "GCash";
+}
+
+export const REFUND_METHOD_HINT: Record<"Cash" | "GCash", string> = {
+  Cash: "Hand back cash from the drawer",
+  GCash: "Send to the customer's GCash",
+};
+
+/** "Nov 12, 2026, 11:59 PM" (Philippine time) for the last minute of the refund window. */
+export function formatRefundDeadline(deadlineIso: string): string {
+  return new Date(Date.parse(deadlineIso) - 60_000).toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

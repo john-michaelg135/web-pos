@@ -655,11 +655,9 @@ export default function ViewSalesProcessing() {
         {
           title: `${orderId} completed`,
           meta: `Total ${peso(total)} · ${paymentMethod === "cash" ? "Cash" : "GCash"}`,
+          // Cash sales: the change to hand back (the total is already in the line above).
           details: tendered != null
-            ? [
-                { label: "Cash received", value: peso(tendered) },
-                { label: "Change", value: peso(Math.max(0, tendered - total)), tone: "positive" as const },
-              ]
+            ? [{ label: "Change", value: peso(Math.max(0, tendered - total)), tone: "positive" as const }]
             : undefined,
         },
         { duration: 5000 },
