@@ -15,7 +15,8 @@ import ApproveVoidDialog from "@/components/module-pos/ApproveVoidDialog";
 import OrderFilters from "@/components/module-pos/OrderFilters";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { OrderManagementResponseDto, RefundItemDto } from "../../components/module-pos/api/api";
-import { toast } from "sonner";
+import { toast, type ToastDetail } from "@/lib/toast";
+import { parseVariationName } from "@/components/module-pos/utils";
 import { apiClient } from "@/components/module-pos/api";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import { useAuth } from "@/context/AuthContext";
@@ -38,6 +39,18 @@ const LEGACY_COLORS = {
   cardBg: "#ffffff",
   inputBg: "#fafafa",
 };
+
+const peso = (n: number) => `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const orderLabel = (order: Order) => order.orderNumber || `#${order.id}`;
+/** A pop-up product line: name, packaging and size (the SKU is left out). */
+const productOf = (item: Order["items"][number]): NonNullable<ToastDetail["item"]> => {
+  const { packaging, size } = parseVariationName(item.variation);
+  // A variation without "SKU|Packaging|Size" parts (e.g. "Standard") is shown as is.
+  return { name: item.name, packaging: packaging || (item.variation.includes("|") ? "" : item.variation), size };
+};
+/** One pop-up row per item, e.g. "Ube Halaya Smooth  Pouch  250g  +1 restocked". */
+const itemRows = (items: Order["items"], value: (item: Order["items"][number]) => string, tone: ToastDetail["tone"]): ToastDetail[] =>
+  items.map((item) => ({ item: productOf(item), value: value(item), tone }));
 
 export default function ViewOrderManagement() {
   const { user: authUser, isLoading: authLoading, can, canRead } = useAuth();
@@ -306,7 +319,11 @@ export default function ViewOrderManagement() {
     try {
       const managerId = Number(authUser?.id) || 1;
       await requestManagerEndpoint(`order-management/orders/${orderToApproveVoid.id}/approve-void`, { approvedBy: managerId, pinCode: pin });
-      toast.success("Void approved successfully!");
+      toast.success({
+        title: "Void approved",
+        meta: `${orderLabel(orderToApproveVoid)} · −${peso(orderToApproveVoid.total)}`,
+        details: itemRows(orderToApproveVoid.items, (item) => `+${item.quantity} restocked`, "positive"),
+      });
       fetchOrders();
       setShowApproveVoidDialog(false);
       setOrderToApproveVoid(null);
@@ -353,7 +370,10 @@ export default function ViewOrderManagement() {
     try {
       const managerId = Number(authUser?.id) || 1;
       await requestManagerEndpoint(`order-management/orders/${orderToRejectVoid.id}/reject-void`, { rejectedBy: managerId, rejectionRemarks: reason, pinCode: pin });
-      toast.success("Void request rejected.");
+      toast.success({
+        title: "Void request rejected",
+        meta: `${orderLabel(orderToRejectVoid)} · sale stands`,
+      });
       fetchOrders();
       setShowRejectVoidDialog(false); 
       setOrderToRejectVoid(null);
@@ -367,7 +387,11 @@ export default function ViewOrderManagement() {
     if (!selectedOrder || !voidReason.trim()) return;
     try {
       await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-void`, { reason: voidReason });
-      toast.success("Void requested successfully.");
+      toast.success({
+        title: "Void requested",
+        meta: `${orderLabel(selectedOrder)} · ${peso(selectedOrder.total)}`,
+        note: "A manager has to approve it before the sale is voided.",
+      });
       fetchOrders();
     } catch (err: any) { 
       console.warn("Failed to request void:", err?.message || "Unknown error"); 
@@ -391,26 +415,15 @@ export default function ViewOrderManagement() {
       const isPartial = refunded.reduce((sum, item) => sum + item.quantity, 0)
         < orderToApprove.items.reduce((sum, item) => sum + item.quantity - (item.refundedQuantity ?? 0), 0);
       toast.success(
-        <div className="flex flex-col gap-1 text-emerald-800 dark:text-emerald-200">
-          <div className="font-bold">{isPartial ? "Partial refund approved!" : "Refund approved!"}</div>
-          <div className="text-[11px] flex items-center justify-between border-b pb-1 mb-1 border-emerald-500/20">
-            <span className="text-gray-500 dark:text-gray-400">Amount deducted from sales:</span>
-            <span className="font-black text-red-500">- ₱{refundedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
-          {isUnsellable ? (
-            <div className="text-[11px] text-gray-500 dark:text-gray-400">Unsellable items were not returned to stock.</div>
-          ) : (
-            <>
-              <div className="text-[11px] text-gray-500 dark:text-gray-400">Restored inventory stocks:</div>
-              <div className="text-[11px] flex flex-col gap-0.5 mt-1 border-t pt-1 border-emerald-500/20">
-                {refunded.map((item, idx) => (
-                  <div key={idx} className="flex justify-between gap-4"><span>{item.name} ({item.variation})</span><span className="font-bold">+{item.quantity} qty</span></div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>,
-        { duration: 10000 }
+        {
+          title: isPartial ? "Partial refund approved" : "Refund approved",
+          meta: `${orderLabel(orderToApprove)} · −${peso(refundedAmount)}`,
+          details: isUnsellable
+            ? itemRows(refunded, (item) => `${item.quantity} written off`, "negative")
+            : itemRows(refunded, (item) => `+${item.quantity} restocked`, "positive"),
+          note: isUnsellable ? "Unsellable items aren't returned to stock." : undefined,
+        },
+        { duration: 8000 },
       );
       fetchOrders();
       setShowApproveDialog(false);
@@ -431,7 +444,10 @@ export default function ViewOrderManagement() {
     try {
       const managerId = Number(authUser?.id) || 1;
       await requestManagerEndpoint(`order-management/orders/${orderToReject.id}/reject-refund`, { rejectedBy: managerId, rejectionRemarks: reason.trim(), pinCode: pin });
-      toast.success(`Refund request for Order ${orderToReject.orderNumber || `#${orderToReject.id}`} has been rejected.`);
+      toast.success({
+        title: "Refund request rejected",
+        meta: `${orderLabel(orderToReject)} · sale stands`,
+      });
       fetchOrders();
       setShowRejectDialog(false);
       setOrderToReject(null);
@@ -448,7 +464,18 @@ export default function ViewOrderManagement() {
     if (items && items.length === 0) { toast.error("Choose at least one item to refund."); return; }
     try {
       await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-refund`, { reason: refundReason, proofImage, items });
-      toast.success(`Refund requested successfully for Order ${selectedOrder.orderNumber || `#${selectedOrder.id}`}.`);
+      const requested = items
+        ? items.map((line) => {
+            const item = selectedOrder.items.find((i) => i.variationId === line.variationId);
+            return { item: item ? productOf(item) : undefined, label: "Item", value: `×${line.quantity}`, price: (item?.price ?? 0) * line.quantity };
+          })
+        : null;
+      toast.success({
+        title: "Refund requested",
+        meta: `${orderLabel(selectedOrder)} · ${peso(requested ? requested.reduce((sum, r) => sum + r.price, 0) : selectedOrder.total)}`,
+        details: requested?.map(({ item, label, value }) => ({ item, label, value })),
+        note: "A manager has to approve it before anything is refunded.",
+      });
       fetchOrders();
     } catch (err) { console.error("Failed to request refund:", err); toast.error(err instanceof Error && err.message ? err.message : "Failed to request refund."); }
     setShowRefundDialog(false); setRefundReason("");
@@ -462,18 +489,16 @@ export default function ViewOrderManagement() {
       const order = orders.find(o => o.id === orderId);
       if ((newStatus === "cancelled" || backendStatus === "Cancelled" || newStatus === "refunded" || backendStatus === "Refunded") && order) {
         toast.success(
-          <div className="flex flex-col gap-1 text-emerald-800 dark:text-emerald-200">
-            <div className="font-bold">Order status updated.</div>
-            <div className="text-[11px] text-gray-500 dark:text-gray-400">Restored inventory stocks:</div>
-            <div className="text-[11px] flex flex-col gap-0.5 mt-1 border-t pt-1 border-emerald-500/20">
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between gap-4"><span>{item.name} ({item.variation})</span><span className="font-bold">+{item.quantity} qty</span></div>
-              ))}
-            </div>
-          </div>,
-          { duration: 8000 }
+          {
+            title: `${orderLabel(order)} ${STATUS_LABELS[newStatus]?.toLowerCase() ?? "updated"}`,
+            meta: "Order status updated",
+            details: itemRows(order.items, (item) => `+${item.quantity} restocked`, "positive"),
+          },
+          { duration: 7000 },
         );
-      } else { toast.success("Order status updated."); }
+      } else {
+        toast.success({ title: order ? `${orderLabel(order)} updated` : "Order updated", meta: `Now ${STATUS_LABELS[newStatus] ?? newStatus}` });
+      }
       fetchOrders();
       return true;
     } catch (err) { console.error("Failed to update order status:", err); toast.error(err instanceof Error && err.message ? err.message : "Failed to update order status."); return false; }
@@ -483,7 +508,12 @@ export default function ViewOrderManagement() {
   const completePayment = async (orderId: string): Promise<boolean> => {
     try {
       await requestManagerEndpoint(`order-management/orders/${orderId}/complete-payment`, {});
-      toast.success("Payment completed. The order is now fully paid and ready for shipment.");
+      const paidOrder = orders.find((o) => o.id === orderId);
+      toast.success({
+        title: "Payment completed",
+        meta: paidOrder ? `${orderLabel(paidOrder)} · ${peso(paidOrder.total)} paid` : "Fully paid",
+        note: "The order is ready for shipment.",
+      });
       fetchOrders();
       return true;
     } catch (err) {
@@ -498,7 +528,11 @@ export default function ViewOrderManagement() {
     try {
       const managerId = Number(authUser?.id) || 1;
       await requestManagerEndpoint(`order-management/orders/${orderId}/confirm-institutional-delivery`, { ...details, confirmedBy: managerId });
-      toast.success("Delivery confirmed. The order is now completed.");
+      const deliveredOrder = orders.find((o) => o.id === orderId);
+      toast.success({
+        title: "Delivery confirmed",
+        meta: deliveredOrder ? `${orderLabel(deliveredOrder)} · completed` : "Order completed",
+      });
       fetchOrders();
       return true;
     } catch (err) {

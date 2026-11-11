@@ -419,3 +419,15 @@ body {
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #667085;
 }
+
+/* Pop-up notifications (lib/toast.tsx): the countdown bar empties as the pop-up's time runs out. */
+@keyframes toast-countdown {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes toast-countdown {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(1); }
+  }
+}

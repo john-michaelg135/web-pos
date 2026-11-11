@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { PackageCheck } from "lucide-react";
 import { apiClient } from "@/components/module-pos/api";
 import { Button } from "@/components/ui/button";

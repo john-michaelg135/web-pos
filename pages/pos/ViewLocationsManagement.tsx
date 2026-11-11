@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 
 import { apiClient } from "@/components/module-pos/api";

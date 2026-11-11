@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 import type { Product, Variation, ProductCategory } from "@/components/module-pos/types";
 import { VariationTable } from "@/components/module-pos/VariationTable";

@@ -9,7 +9,6 @@ import {
   Trash2,
   Package,
   FileText,
-  CheckCircle,
   ChevronDown,
   Check,
   Calendar,
@@ -32,7 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { renderVariationBadges } from "@/components/module-pos/utils";
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
@@ -223,7 +222,6 @@ export default function ViewSalesProcessing() {
   const [showGcashConfirm, setShowGcashConfirm] = useState(false);
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [amountPaid, setAmountPaid] = useState("");
-  const [lastOrder, setLastOrder] = useState<{ id: string; total: number } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // US-6 & US-7: Discounts & Vouchers
@@ -651,7 +649,21 @@ export default function ViewSalesProcessing() {
       if (isPrintingReceipt) {
         console.log("Generating receipt for order:", orderId);
       }
-      setLastOrder({ id: orderId, total });
+      const peso = (n: number) => `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const tendered = paymentMethod === "cash" && amountPaid.trim() !== "" ? parseFloat(amountPaid) : null;
+      toast.success(
+        {
+          title: `${orderId} completed`,
+          meta: `Total ${peso(total)} · ${paymentMethod === "cash" ? "Cash" : "GCash"}`,
+          details: tendered != null
+            ? [
+                { label: "Cash received", value: peso(tendered) },
+                { label: "Change", value: peso(Math.max(0, tendered - total)), tone: "positive" as const },
+              ]
+            : undefined,
+        },
+        { duration: 5000 },
+      );
       deductStocks();
       setCart([]);
       setNotes("");
@@ -681,7 +693,6 @@ export default function ViewSalesProcessing() {
       setPwdProvince("");
       setPwdZipCode("");
       setShowCheckoutDialog(false);
-      setTimeout(() => setLastOrder(null), 5000);
     } catch (error) {
       console.error("Checkout failed:", error);
       toast.error("The sale could not be completed. Please try again.");
@@ -1766,29 +1777,6 @@ export default function ViewSalesProcessing() {
         setErrors={setErrors}
       />
 
-      {/* Success Toast */}
-      {lastOrder && (
-        <div className={cn(
-          "fixed z-[100001] bg-card border border-border rounded-3xl p-5 shadow-2xl flex gap-5 animate-in slide-in-from-bottom-4 duration-500",
-          isMobile ? "bottom-20 left-4 right-4" : "bottom-10 right-10 w-[340px]"
-        )}>
-          <div className="w-14 h-14 rounded-[22px] bg-green-50 dark:bg-green-950 flex items-center justify-center border border-green-200 dark:border-green-900 shrink-0">
-            <CheckCircle className="h-8 w-8 text-green-500" />
-          </div>
-          <div className="flex-1">
-            <div className="flex justify-between items-center mb-1">
-              <p className="text-[15px] font-bold m-0 text-foreground">{lastOrder.id} Completed</p>
-              <button onClick={() => setLastOrder(null)} className="bg-transparent border-none cursor-pointer p-0">
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.1em] m-0 mb-4">Total ₱{lastOrder.total.toLocaleString()}.00</p>
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 w-full rounded-full" />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

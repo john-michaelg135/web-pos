@@ -6,7 +6,7 @@ import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
 import { DeliveryConfirmationInput, Order, STATUS_LABELS, OrderStatus } from "@/components/module-pos/types";
 import { ConfirmDeliveryDialog, DeliveryConfirmationDetails, ProofPhoto } from "./ConfirmDeliveryDialog";
 import { renderVariationBadges } from "./utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";

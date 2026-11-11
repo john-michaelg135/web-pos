@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { apiClient } from "@/components/module-pos/api";
 import { ProductResponseDto } from "@/components/module-pos/api/api";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { useMyLocations } from "@/lib/useMyLocations";
 
