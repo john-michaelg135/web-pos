@@ -106,3 +106,10 @@ export function renderVariationBadges(
     </div>
   );
 }
+
+/** "Pouch · 250g" from "UBH-SM-250|Pouch|250g" (the SKU is left out); plain names like "Standard" as is. */
+export function variationLabel(variationName: string) {
+  if (!variationName.includes("|")) return variationName;
+  const { packaging, size } = parseVariationName(variationName);
+  return [packaging, size].filter(Boolean).join(" · ");
+}

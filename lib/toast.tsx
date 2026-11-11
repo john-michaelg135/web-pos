@@ -167,9 +167,11 @@ function ToastCard({
 function show(tone: Tone, message: ToastMessage, options?: ToastOptions) {
   const content: ToastContent = typeof message === "string" ? { title: message } : message;
   const duration = options?.duration ?? DEFAULT_DURATION[tone];
+  // Pass `id` only when given: sonner spreads these options over the id it hands the card,
+  // so `id: undefined` would give the toast a different id and the close button would miss it.
   return sonner.custom((id) => <ToastCard id={id} tone={tone} content={content} duration={duration} />, {
     duration,
-    id: options?.id,
+    ...(options?.id !== undefined ? { id: options.id } : {}),
   });
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { variationLabel } from "@/components/module-pos/utils";
 import { CloseLineIcon } from "@/icons/index";
 import { Order, refundableQuantity } from "@/components/module-pos/types";
 import type { RefundItemDto } from "@/components/module-pos/api/api";
@@ -242,7 +243,7 @@ export default function RefundFormDialog({
                       <li key={idx} className="flex items-center justify-between gap-3 px-3.5 py-3">
                         <div className="min-w-0">
                           <p className="m-0 text-sm font-semibold text-slate-800 dark:text-slate-200 break-words">
-                            {item.name} <span className="font-normal text-gray-500 dark:text-gray-400">({item.variation})</span>
+                            {item.name} <span className="font-normal text-gray-500 dark:text-gray-400">{variationLabel(item.variation)}</span>
                           </p>
                           <p className="m-0 mt-0.5 text-xs text-gray-500 dark:text-gray-400 tabular-nums">
                             ₱{item.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} each · bought {item.quantity}

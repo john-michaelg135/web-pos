@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import PinInput from "@/components/module-pos/PinInput";
 import { Order } from "@/components/module-pos/types";
 
 interface RejectVoidDialogProps {
@@ -110,14 +111,7 @@ export default function RejectVoidDialog({
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
                 Manager PIN <span className="text-red-500">*</span>
               </label>
-              <input
-                type="password"
-                maxLength={6}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-                placeholder="Enter your 6-digit PIN"
-                className={`w-full px-3.5 py-2.5 rounded-xl border text-sm ${inputBg} ${border} text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50`}
-              />
+              <PinInput value={pin} onChange={setPin} className={`w-full px-3.5 py-2.5 rounded-xl border text-sm ${inputBg} ${border} text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50`} />
             </div>
           </div>
         </div>
