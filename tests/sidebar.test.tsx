@@ -86,15 +86,15 @@ describe("sidebar", () => {
     expect(html).toContain("size-[18px]");
   });
 
-  it("is 288px wide", () => {
-    expect(render(["Dashboard"])).toContain("w-72");
+  it("is 296px wide", () => {
+    expect(render(["Dashboard"])).toContain("w-[18.5rem]");
   });
 
-  it("shows the Point of Sale badge and the brand logo", () => {
+  it("shows the Point of Sale System lockup", () => {
     const html = render(["Dashboard"]);
 
-    expect(html).toContain("Point of Sale");
-    expect(html).toContain("bren-raphaels-logo.svg");
+    expect(html).toContain("Point of Sale System");
+    expect(html).toContain("logo-tile.png");
   });
 
   it("shows no items when no Module is allowed", () => {

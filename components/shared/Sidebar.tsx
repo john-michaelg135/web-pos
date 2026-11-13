@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
+import { BrandLockup } from "@/components/brand/BrandLockup";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsUpDown, Check, X } from "lucide-react";
@@ -73,29 +73,14 @@ export function Sidebar() {
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[55] animate-in fade-in duration-200"
         />
       )}
-      <aside className="fixed left-0 top-0 h-full w-72 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground z-[60] transition-all duration-300 shadow-xl md:shadow-none animate-in slide-in-from-left duration-300 print:hidden">
+      <aside className="fixed left-0 top-0 h-full w-[18.5rem] flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground z-[60] transition-all duration-300 shadow-xl md:shadow-none animate-in slide-in-from-left duration-300 print:hidden">
         <SidebarHeader className="h-24 justify-center py-0 pl-3.5 pr-2.5 border-b border-sidebar-border">
           <div className="flex items-center justify-between gap-2">
             <div className="flex-1 min-w-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center p-1 rounded-xl hover:bg-sidebar-accent cursor-pointer transition-colors group gap-[11px]">
-                    <Image
-                      src="/images/bren-raphaels-logo.svg"
-                      alt=""
-                      width={44}
-                      height={44}
-                      unoptimized
-                      className="size-11 shrink-0 rounded-[10px]"
-                    />
-                    <div className="flex flex-col min-w-0 gap-1.5 pr-1">
-                      <h1 className="text-xl font-bold text-zinc-900 truncate leading-none">
-                        Bren Raphael&apos;s
-                      </h1>
-                      <span className="text-[11px] font-semibold bg-[#f3e8ff] text-[#6d28d9] px-2 py-[3px] rounded-md truncate w-fit inline-block">
-                        Point of Sale
-                      </span>
-                    </div>
+                    <BrandLockup system="POS" className="min-w-0 flex-1" />
                     <ChevronsUpDown className="w-4 h-4 text-muted-foreground shrink-0 group-hover:text-sidebar-foreground transition-colors" />
                   </div>
                 </DropdownMenuTrigger>

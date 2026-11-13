@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import { Loader2 } from "lucide-react";
 
 /** Holds the page while the browser goes to the Enterprise Portal. */
@@ -21,6 +22,9 @@ export function SigningIn({
         <meta httpEquiv="refresh" content={`0; url=${loginUrl}`} />
       </noscript>
       <div className="flex flex-col items-center gap-xs text-center">
+        <div className="relative size-12 overflow-hidden rounded-[12px] border border-[#ece6f2] bg-white">
+          <Image src="/images/brand/logo-tile.png" alt="" fill sizes="48px" className="object-contain p-[3px]" />
+        </div>
         <div className="flex items-center gap-sm text-body-md text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           Opening POS…
