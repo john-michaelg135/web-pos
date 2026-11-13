@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Fraunces, Inter, Geist_Mono } from "next/font/google";
 import "@/app/globals.css";
 import LayoutProvider from "@/providers/LayoutProvider";
 import { headers } from "next/headers";
@@ -11,13 +11,19 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["SOFT", "WONK"],
+});
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "ERP System",
+  title: "Bren Raphael's | Point of Sale System",
   description: "Manufacturing Industry Capstone Project",
 };
 
@@ -31,7 +37,7 @@ const RootLayout = async ({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${geistMono.variable}`}
+      className={`${inter.variable} ${fraunces.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">

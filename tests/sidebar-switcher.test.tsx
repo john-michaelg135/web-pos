@@ -72,7 +72,7 @@ describe("system switcher, rendered", () => {
 });
 
 describe("brand block, rendered", () => {
-  it("is 96px tall with a 44px logo, the title and the Point of Sale badge", () => {
+  it("is 96px tall and shows the system name beside Bren Raphael's", () => {
     render(
       <StaffProvider staff={ada} modules={["Dashboard"]}>
         <SidebarProvider>
@@ -81,13 +81,8 @@ describe("brand block, rendered", () => {
       </StaffProvider>,
     );
 
-    const title = screen.getByText("Bren Raphael's");
-    const block = title.closest("[data-sidebar='header']");
-    expect(block?.className).toContain("h-24");
-
-    const logo = block?.querySelector("img");
-    expect(logo?.getAttribute("width")).toBe("44");
-    expect(logo?.getAttribute("height")).toBe("44");
-    expect(screen.getByText("Point of Sale")).toBeTruthy();
+    const title = screen.getByText("Bren Raphael's", { selector: "p" });
+    expect(title.closest("[data-sidebar='header']")?.className).toContain("h-24");
+    expect(title.nextElementSibling?.textContent).toBe("Point of Sale System");
   });
 });

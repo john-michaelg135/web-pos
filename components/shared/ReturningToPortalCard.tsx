@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import { Loader2 } from "lucide-react";
 
 /** Holds the page while the browser goes back to the Enterprise Portal. */
@@ -21,6 +22,9 @@ export function ReturningToPortalCard({
       className="fixed inset-0 z-[100000] flex items-center justify-center bg-background/80 backdrop-blur-sm p-md"
     >
       <div className="max-w-[24rem] space-y-xs rounded-xl border border-border bg-card p-md text-center shadow-xl">
+        <div className="relative size-12 overflow-hidden rounded-[12px] border border-[#ece6f2] bg-white">
+          <Image src="/images/brand/logo-tile.png" alt="" fill sizes="48px" className="object-contain p-[3px]" />
+        </div>
         <div className="flex items-center justify-center gap-sm text-body-md text-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           Returning to the Enterprise Portal…

@@ -1,7 +1,7 @@
 import { ViewStockManagement } from "@/pages/pos/ViewStockManagement";
 
 export const metadata = {
-  title: "Stock Management | ERP System",
+  title: "Bren Raphael's | Point of Sale System",
   description: "View stock levels and receive inventory.",
 };
 

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Starting Cash | ERP System",
+  title: "Bren Raphael's | Point of Sale System",
   description: "Review the starting cash declared by cashiers.",
 };
 
