@@ -11,11 +11,18 @@ export const isManager = (role: string | undefined) =>
 /** Super Admin and CEO open every page outside a Module and see every location. */
 export const isSuperUser = (role: string | undefined) => !!role && SUPER_ROLES.includes(role);
 
-/** Managers are prompted but may skip; administrators are exempt; others must declare daily. */
+/** A manager over every location, limited to the Modules the Enterprise Portal granted; never the Dashboard. */
+export const isGeneralManager = (role: string | undefined) => role === "General Manager";
+
+/** Super Admin, CEO and General Manager see every location and use the location selector. */
+export const seesAllLocations = (role: string | undefined) =>
+  isSuperUser(role) || isGeneralManager(role);
+
+/** Managers are prompted but may skip; administrators and General Managers are exempt; others must declare daily. */
 export const startingCashRule = (
   role: string | undefined,
 ): "mandatory" | "optional" | "exempt" =>
-  isSuperUser(role) ? "exempt" : isManager(role) ? "optional" : "mandatory";
+  seesAllLocations(role) ? "exempt" : isManager(role) ? "optional" : "mandatory";
 
 /** The POS-PROBE role a POS role opens the probe as: the owner (Super Admin, CEO) or a manager; anyone else can't. */
 export const probeRoleFor = (role: string | undefined): "owner" | "manager" | null =>

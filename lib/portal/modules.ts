@@ -31,6 +31,15 @@ const MODULES_FOR_ROLE: Record<string, readonly string[]> = {
     "Stock Management",
     "Sales Reports",
   ],
+  // Every Module but the Dashboard; the Enterprise Portal's grants narrow it further.
+  "General Manager": [
+    "Sales Processing",
+    "Order Management",
+    "Product Management",
+    "Stock Management",
+    "Sales Reports",
+    "Location Management",
+  ],
 };
 
 /** The Roles that open each page outside every Module. */
@@ -74,7 +83,7 @@ export function mayPerformAction(
   action: "read" | "write" | "update" | "delete" | "approve" | "export",
 ): boolean {
   if (!role || !roleMayUseModule(role, module)) return false;
-  if (SUPER_ROLES.includes(role)) return true;
+  if (SUPER_ROLES.includes(role) || role === "General Manager") return true;
 
   if (role === "Cashier") {
     return action === "read" ||

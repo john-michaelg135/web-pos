@@ -3,13 +3,13 @@
 import React, { createContext, useCallback, useContext, useMemo } from "react";
 import type { PosAction } from "@/lib/permissions";
 import type { Staff } from "@/lib/portal/client";
-import { isSuperUser } from "@/lib/portal/roles";
+import { seesAllLocations } from "@/lib/portal/roles";
 import { mayPerformAction, roleMayUseModule } from "@/lib/portal/modules";
 
 type User = Staff & {
   /** Kept so existing callers that read a user id keep compiling; the Enterprise Portal sends no numeric id. */
   id: string;
-  /** Super Admin and CEO. */
+  /** Super Admin, CEO and General Manager: every location, full rights in the Modules they hold. */
   isSuperUser: boolean;
   locationId?: number;
 };
@@ -52,7 +52,7 @@ export const useAuth = (): AuthContextType => {
   const { staff, modules } = useContext(StaffContext);
 
   const user = useMemo<User | null>(
-    () => (staff ? { ...staff, id: staff.username, isSuperUser: isSuperUser(staff.role) } : null),
+    () => (staff ? { ...staff, id: staff.username, isSuperUser: seesAllLocations(staff.role) } : null),
     [staff],
   );
 
