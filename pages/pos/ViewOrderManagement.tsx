@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Bone, OrderListSkeleton, OrderManagementSkeleton } from "@/components/shared/PageSkeleton";
 
@@ -43,6 +43,27 @@ const LEGACY_COLORS = {
 
 /** The order list loads this many days at a time (see "Load more" under the list). */
 const ORDER_HISTORY_STEP_DAYS = 30;
+
+type OrderTab = "active" | "paid" | "completed" | "refunds" | "voids" | "cancelled";
+type RefundSubTab = "requested" | "refunded" | "rejected";
+type VoidSubTab = "requested" | "voided" | "rejected";
+
+const voidWasRejected = (o: Order) =>
+  !!(o.remarks?.toLowerCase().startsWith("void rejected") || o.statusHistory?.some((h) => h.oldStatus === "Void Requested" && h.newStatus === "Completed"));
+
+/** The tab (and sub-tab) that lists an order, so a notification link can open it there. */
+function tabForOrder(o: Order): { tab: OrderTab; refund?: RefundSubTab; void?: VoidSubTab } {
+  if (o.status === "refund_requested") return { tab: "refunds", refund: "requested" };
+  if (o.status === "void_requested") return { tab: "voids", void: "requested" };
+  if (o.status === "voided") return { tab: "voids", void: "voided" };
+  if (o.status === "refunded" || (o.refundedAmount ?? 0) > 0) return { tab: "refunds", refund: "refunded" };
+  if (o.status === "completed" && latestRefundWasRejected(o)) return { tab: "refunds", refund: "rejected" };
+  if (o.status === "completed" && voidWasRejected(o)) return { tab: "voids", void: "rejected" };
+  if (o.status === "paid") return { tab: "paid" };
+  if (o.status === "completed" || o.status === "delivered") return { tab: "completed" };
+  if (o.status === "cancelled" || o.status === "rejected") return { tab: "cancelled" };
+  return { tab: "active" };
+}
 
 const peso = (n: number) => `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const orderLabel = (order: Order) => order.orderNumber || `#${order.id}`;
@@ -69,8 +90,16 @@ export default function ViewOrderManagement() {
   const canManageRefunds = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const isCashierLevel = canViewOrders && !canManageRefunds;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // A notification opened this page for one order (?orderId=…): show just that order until cleared.
+  const linkedOrderId = searchParams?.get("orderId") ?? null;
+  const [focusOrderId, setFocusOrderId] = useState<string | null>(null);
+  const [handledOrderLink, setHandledOrderLink] = useState<string | null>(null);
+  const [linkedOrderMissing, setLinkedOrderMissing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
+  // The history window the loaded `orders` came from (undefined until the first load).
+  const [loadedWindow, setLoadedWindow] = useState<number | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [cashierLocationName, setCashierLocationName] = useState<string>("");
 
@@ -216,6 +245,7 @@ export default function ViewOrderManagement() {
       };
       const { data } = await apiClient.apiPos.orderManagementOrdersList(queryParams, { headers: reqHeaders });
       setOrders(data.map(mapToFrontendOrder));
+      setLoadedWindow(historyDays);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
       toast.error("Failed to load orders.");
@@ -294,8 +324,44 @@ export default function ViewOrderManagement() {
     setSearchQuery("");
   };
 
+  // Open the order a notification links to: its tab, and only that order. If it is older than
+  // the loaded window, load everything once before saying it isn't there. (State is adjusted
+  // while rendering, when the link or the loaded orders change, rather than in an effect.)
+  if (linkedOrderId !== handledOrderLink) {
+    if (!linkedOrderId) {
+      setHandledOrderLink(null);
+      setFocusOrderId(null);
+      setLinkedOrderMissing(false);
+    } else if (!isLoading && loadedWindow !== undefined) {
+      const order = orders.find((o) => o.id === linkedOrderId);
+      if (!order && loadedWindow !== null) {
+        if (historyDays !== null) setHistoryDays(null);
+      } else {
+        setHandledOrderLink(linkedOrderId);
+        setFocusOrderId(order?.id ?? null);
+        setLinkedOrderMissing(!order);
+        if (order) {
+          const { tab, refund, void: voidSub } = tabForOrder(order);
+          setActiveTab(tab);
+          if (refund) setRefundSubTab(refund);
+          if (voidSub) setVoidSubTab(voidSub);
+          setSearchQuery("");
+          setFilterType("All");
+          setFilterStatus("All");
+        }
+      }
+    }
+  }
+
+  const clearFocusedOrder = () => {
+    setFocusOrderId(null);
+    setLinkedOrderMissing(false);
+    router.replace("/order-management");
+  };
+
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
+      if (focusOrderId && o.id !== focusOrderId) return false;
       // Pending orders are hidden everywhere: sales complete at the counter, so only
       // leftovers from the old online-payment flow are still Pending.
       if (o.status === "pending") return false;
@@ -327,7 +393,7 @@ export default function ViewOrderManagement() {
       }
       return true;
     });
-  }, [orders, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation, isCashierLevel, assignedLocation]);
+  }, [orders, focusOrderId, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation, isCashierLevel, assignedLocation]);
 
   const handleApproveVoid = (order: Order) => { setOrderToApproveVoid(order); setShowApproveVoidDialog(true); };
 
@@ -700,6 +766,26 @@ export default function ViewOrderManagement() {
         </div>
       )}
       */}
+
+      {(focusOrderId || linkedOrderMissing) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm">
+          <span className="text-foreground">
+            {linkedOrderMissing ? (
+              "The order from your notification is no longer in your list."
+            ) : (
+              <>
+                Showing the order from your notification
+                {(() => {
+                  const o = orders.find((x) => x.id === focusOrderId);
+                  return o ? <span className="font-semibold"> {orderLabel(o)}</span> : null;
+                })()}
+                .
+              </>
+            )}
+          </span>
+          <Button variant="outline" size="sm" onClick={clearFocusedOrder}>Show all orders</Button>
+        </div>
+      )}
 
       {/* Status Tabs */}
       <div role="tablist" className={cn(
