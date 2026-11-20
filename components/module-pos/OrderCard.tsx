@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ViewOrderModal } from "./ViewOrderModal";
 
 import { CalenderIcon } from "@/icons/index";
-import { DeliveryConfirmationInput, Order, OrderStatus, STATUS_LABELS, STATUS_PIPELINE } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, SubmitOutcome, Order, OrderStatus, STATUS_LABELS, STATUS_PIPELINE } from "@/components/module-pos/types";
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 
@@ -29,7 +29,7 @@ interface OrderCardProps {
 
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onCompletePayment?: () => Promise<boolean | void>;
-  onConfirmDelivery?: (details: DeliveryConfirmationInput) => Promise<boolean>;
+  onConfirmDelivery?: (details: DeliveryConfirmationInput) => Promise<SubmitOutcome>;
   onRequestRefund?: () => void;
 onRequestVoid?: () => void;
 onApplyVoid?: () => void;

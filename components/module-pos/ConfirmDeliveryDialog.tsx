@@ -1,38 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
-import { DeliveryConfirmation, DeliveryConfirmationInput, Order } from "@/components/module-pos/types";
-
-// Proof photos are shrunk in the browser so a phone photo (several MB) is stored as ~100–300 KB.
-const PROOF_MAX_SIDE = 1280;
-const PROOF_JPEG_QUALITY = 0.75;
-
-export async function shrinkImage(file: File): Promise<string> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("That file isn't an image we can read."));
-      el.src = url;
-    });
-    const scale = Math.min(1, PROOF_MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.naturalWidth * scale);
-    canvas.height = Math.round(img.naturalHeight * scale);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("Couldn't process the photo.");
-    // JPEG has no transparency; paint white so transparent screenshots don't turn black.
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", PROOF_JPEG_QUALITY);
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
+import { DeliveryConfirmation, DeliveryConfirmationInput, Order, SubmitOutcome } from "@/components/module-pos/types";
+import { ProofPhotoField, isProofReferenceRefusal, useProofPhoto } from "./ProofPhotoPicker";
 
 // Value for <input type="datetime-local"> in the viewer's own time zone.
 function toLocalInputValue(date: Date) {
@@ -48,7 +20,7 @@ interface ConfirmDeliveryDialogProps {
   isOpen: boolean;
   onClose: () => void;
   order: Order;
-  onSubmit: (details: DeliveryConfirmationInput) => Promise<boolean>;
+  onSubmit: (details: DeliveryConfirmationInput) => Promise<SubmitOutcome>;
 }
 
 export function ConfirmDeliveryDialog({ isOpen, onClose, order, onSubmit }: ConfirmDeliveryDialogProps) {
@@ -56,10 +28,8 @@ export function ConfirmDeliveryDialog({ isOpen, onClose, order, onSubmit }: Conf
   const [deliveredAt, setDeliveredAt] = useState("");
   const [courierReference, setCourierReference] = useState("");
   const [notes, setNotes] = useState("");
-  const [proofImage, setProofImage] = useState<string | null>(null);
-  const [photoError, setPhotoError] = useState("");
-  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const proof = useProofPhoto(order.id, "delivery", isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -67,8 +37,6 @@ export function ConfirmDeliveryDialog({ isOpen, onClose, order, onSubmit }: Conf
     setDeliveredAt(toLocalInputValue(new Date()));
     setCourierReference("");
     setNotes("");
-    setProofImage(null);
-    setPhotoError("");
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -84,37 +52,22 @@ export function ConfirmDeliveryDialog({ isOpen, onClose, order, onSubmit }: Conf
     : orderPlaced && deliveredDate.getTime() < orderPlaced.getTime() - 60_000
     ? "Delivered on can't be before the order date."
     : "";
-  const canSubmit = receivedBy.trim().length > 0 && !dateError && !isProcessingPhoto && !isSubmitting;
-
-  const handlePhoto = async (file: File | undefined) => {
-    setPhotoError("");
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setPhotoError("Choose an image file (JPG, PNG or a screenshot).");
-      return;
-    }
-    setIsProcessingPhoto(true);
-    try {
-      setProofImage(await shrinkImage(file));
-    } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Couldn't process the photo.");
-    } finally {
-      setIsProcessingPhoto(false);
-    }
-  };
+  // A chosen photo must finish uploading first; no photo is fine for a delivery.
+  const canSubmit = receivedBy.trim().length > 0 && !dateError && proof.settled && !isSubmitting;
 
   const handleSubmit = async () => {
     if (!canSubmit || !deliveredDate) return;
     setIsSubmitting(true);
     try {
-      const ok = await onSubmit({
+      const outcome = await onSubmit({
         receivedBy: receivedBy.trim(),
         deliveredAt: deliveredDate.toISOString(),
         courierReference: courierReference.trim() || undefined,
-        proofImage: proofImage ?? undefined,
+        ...proof.payload(),
         notes: notes.trim() || undefined,
       });
-      if (ok) onClose();
+      if (outcome.ok) onClose();
+      else if (isProofReferenceRefusal(outcome.message)) proof.invalidate(outcome.message!);
     } finally {
       setIsSubmitting(false);
     }
@@ -188,35 +141,11 @@ export function ConfirmDeliveryDialog({ isOpen, onClose, order, onSubmit }: Conf
 
           <div>
             <span className={labelClass}>Proof photo</span>
-            {proofImage ? (
-              <div className="flex items-start gap-3">
-                <img src={proofImage} alt="Proof of delivery" className="w-24 h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
-                <button
-                  type="button"
-                  onClick={() => setProofImage(null)}
-                  className="text-xs font-semibold text-red-600 hover:underline"
-                >
-                  Remove photo
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center gap-1 px-4 py-5 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                  {isProcessingPhoto ? "Processing photo..." : "Add a photo"}
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Lalamove proof-of-delivery screenshot or a photo of the signed receipt
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  disabled={isProcessingPhoto}
-                  onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }}
-                />
-              </label>
-            )}
-            {photoError && <p className="text-xs text-red-500 mt-1 m-0">{photoError}</p>}
+            <ProofPhotoField
+              proof={proof}
+              alt="Proof of delivery"
+              hint="Lalamove proof-of-delivery screenshot or a photo of the signed receipt"
+            />
           </div>
 
           <div>
@@ -306,44 +235,99 @@ export function DeliveryConfirmationDetails({ orderId, confirmation, border, mut
 }
 
 interface ProofPhotoProps {
-  /** Endpoint returning `{ proofImage: dataUrl }`. */
+  /** Endpoint returning `{ proofImage }`: a short-lived signed HTTPS address, or a legacy data URL. */
   src: string;
   alt: string;
   border: string;
   muted: string;
 }
 
-// Proof photos aren't in the order list (they'd make it heavy), so each loads on demand.
-// Tap the thumbnail to see it full size.
+type ProofPhotoLoad =
+  | { state: "loading" }
+  | { state: "ready"; url: string; source: "file" | "legacy"; pending: boolean }
+  | { state: "missing" }
+  | { state: "unavailable" };
+
+// Signed view addresses last five minutes; refresh them a little before that.
+const VIEW_URL_REFRESH_MS = 4 * 60_000;
+
+// Proof photos aren't in the order list (they'd make it heavy), so each loads on demand through
+// the authorized POS endpoint. Tap the thumbnail to see it full size.
 export function ProofPhoto({ src, alt, border, muted }: ProofPhotoProps) {
-  const [photo, setPhoto] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [load, setLoad] = useState<ProofPhotoLoad>({ state: "loading" });
+  const [attempt, setAttempt] = useState(0);
   const [showFull, setShowFull] = useState(false);
+  const refreshedOnError = useRef(false);
+  // Another order's photo: start over (a refresh of the same photo keeps showing the old address).
+  const [shownSrc, setShownSrc] = useState(src);
+  if (src !== shownSrc) {
+    setShownSrc(src);
+    setLoad({ state: "loading" });
+  }
 
   useEffect(() => {
     const controller = new AbortController();
-    setPhoto(null);
-    setFailed(false);
     fetch(src, { cache: "no-store", credentials: "same-origin", signal: controller.signal })
       .then(async (res) => {
-        if (!res.ok) throw new Error();
-        const data = (await res.json()) as { proofImage?: string };
-        setPhoto(data.proofImage ?? null);
+        if (res.status === 404) { setLoad({ state: "missing" }); return; }
+        if (!res.ok) { setLoad({ state: "unavailable" }); return; }
+        const data = (await res.json()) as { proofImage?: string; source?: string; pending?: boolean };
+        setLoad(data.proofImage
+          ? { state: "ready", url: data.proofImage, source: data.source === "file" ? "file" : "legacy", pending: !!data.pending }
+          : { state: "missing" });
       })
-      .catch(() => { if (!controller.signal.aborted) setFailed(true); });
+      .catch(() => { if (!controller.signal.aborted) setLoad({ state: "unavailable" }); });
     return () => controller.abort();
-  }, [src]);
+  }, [src, attempt]);
 
+  // Keep a stored photo's signed address fresh while it's on screen.
+  const isFile = load.state === "ready" && load.source === "file";
+  useEffect(() => {
+    if (!isFile) return;
+    const timer = setTimeout(() => { refreshedOnError.current = false; setAttempt((n) => n + 1); }, VIEW_URL_REFRESH_MS);
+    return () => clearTimeout(timer);
+  }, [isFile, attempt]);
+
+  // An expired address fails to load: ask the POS for a fresh one, once.
+  const handleImageError = () => {
+    if (load.state !== "ready" || load.source !== "file" || refreshedOnError.current) {
+      setLoad({ state: "unavailable" });
+      return;
+    }
+    refreshedOnError.current = true;
+    setAttempt((n) => n + 1);
+  };
+  const retry = () => { refreshedOnError.current = false; setLoad({ state: "loading" }); setAttempt((n) => n + 1); };
+
+  const photo = load.state === "ready" ? load.url : null;
   return (
     <div className="shrink-0">
       {photo ? (
         <button type="button" onClick={() => setShowFull(true)} className="block w-full" aria-label={`View ${alt.toLowerCase()} full size`}>
-          <img src={photo} alt={alt} className="w-full sm:w-32 h-40 sm:h-32 object-cover rounded-lg border" style={{ borderColor: border }} />
+          <img
+            src={photo}
+            alt={alt}
+            referrerPolicy="no-referrer"
+            onError={handleImageError}
+            onLoad={() => { refreshedOnError.current = false; }}
+            className="w-full sm:w-32 h-40 sm:h-32 object-cover rounded-lg border"
+            style={{ borderColor: border }}
+          />
         </button>
       ) : (
-        <div className="w-full sm:w-32 h-32 rounded-lg border flex items-center justify-center text-xs text-center px-2" style={{ borderColor: border, color: muted }}>
-          {failed ? "Couldn't load photo" : "Loading photo..."}
+        <div className="w-full sm:w-32 h-32 rounded-lg border flex flex-col items-center justify-center gap-1 text-xs text-center px-2" style={{ borderColor: border, color: muted }}>
+          {load.state === "loading" && "Loading photo..."}
+          {load.state === "missing" && "Photo not available"}
+          {load.state === "unavailable" && (
+            <>
+              <span>Photo storage is temporarily unavailable</span>
+              <button type="button" onClick={retry} className="font-semibold underline">Retry</button>
+            </>
+          )}
         </div>
+      )}
+      {load.state === "ready" && load.pending && (
+        <p className="text-[10px] mt-1 m-0" style={{ color: muted }}>Photo saved; finishing storage…</p>
       )}
 
       {showFull && photo && createPortal(
@@ -351,7 +335,7 @@ export function ProofPhoto({ src, alt, border, muted }: ProofPhotoProps) {
           onClick={() => setShowFull(false)}
           className="fixed inset-0 z-[100010] bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
         >
-          <img src={photo} alt={alt} className="max-w-full max-h-full rounded-lg shadow-2xl" />
+          <img src={photo} alt={alt} referrerPolicy="no-referrer" onError={handleImageError} className="max-w-full max-h-full rounded-lg shadow-2xl" />
         </div>,
         document.body
       )}

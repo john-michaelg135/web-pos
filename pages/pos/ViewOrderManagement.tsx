@@ -4,9 +4,10 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon } from "@/icons/index";
 import { Search, Filter, LayoutGrid, List } from "lucide-react";
-import { DeliveryConfirmationInput, Order, OrderStatus, REFUND_METHOD_HINT, STATUS_LABELS, latestRefundWasRejected, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, Order, OrderStatus, REFUND_METHOD_HINT, STATUS_LABELS, SubmitOutcome, latestRefundWasRejected, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
+import type { ProofPayload } from "@/components/module-pos/ProofPhotoPicker";
 import VoidFormDialog from "@/components/module-pos/VoidFormDialog";
 import RejectRefundDialog from "@/components/module-pos/RejectRefundDialog";
 import RejectVoidDialog from "@/components/module-pos/RejectVoidDialog";
@@ -187,6 +188,7 @@ export default function ViewOrderManagement() {
     createdAt: dto.createdAt || undefined,
     deliveryConfirmation: (dto as any).deliveryConfirmation ?? null,
     hasRefundProof: !!(dto as any).hasRefundProof,
+    refundProofPending: !!(dto as any).refundProofPending,
     refundedAmount: Number((dto as any).refundedAmount) || 0,
     pendingRefundAmount: Number((dto as any).pendingRefundAmount) || 0,
     requestedByCurrentUser: !!(dto as any).requestedByCurrentUser,
@@ -475,13 +477,14 @@ export default function ViewOrderManagement() {
     }
   };
 
-  const handleRequestRefundSubmit = async (proofImage: string | undefined, items: RefundItemDto[] | undefined) => {
-    if (!selectedOrder || !refundReason.trim()) return;
-    if (refundReason.trim().length > 500) { toast.error("Reason must not exceed 500 characters."); return; }
-    if (/[<>]/.test(refundReason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
-    if (items && items.length === 0) { toast.error("Choose at least one item to refund."); return; }
+  const handleRequestRefundSubmit = async (proof: ProofPayload, items: RefundItemDto[] | undefined): Promise<SubmitOutcome> => {
+    if (!selectedOrder || !refundReason.trim()) return { ok: false };
+    if (refundReason.trim().length > 500) { toast.error("Reason must not exceed 500 characters."); return { ok: false }; }
+    if (/[<>]/.test(refundReason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return { ok: false }; }
+    if (items && items.length === 0) { toast.error("Choose at least one item to refund."); return { ok: false }; }
     try {
-      await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-refund`, { reason: refundReason, proofImage, items });
+      // proof is { proofReference } (file storage), { proofImage } (legacy rollback) or nothing.
+      const saved = await requestManagerEndpoint(`order-management/orders/${selectedOrder.id}/request-refund`, { reason: refundReason, ...proof, items }) as { refundProofPending?: boolean } | null;
       const requested = items
         ? items.map((line) => {
             const item = selectedOrder.items.find((i) => i.variationId === line.variationId);
@@ -492,11 +495,20 @@ export default function ViewOrderManagement() {
         title: "Refund requested",
         meta: `${orderLabel(selectedOrder)} · ${peso(requested ? requested.reduce((sum, r) => sum + r.price, 0) : selectedOrder.total)}`,
         details: requested?.map(({ item, label, value }) => ({ item, label, value })),
-        note: "A manager has to approve it before anything is refunded.",
+        note: saved?.refundProofPending
+          ? "A manager has to approve it before anything is refunded. The photo is saved and still finishing in storage."
+          : "A manager has to approve it before anything is refunded.",
       });
       fetchOrders();
-    } catch (err) { console.error("Failed to request refund:", err); toast.error(err instanceof Error && err.message ? err.message : "Failed to request refund."); }
-    setShowRefundDialog(false); setRefundReason("");
+      setShowRefundDialog(false); setRefundReason("");
+      return { ok: true };
+    } catch (err) {
+      // Keep the dialog (and its attached photo) open so the request can be fixed and sent again.
+      const message = err instanceof Error && err.message ? err.message : "Failed to request refund.";
+      console.error("Failed to request refund:", message);
+      toast.error(message);
+      return { ok: false, message };
+    }
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus): Promise<boolean> => {
@@ -542,21 +554,24 @@ export default function ViewOrderManagement() {
   };
 
   // Institutional: Shipped → Completed with proof of delivery.
-  const confirmDelivery = async (orderId: string, details: DeliveryConfirmationInput): Promise<boolean> => {
+  const confirmDelivery = async (orderId: string, details: DeliveryConfirmationInput): Promise<SubmitOutcome> => {
     try {
       const managerId = Number(authUser?.id) || 1;
-      await requestManagerEndpoint(`order-management/orders/${orderId}/confirm-institutional-delivery`, { ...details, confirmedBy: managerId });
+      const saved = await requestManagerEndpoint(`order-management/orders/${orderId}/confirm-institutional-delivery`, { ...details, confirmedBy: managerId }) as
+        { deliveryConfirmation?: { proofPending?: boolean } | null } | null;
       const deliveredOrder = orders.find((o) => o.id === orderId);
       toast.success({
         title: "Delivery confirmed",
         meta: deliveredOrder ? `${orderLabel(deliveredOrder)} · completed` : "Order completed",
+        note: saved?.deliveryConfirmation?.proofPending ? "The photo is saved and still finishing in storage." : undefined,
       });
       fetchOrders();
-      return true;
+      return { ok: true };
     } catch (err) {
-      console.error("Failed to confirm delivery:", err);
-      toast.error(err instanceof Error && err.message ? err.message : "Failed to confirm delivery.");
-      return false;
+      const message = err instanceof Error && err.message ? err.message : "Failed to confirm delivery.";
+      console.error("Failed to confirm delivery:", message);
+      toast.error(message);
+      return { ok: false, message };
     }
   };
 

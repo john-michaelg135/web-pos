@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { variationLabel } from "@/components/module-pos/utils";
 import { CloseLineIcon } from "@/icons/index";
-import { Order, REFUND_METHOD_HINT, refundMethodOf, refundableQuantity } from "@/components/module-pos/types";
+import { Order, REFUND_METHOD_HINT, SubmitOutcome, refundMethodOf, refundableQuantity } from "@/components/module-pos/types";
 import type { RefundItemDto } from "@/components/module-pos/api/api";
-import { shrinkImage } from "./ConfirmDeliveryDialog";
+import { ProofPayload, ProofPhotoField, isProofReferenceRefusal, useProofPhoto } from "./ProofPhotoPicker";
 
 interface RefundFormDialogProps {
   isOpen: boolean;
@@ -15,7 +15,8 @@ interface RefundFormDialogProps {
   reason: string;
   setReason: (reason: string) => void;
   /** `items` is undefined when the order has no per-item data; the server then refunds everything left. */
-  onSubmit: (proofImage: string | undefined, items: RefundItemDto[] | undefined) => void;
+  /** The dialog stays open (keeping the photo) unless the outcome is ok. */
+  onSubmit: (proof: ProofPayload, items: RefundItemDto[] | undefined) => Promise<SubmitOutcome>;
   primary: string;
   muted: string;
   border: string;
@@ -63,9 +64,8 @@ export default function RefundFormDialog({
 
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [mounted, setMounted] = useState(false);
-  const [proofImage, setProofImage] = useState<string | null>(null);
-  const [photoError, setPhotoError] = useState("");
-  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const proof = useProofPhoto(order?.id, "refund", isOpen);
 
   useEffect(() => {
     setMounted(true);
@@ -73,30 +73,11 @@ export default function RefundFormDialog({
 
   useEffect(() => {
     if (isOpen) {
-      setProofImage(null);
-      setPhotoError("");
       // A failed delivery has only one possible reason, so pick it for them.
       if (isFailedDelivery) setReason("Item not delivered");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  const handlePhoto = async (file: File | undefined) => {
-    setPhotoError("");
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setPhotoError("Choose an image file (JPG, PNG or a screenshot).");
-      return;
-    }
-    setIsProcessingPhoto(true);
-    try {
-      setProofImage(await shrinkImage(file));
-    } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : "Couldn't process the photo.");
-    } finally {
-      setIsProcessingPhoto(false);
-    }
-  };
 
   // Units being returned, by line. Starts at everything that can still be refunded.
   const [quantities, setQuantities] = useState<number[]>([]);
@@ -115,18 +96,26 @@ export default function RefundFormDialog({
   const setQuantity = (idx: number, qty: number) =>
     setQuantities((prev) => lines.map((item, i) => (i === idx ? Math.max(0, Math.min(refundableQuantity(item), qty)) : prev[i] ?? 0)));
 
-  const canSubmit = !!reason.trim() && !!selectedOption && (!requiresPhoto || !!proofImage) && !isProcessingPhoto && (!itemized || chosenUnits > 0);
+  // A required photo has to be attached (uploaded and confirmed) before the request can go.
+  const photoReady = proof.status === "ready";
+  const canSubmit = !!reason.trim() && !!selectedOption && (requiresPhoto ? photoReady : proof.settled) &&
+    !isSubmitting && (!itemized || chosenUnits > 0);
 
-  const submit = () => {
-    if (!itemized) {
-      onSubmit(proofImage ?? undefined, undefined);
-      return;
-    }
+  const submit = async () => {
+    if (!canSubmit) return;
     // The same variation can appear on two lines; the server adds them up.
-    const items = lines
-      .map((item, idx) => ({ variationId: item.variationId as number, quantity: chosen[idx] }))
-      .filter((item) => item.quantity > 0);
-    onSubmit(proofImage ?? undefined, items);
+    const items = itemized
+      ? lines
+          .map((item, idx) => ({ variationId: item.variationId as number, quantity: chosen[idx] }))
+          .filter((item) => item.quantity > 0)
+      : undefined;
+    setIsSubmitting(true);
+    try {
+      const outcome = await onSubmit(requiresPhoto ? proof.payload() : {}, items);
+      if (!outcome.ok && isProofReferenceRefusal(outcome.message)) proof.invalidate(outcome.message!);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Pick the radio that matches the saved reason only when the dialog opens. Doing this on every
@@ -359,28 +348,7 @@ export default function RefundFormDialog({
                     ? "Required: Lalamove's failed-delivery screen or proof the item was returned. The items go back to stock once approved."
                     : "Required for paid institutional orders, e.g. a photo of the damaged item or the customization that wasn't followed."}
                 </p>
-                {proofImage ? (
-                  <div className="flex items-start gap-3">
-                    <img src={proofImage} alt="Refund proof" className="w-24 h-24 object-cover rounded-lg border border-gray-200 dark:border-gray-700" />
-                    <button type="button" onClick={() => setProofImage(null)} className="text-xs font-semibold text-red-600 hover:underline">
-                      Remove photo
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center gap-1 px-4 py-5 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      {isProcessingPhoto ? "Processing photo..." : "Add a photo"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      disabled={isProcessingPhoto}
-                      onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }}
-                    />
-                  </label>
-                )}
-                {photoError && <p className="text-xs text-red-500 mt-1">{photoError}</p>}
+                <ProofPhotoField proof={proof} alt="Refund proof" />
               </div>
             )}
           </div>
@@ -403,7 +371,7 @@ export default function RefundFormDialog({
                 : "bg-gray-300 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
             }`}
           >
-            Submit Refund Request
+            {isSubmitting ? "Submitting..." : "Submit Refund Request"}
           </button>
         </div>
       </div>

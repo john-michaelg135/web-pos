@@ -76,6 +76,8 @@ export type Order = {
   deliveryConfirmation?: DeliveryConfirmation | null;
   /** A refund request photo exists (fetched separately). */
   hasRefundProof?: boolean;
+  /** The refund photo is saved but file storage hasn't finished attaching it yet. */
+  refundProofPending?: boolean;
   /** Value of the items already refunded. */
   refundedAmount?: number;
   /** Value of the items in a refund request awaiting a manager. */
@@ -95,6 +97,8 @@ export type DeliveryConfirmation = {
   courierReference?: string | null;
   notes?: string | null;
   hasProofImage: boolean;
+  /** Saved, but file storage hasn't finished attaching the photo yet (api-pos retries on its own). */
+  proofPending?: boolean;
   confirmedBy?: number | null;
   confirmedByName?: string | null;
   confirmedAt: string;
@@ -105,10 +109,15 @@ export type DeliveryConfirmationInput = {
   /** ISO timestamp (UTC). */
   deliveredAt: string;
   courierReference?: string;
-  /** Shrunk image as a data URL. */
+  /** Legacy form: shrunk image as a data URL (rollback switch only). */
   proofImage?: string;
+  /** Ready reference from the direct upload to file storage. Send this or proofImage, not both. */
+  proofReference?: string;
   notes?: string;
 };
+
+/** Result of a dialog's save, so the dialog can keep its state and react to the server's message. */
+export type SubmitOutcome = { ok: boolean; message?: string };
 
 export const STATUS_PIPELINE: OrderStatus[] = [
   "pending",
