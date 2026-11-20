@@ -29,15 +29,24 @@ interface StockReceivingFormProps {
     notes: string;
     transferId: number;
   }) => void;
+  /** Prefills the search, e.g. with the transfer ID from a notification link. */
+  initialSearch?: string;
 }
 
-export function StockReceivingForm({ onSuccess, onReceived }: StockReceivingFormProps) {
+export function StockReceivingForm({ onSuccess, onReceived, initialSearch }: StockReceivingFormProps) {
   const [transfers, setTransfers] = useState<PendingTransfer[]>([]);
   const [receiving, setReceiving] = useState<PendingTransfer | null>(null);
   const [products, setProducts] = useState<ProductResponseDto[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialSearch ?? "");
+
+  // A new link (another transfer) replaces the search; set while rendering, not in an effect.
+  const [seenInitialSearch, setSeenInitialSearch] = useState(initialSearch);
+  if (initialSearch !== seenInitialSearch) {
+    setSeenInitialSearch(initialSearch);
+    if (initialSearch) setSearchTerm(initialSearch);
+  }
 
   // Manual Receive Stock Dialog state
   const [showManualDialog, setShowManualDialog] = useState(false);

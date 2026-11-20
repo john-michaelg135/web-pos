@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid, List } from "lucide-react";
 import { toast } from "@/lib/toast";
 
@@ -32,6 +32,21 @@ export function ViewStockManagement() {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history">("levels");
+
+  // Notification links: ?tab=receive&transferId=… or ?tab=levels&locationId=…&variationId=…
+  const searchParams = useSearchParams();
+  const linkTab = searchParams?.get("tab") ?? null;
+  const linkTransferId = searchParams?.get("transferId") ?? "";
+  const linkLocationId = Number(searchParams?.get("locationId")) || null;
+  const linkVariationId = Number(searchParams?.get("variationId")) || null;
+  const focusVariationId = linkTab === "levels" ? linkVariationId : null;
+  // Applied while rendering when the link changes (not in an effect), so a new link opens its tab.
+  const linkKey = searchParams?.toString() ?? "";
+  const [appliedLink, setAppliedLink] = useState<string | null>(null);
+  if (linkKey !== appliedLink) {
+    setAppliedLink(linkKey);
+    if (linkTab === "levels" || linkTab === "receive" || linkTab === "history") setActiveTab(linkTab);
+  }
 
   // Only admins/owners (super users, "all" scope) may see or switch between
   // locations. Assigned staff are pinned to their own branch.
@@ -144,6 +159,15 @@ export function ViewStockManagement() {
     if (activeTab === "history") fetchMovements();
     fetchInventoryMovements();
   }, [activeTab, selectedLocation, locations]);
+
+  // A low-stock link names the branch; owners switch to it once the branches have loaded
+  // (assigned staff are already pinned to theirs).
+  const [appliedLocationLink, setAppliedLocationLink] = useState<string | null>(null);
+  if (canSwitchLocation && linkLocationId && locations.length > 0 && linkKey !== appliedLocationLink) {
+    setAppliedLocationLink(linkKey);
+    const linked = locations.find((l) => Number(l.locationId) === linkLocationId);
+    if (linked) setSelectedLocation(linked.locationName);
+  }
 
   const handleAdjustStock = (stock: StockLevel) => {
     setSelectedStock(stock);
@@ -294,12 +318,21 @@ export function ViewStockManagement() {
               </div>
             </div>
           </div>
-          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} hiddenLocationIds={inactiveLocationIds} />
+          {focusVariationId != null && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm">
+              <span className="text-foreground">Showing the item from your notification.</span>
+              <Button variant="outline" size="sm" onClick={() => router.replace("/stock-management?tab=levels")}>
+                Show all items
+              </Button>
+            </div>
+          )}
+          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} hiddenLocationIds={inactiveLocationIds} focusVariationId={focusVariationId} />
         </TabsContent>
 
         {/* Receive Stock */}
         <TabsContent value="receive" className="space-y-4">
           <StockReceivingForm
+            initialSearch={linkTab === "receive" ? linkTransferId : undefined}
             onSuccess={handleRecordArrival}
             onReceived={() => {
               fetchMovements();

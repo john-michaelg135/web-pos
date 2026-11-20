@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/shared/Sidebar";
 import { Header } from "@/components/shared/Header";
 import { StaffProvider } from "@/context/AuthContext";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/", useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
 
 const ada = { name: "Ada Okafor", username: "ada.okafor", email: "ada@brenraphaels.test", role: "Manager" };
 
@@ -32,9 +32,9 @@ beforeAll(() => {
 
 afterEach(cleanup);
 
-const shell = (ui: React.ReactNode) =>
+const shell = (ui: React.ReactNode, modules = ["Dashboard"]) =>
   render(
-    <StaffProvider staff={ada} modules={["Dashboard"]}>
+    <StaffProvider staff={ada} modules={modules}>
       <SidebarProvider>{ui}</SidebarProvider>
     </StaffProvider>,
   );
@@ -89,10 +89,27 @@ describe("profile footer", () => {
 });
 
 describe("header", () => {
-  it("has the sidebar trigger and the notification bell", () => {
+  it("has the sidebar trigger and, for Order or Stock Management, the notification bell", async () => {
+    // The bell loads its feed; live updates are off, so it polls.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url.includes("live-ticket")
+          ? Response.json({ message: "off" }, { status: 503 })
+          : Response.json({ items: [], nextCursor: null, unread: 2 }),
+      ),
+    );
+    shell(<Header />, ["Order Management"]);
+
+    expect(screen.getByRole("button", { name: /toggle sidebar/i })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /notifications, 2 unread/i })).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
+  it("hides the bell from Staff without Order or Stock Management", () => {
     shell(<Header />);
 
     expect(screen.getByRole("button", { name: /toggle sidebar/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /notifications/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /notifications/i })).toBeNull();
   });
 });
