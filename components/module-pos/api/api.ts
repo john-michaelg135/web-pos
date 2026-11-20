@@ -750,7 +750,10 @@ export interface RejectOrderDto {
 
 export interface RequestRefundDto {
   reason?: string;
+  /** Legacy: shrunk image as a data URL. Send this or proofReference, not both. */
   proofImage?: string | null;
+  /** Ready reference from POST .../proof-uploads/refund/confirm. */
+  proofReference?: string | null;
   /** Items and quantities being returned. Empty or missing refunds everything not yet refunded. */
   items?: RefundItemDto[] | null;
 }

@@ -1,20 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { proxyApiPos } from "@/lib/portal/api-pos-proxy";
+import { isAllowedPosEndpoint, type PosProxyMethod } from "@/lib/portal/pos-endpoints";
 
 type RouteContext = {
   params: Promise<{ path: string[] }>;
 };
 
-async function proxy(request: NextRequest, context: RouteContext, method: "GET" | "PUT") {
+async function proxy(request: NextRequest, context: RouteContext, method: PosProxyMethod) {
   const { path } = await context.params;
   const endpoint = path.join("/");
-  const isPinRead = method === "GET" && endpoint === "user-pin";
-  const isDeliveryProofRead = method === "GET" && /^order-management\/orders\/\d+\/(delivery-proof|refund-proof)$/.test(endpoint);
-  const isOrderAction =
-    method === "PUT" &&
-    /^order-management\/orders\/\d+\/(approve-void|reject-void|request-void|approve-refund|reject-refund|request-refund|complete-payment|confirm-institutional-delivery|status)$/.test(endpoint);
 
-  if (!isPinRead && !isDeliveryProofRead && !isOrderAction) {
+  if (!isAllowedPosEndpoint(method, endpoint)) {
     return NextResponse.json({ message: "POS endpoint not found." }, { status: 404 });
   }
 
@@ -31,4 +27,9 @@ export function GET(request: NextRequest, context: RouteContext) {
 
 export function PUT(request: NextRequest, context: RouteContext) {
   return proxy(request, context, "PUT");
+}
+
+// Only the two proof-upload route shapes accept POST.
+export function POST(request: NextRequest, context: RouteContext) {
+  return proxy(request, context, "POST");
 }

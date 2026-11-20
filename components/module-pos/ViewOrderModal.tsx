@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
-import { DeliveryConfirmationInput, Order, STATUS_LABELS, OrderStatus, formatRefundDeadline, refundMethodOf } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, SubmitOutcome, Order, STATUS_LABELS, OrderStatus, formatRefundDeadline, refundMethodOf } from "@/components/module-pos/types";
 import { ConfirmDeliveryDialog, DeliveryConfirmationDetails, ProofPhoto } from "./ConfirmDeliveryDialog";
 import { renderVariationBadges } from "./utils";
 import { toast } from "@/lib/toast";
@@ -22,7 +22,7 @@ interface ViewOrderModalProps {
   cardBg: string;
   onStatusUpdate?: (status: OrderStatus) => Promise<boolean | void>;
   onCompletePayment?: () => Promise<boolean | void>;
-  onConfirmDelivery?: (details: DeliveryConfirmationInput) => Promise<boolean>;
+  onConfirmDelivery?: (details: DeliveryConfirmationInput) => Promise<SubmitOutcome>;
   onRequestRefund?: () => void;
 onRequestVoid?: () => void;
 onApplyVoid?: () => void;
