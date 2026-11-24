@@ -25,6 +25,21 @@ export interface SalesTotals {
   unitsSold: number;
   refundCount: number;
   averageTransaction: number;
+  /** Sales value of stock written off as unsellable (system losses), at selling price. */
+  systemLosses: number;
+  unitsLost: number;
+  lossCount: number;
+  /** Net sales less system losses. */
+  netAfterLosses: number;
+}
+
+/** System losses grouped by reason (Expired, Damaged, ...). */
+export interface SalesLossLine {
+  label: string;
+  lossCount: number;
+  unitsLost: number;
+  systemLosses: number;
+  share: number;
 }
 
 export interface SalesLine extends SalesTotals {
@@ -42,6 +57,8 @@ export interface SalesProductLine {
   discounts: number;
   returns: number;
   netSales: number;
+  unitsLost: number;
+  systemLosses: number;
   averageUnitPrice: number;
   share: number;
 }
@@ -58,6 +75,7 @@ export interface SalesReportData {
   byChannel: SalesLine[];
   byPaymentMethod: SalesLine[];
   byProduct: SalesProductLine[];
+  byLossReason: SalesLossLine[];
   trendGranularity: "day" | "month";
   trend: SalesLine[];
 }
@@ -76,6 +94,7 @@ export const SALES_REPORT_NOTES = [
   "Sales are recognised on the date the order was placed and include orders marked Completed, including ones later refunded. Pending, cancelled and voided orders are excluded.",
   "Returns and refunds are recognised on the date the refund was approved, so a refund can relate to a sale from an earlier period.",
   "Senior Citizen / PWD discounts are the 20% discount and the 12% VAT exemption given at checkout, shown against the regular selling price.",
+  "System losses are stock a manager wrote off as unsellable (expired, damaged or mishandled), on the date it was recorded and valued at the selling price at that time. They are not sales or returns, so net sales are shown before them; net sales after system losses deducts them.",
   `${COMPANY_NAME} is not VAT-registered; no output VAT is included in these amounts.`,
 ];
 
@@ -201,8 +220,9 @@ function BreakdownTable({ heading, lines, total, detailed }: {
   detailed: boolean;
 }) {
   if (lines.length === 0) return <Empty>No sales in this period.</Empty>;
+  const losses = detailed && (total.systemLosses ?? 0) > 0;
   return (
-    <TableFrame minWidth={detailed ? 760 : 420}>
+    <TableFrame minWidth={detailed ? (losses ? 880 : 760) : 420}>
       <thead>
         <tr className="border-b border-border bg-muted/30">
           <th className={TH}>{heading}</th>
@@ -212,6 +232,7 @@ function BreakdownTable({ heading, lines, total, detailed }: {
           {detailed && <th className={cn(TH, "!text-right")}>Returns</th>}
           <th className={cn(TH, "!text-right")}>Net sales</th>
           <th className={cn(TH, "!text-right")}>% of net</th>
+          {losses && <th className={cn(TH, "!text-right")}>System losses</th>}
         </tr>
       </thead>
       <tbody>
@@ -224,6 +245,7 @@ function BreakdownTable({ heading, lines, total, detailed }: {
             {detailed && <td className={cn(TD, NUM)}>{deduction(l.returns)}</td>}
             <td className={cn(TD, NUM, "font-semibold text-foreground")}>{peso(l.netSales)}</td>
             <td className={cn(TD, NUM, "text-muted-foreground")}>{pct(l.share)}</td>
+            {losses && <td className={cn(TD, NUM, "text-muted-foreground")}>{l.systemLosses ? deduction(l.systemLosses) : "—"}</td>}
           </tr>
         ))}
         <tr className={TOTAL_ROW}>
@@ -234,6 +256,7 @@ function BreakdownTable({ heading, lines, total, detailed }: {
           {detailed && <td className={cn(TD, NUM)}>{deduction(total.returns)}</td>}
           <td className={cn(TD, NUM)}>{peso(total.netSales)}</td>
           <td className={cn(TD, NUM)}>{total.netSales !== 0 ? "100.0%" : "—"}</td>
+          {losses && <td className={cn(TD, NUM)}>{deduction(total.systemLosses)}</td>}
         </tr>
       </tbody>
     </TableFrame>
@@ -557,11 +580,14 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
     { label: "Less: Senior Citizen / PWD discounts", current: cur.discounts, previous: prev?.discounts, kind: "deduction", indent: true },
     { label: "Less: Sales returns and refunds", current: cur.returns, previous: prev?.returns, kind: "deduction", indent: true },
     { label: "Net sales", current: cur.netSales, previous: prev?.netSales, kind: "money", strong: true },
+    { label: "Less: System losses (stock written off)", current: cur.systemLosses ?? 0, previous: prev?.systemLosses, kind: "deduction", indent: true },
+    { label: "Net sales after system losses", current: cur.netAfterLosses ?? cur.netSales, previous: prev?.netAfterLosses, kind: "money", strong: true },
   ];
   const statRows: { label: string; current: number; previous?: number; money: boolean }[] = [
     { label: "Number of transactions", current: cur.transactions, previous: prev?.transactions, money: false },
     { label: "Units sold", current: cur.unitsSold, previous: prev?.unitsSold, money: false },
     { label: "Refunds processed", current: cur.refundCount, previous: prev?.refundCount, money: false },
+    { label: "Units written off (system losses)", current: cur.unitsLost ?? 0, previous: prev?.unitsLost, money: false },
     { label: "Average transaction value", current: cur.averageTransaction, previous: prev?.averageTransaction, money: true },
   ];
 
@@ -570,9 +596,12 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
       unitsSold: t.unitsSold + p.unitsSold,
       unitsReturned: t.unitsReturned + p.unitsReturned,
       netSales: t.netSales + p.netSales,
+      unitsLost: t.unitsLost + (p.unitsLost ?? 0),
     }),
-    { unitsSold: 0, unitsReturned: 0, netSales: 0 }
+    { unitsSold: 0, unitsReturned: 0, netSales: 0, unitsLost: 0 }
   );
+  const hasLosses = (cur.systemLosses ?? 0) > 0;
+  const lossReasons = data.byLossReason ?? [];
 
   return (
     <ReportPrintFrame title="Sales Report" periodLabel={periodLabel} branchLabel={branchLabel}>
@@ -708,13 +737,14 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
               {data.byProduct.length === 0 ? (
                 <Empty>No products sold in this period.</Empty>
               ) : (
-                <TableFrame minWidth={860}>
+                <TableFrame minWidth={hasLosses ? 940 : 860}>
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
                       <th className={TH}>SKU</th>
                       <th className={TH}>Product</th>
                       <th className={cn(TH, "!text-right")}>Units sold</th>
                       <th className={cn(TH, "!text-right")}>Returned</th>
+                      {hasLosses && <th className={cn(TH, "!text-right")}>Written off</th>}
                       <th className={cn(TH, "!text-right")}>Avg price</th>
                       <th className={cn(TH, "!text-right")}>Net sales</th>
                       <th className={cn(TH, "!text-right")}>Sales mix</th>
@@ -733,6 +763,7 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
                           </td>
                           <td className={cn(TD, NUM)}>{count(p.unitsSold)}</td>
                           <td className={cn(TD, NUM, "text-muted-foreground")}>{p.unitsReturned ? count(p.unitsReturned) : "—"}</td>
+                          {hasLosses && <td className={cn(TD, NUM, "text-muted-foreground")}>{p.unitsLost ? count(p.unitsLost) : "—"}</td>}
                           <td className={cn(TD, NUM, "text-muted-foreground")}>{p.unitsSold ? peso(p.averageUnitPrice) : "—"}</td>
                           <td className={cn(TD, NUM, "font-semibold text-foreground")}>{peso(p.netSales)}</td>
                           <td className={cn(TD, NUM, "text-muted-foreground")}>{pct(p.share)}</td>
@@ -743,9 +774,50 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
                       <td className={TD} colSpan={2}>Total</td>
                       <td className={cn(TD, NUM)}>{count(productTotals.unitsSold)}</td>
                       <td className={cn(TD, NUM)}>{productTotals.unitsReturned ? count(productTotals.unitsReturned) : "—"}</td>
+                      {hasLosses && <td className={cn(TD, NUM)}>{productTotals.unitsLost ? count(productTotals.unitsLost) : "—"}</td>}
                       <td className={cn(TD, NUM)}>{cur.unitsSold ? peso((cur.grossSales - cur.discounts) / cur.unitsSold) : "—"}</td>
                       <td className={cn(TD, NUM)}>{peso(productTotals.netSales)}</td>
                       <td className={cn(TD, NUM)}>{cur.grossSales ? "100.0%" : "—"}</td>
+                    </tr>
+                  </tbody>
+                </TableFrame>
+              )}
+            </Section>
+
+            <Section
+              number={next()}
+              title="System losses"
+              subtitle="Stock written off as unsellable, by reason, valued at the selling price when recorded"
+            >
+              {lossReasons.length === 0 ? (
+                <Empty>No stock was written off in this period.</Empty>
+              ) : (
+                <TableFrame minWidth={620}>
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className={TH}>Reason</th>
+                      <th className={cn(TH, "!text-right")}>Losses recorded</th>
+                      <th className={cn(TH, "!text-right")}>Units written off</th>
+                      <th className={cn(TH, "!text-right")}>Value lost</th>
+                      <th className={cn(TH, "!text-right")}>% of losses</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lossReasons.map((l) => (
+                      <tr key={l.label} className={TR}>
+                        <td className={cn(TD, "font-medium text-muted-foreground")}>{l.label === "Mishandled" ? "Mishandled / spoiled" : l.label}</td>
+                        <td className={cn(TD, NUM)}>{count(l.lossCount)}</td>
+                        <td className={cn(TD, NUM)}>{count(l.unitsLost)}</td>
+                        <td className={cn(TD, NUM, "font-semibold text-foreground")}>{deduction(l.systemLosses)}</td>
+                        <td className={cn(TD, NUM, "text-muted-foreground")}>{pct(l.share)}</td>
+                      </tr>
+                    ))}
+                    <tr className={TOTAL_ROW}>
+                      <td className={TD}>Total</td>
+                      <td className={cn(TD, NUM)}>{count(cur.lossCount)}</td>
+                      <td className={cn(TD, NUM)}>{count(cur.unitsLost)}</td>
+                      <td className={cn(TD, NUM)}>{deduction(cur.systemLosses)}</td>
+                      <td className={cn(TD, NUM)}>100.0%</td>
                     </tr>
                   </tbody>
                 </TableFrame>
@@ -760,7 +832,7 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
               {data.trend.length === 0 ? (
                 <Empty>No sales in this period.</Empty>
               ) : (
-                <TableFrame minWidth={760}>
+                <TableFrame minWidth={hasLosses ? 880 : 760}>
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
                       <th className={TH}>{data.trendGranularity === "day" ? "Date" : "Month"}</th>
@@ -770,6 +842,7 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
                       <th className={cn(TH, "!text-right")}>Discounts</th>
                       <th className={cn(TH, "!text-right")}>Returns</th>
                       <th className={cn(TH, "!text-right")}>Net sales</th>
+                      {hasLosses && <th className={cn(TH, "!text-right")}>System losses</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -785,6 +858,7 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
                           <td className={cn(TD, NUM)}>{d.discounts ? deduction(d.discounts) : dash}</td>
                           <td className={cn(TD, NUM)}>{d.returns ? deduction(d.returns) : dash}</td>
                           <td className={cn(TD, NUM, !idle && "font-semibold text-foreground")}>{idle ? dash : peso(d.netSales)}</td>
+                          {hasLosses && <td className={cn(TD, NUM)}>{d.systemLosses ? deduction(d.systemLosses) : dash}</td>}
                         </tr>
                       );
                     })}
@@ -796,6 +870,7 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
                       <td className={cn(TD, NUM)}>{deduction(cur.discounts)}</td>
                       <td className={cn(TD, NUM)}>{deduction(cur.returns)}</td>
                       <td className={cn(TD, NUM)}>{peso(cur.netSales)}</td>
+                      {hasLosses && <td className={cn(TD, NUM)}>{deduction(cur.systemLosses)}</td>}
                     </tr>
                   </tbody>
                 </TableFrame>
@@ -843,9 +918,16 @@ export function salesReportXlsx(data: SalesReportData, meta: SalesReportMeta): B
     { v: data.current.netSales, s: "totalMoney" },
     prev ? { v: prev.netSales, s: "totalMoney" } : { v: null, s: "totalMoney" },
   ]);
+  rows.push(["Less: System losses (stock written off)", less(data.current.systemLosses ?? 0), prev ? less(prev.systemLosses ?? 0) : null]);
+  rows.push([
+    { v: "Net sales after system losses", s: "totalLabel" },
+    { v: data.current.netAfterLosses ?? data.current.netSales, s: "totalMoney" },
+    prev ? { v: prev.netAfterLosses ?? prev.netSales, s: "totalMoney" } : { v: null, s: "totalMoney" },
+  ]);
   rows.push(["Number of transactions", data.current.transactions, prev?.transactions ?? null]);
   rows.push(["Units sold", data.current.unitsSold, prev?.unitsSold ?? null]);
   rows.push(["Refunds processed", data.current.refundCount, prev?.refundCount ?? null]);
+  rows.push(["Units written off (system losses)", data.current.unitsLost ?? 0, prev?.unitsLost ?? null]);
   rows.push(["Average transaction value", money(data.current.averageTransaction), prev ? money(prev.averageTransaction) : null]);
   blank();
 
@@ -871,8 +953,8 @@ export function salesReportXlsx(data: SalesReportData, meta: SalesReportMeta): B
   breakdown("Sales by channel", "Channel", data.byChannel);
   breakdown("Sales by payment method", "Payment method", data.byPaymentMethod);
 
-  section("Sales by product", 11);
-  rows.push(header("SKU", "Product", "Variation", "Units sold", "Units returned", "Average price", "Gross sales", "Discounts", "Returns", "Net sales", "Sales mix"));
+  section("Sales by product", 13);
+  rows.push(header("SKU", "Product", "Variation", "Units sold", "Units returned", "Average price", "Gross sales", "Discounts", "Returns", "Net sales", "Sales mix", "Units written off", "System losses"));
   data.byProduct.forEach((p) => {
     const parsed = parseVariationName(p.variationName);
     rows.push([
@@ -887,6 +969,8 @@ export function salesReportXlsx(data: SalesReportData, meta: SalesReportMeta): B
       less(p.returns),
       money(p.netSales),
       share(p.share),
+      p.unitsLost ?? 0,
+      less(p.systemLosses ?? 0),
     ]);
   });
   const t = data.byProduct.reduce(
@@ -905,12 +989,28 @@ export function salesReportXlsx(data: SalesReportData, meta: SalesReportMeta): B
     { v: t.ret ? -t.ret : 0, s: "totalMoney" },
     { v: t.net, s: "totalMoney" },
     { v: t.gross ? 100 : null, s: "totalPercent" },
+    { v: data.current.unitsLost ?? 0, s: "totalCount" },
+    { v: data.current.systemLosses ? -data.current.systemLosses : 0, s: "totalMoney" },
+  ]);
+  blank();
+
+  section("System losses", 5);
+  rows.push(header("Reason", "Losses recorded", "Units written off", "Value lost", "% of losses"));
+  (data.byLossReason ?? []).forEach((l) =>
+    rows.push([l.label === "Mishandled" ? "Mishandled / spoiled" : l.label, l.lossCount, l.unitsLost, less(l.systemLosses), share(l.share)])
+  );
+  rows.push([
+    { v: "Total", s: "totalLabel" },
+    { v: data.current.lossCount ?? 0, s: "totalCount" },
+    { v: data.current.unitsLost ?? 0, s: "totalCount" },
+    { v: data.current.systemLosses ? -data.current.systemLosses : 0, s: "totalMoney" },
+    { v: data.current.systemLosses ? 100 : null, s: "totalPercent" },
   ]);
   blank();
 
   const daily = data.trendGranularity === "day";
-  section(daily ? "Daily sales" : "Monthly sales", 7);
-  rows.push(header(daily ? "Date" : "Month", "Transactions", "Units", "Gross sales", "Discounts", "Returns", "Net sales"));
+  section(daily ? "Daily sales" : "Monthly sales", 8);
+  rows.push(header(daily ? "Date" : "Month", "Transactions", "Units", "Gross sales", "Discounts", "Returns", "Net sales", "System losses"));
   data.trend.forEach((d) =>
     rows.push([
       // Real dates (not text) so the column sorts and filters as dates in Excel.
@@ -921,6 +1021,7 @@ export function salesReportXlsx(data: SalesReportData, meta: SalesReportMeta): B
       less(d.discounts),
       less(d.returns),
       money(d.netSales),
+      less(d.systemLosses ?? 0),
     ])
   );
   const c = data.current;
@@ -932,13 +1033,15 @@ export function salesReportXlsx(data: SalesReportData, meta: SalesReportMeta): B
     { v: c.discounts ? -c.discounts : 0, s: "totalMoney" },
     { v: c.returns ? -c.returns : 0, s: "totalMoney" },
     { v: c.netSales, s: "totalMoney" },
+    { v: c.systemLosses ? -c.systemLosses : 0, s: "totalMoney" },
   ]);
   blank();
 
-  section("Notes", 7);
+  section("Notes", 8);
   [
     "Amounts in Philippine pesos; amounts in parentheses are deductions or decreases.",
     "Sales are recognised on the date the order was placed; returns on the date the refund was approved.",
+    "System losses are stock written off as unsellable, on the date recorded and valued at the selling price then. They are not sales or returns; net sales after system losses deducts them.",
     `${COMPANY_NAME} is not VAT-registered; no output VAT is included in these amounts.`,
   ].forEach((n, i) => rows.push([{ v: `${i + 1}. ${n}`, s: "note" }]));
 
