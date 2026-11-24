@@ -10,6 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StockInventoryMovement } from "@/components/module-pos/StockInventoryTable";
 import { STOCK_LOSS_REASONS, type StockLossReason } from "@/components/module-pos/StockLossTable";
+import {
+  StockRequestHistory,
+  StockRequestStatusBadge,
+  describeStockRequest,
+  isOpenStockRequest,
+  type StockRequestRecord,
+} from "@/components/module-pos/StockRequestHistory";
+
+/** Largest single request IMS accepts (the API enforces the same). */
+export const MAX_STOCK_REQUEST_QUANTITY = 10000;
 
 export interface StockLossInput {
   quantity: number;
@@ -37,6 +47,10 @@ interface StockAdjustmentFormDialogProps {
   isMovementsLoading?: boolean;
   /** Managers: write off unsellable units. Resolves true once recorded. */
   onRecordLoss?: (loss: StockLossInput) => Promise<boolean>;
+  /** This item's requests to IMS at this branch, newest first. */
+  requests?: StockRequestRecord[];
+  isRequestsLoading?: boolean;
+  isSubmittingRequest?: boolean;
 }
 
 export default function StockAdjustmentFormDialog({
@@ -51,6 +65,9 @@ export default function StockAdjustmentFormDialog({
   movements = [],
   isMovementsLoading = false,
   onRecordLoss,
+  requests = [],
+  isRequestsLoading = false,
+  isSubmittingRequest = false,
 }: StockAdjustmentFormDialogProps) {
   const [mounted, setMounted] = useState(false);
   const [movementView, setMovementView] = useState<"today" | "history">("today");
@@ -82,6 +99,13 @@ export default function StockAdjustmentFormDialog({
   const lossQtyValid = lossQuantity !== "" && Number.isInteger(lossQty) && lossQty >= 1 && lossQty <= onHand;
   const lossNotesValid = lossReason !== "Other" || lossNotes.trim().length > 0;
   const canSubmitLoss = !!onRecordLoss && lossQtyValid && lossNotesValid && !/[<>]/.test(lossNotes) && !isRecordingLoss;
+
+  // Request stock: whole units from 1 to 10000, a note, and no other request still open for this item.
+  const openRequest = requests.find(isOpenStockRequest) ?? null;
+  const requestQty = Number(quantity);
+  const requestQtyValid = quantity !== "" && Number.isInteger(requestQty) && requestQty >= 1 && requestQty <= MAX_STOCK_REQUEST_QUANTITY;
+  const requestNotesInvalid = /[<>]/.test(reason);
+  const canSubmitRequest = !openRequest && requestQtyValid && reason.trim().length > 0 && !requestNotesInvalid && !isSubmittingRequest && !isRequestsLoading;
 
   const submitLoss = async () => {
     if (!onRecordLoss || !canSubmitLoss) return;
@@ -365,32 +389,58 @@ export default function StockAdjustmentFormDialog({
             <div className="mb-5">
               <p className="m-0 text-xs font-bold uppercase tracking-wider text-primary">Inventory request</p>
               <h3 className="m-0 mt-1 text-xl font-bold text-foreground">Request stock</h3>
-              <p className="m-0 mt-1 text-sm text-muted-foreground">Submit a quantity request for this branch.</p>
+              <p className="m-0 mt-1 text-sm text-muted-foreground">Ask IMS to send more of this item to this branch. IMS approves or rejects it, and an approved request arrives under Receive Stock.</p>
             </div>
+            {openRequest ? (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4" role="status">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="m-0 text-sm font-bold text-foreground">Request {openRequest.requestId} is open</p>
+                  <StockRequestStatusBadge status={openRequest.status} />
+                </div>
+                <p className="m-0 mt-1 text-sm text-muted-foreground">
+                  {describeStockRequest(openRequest)} You can request this item again once it&apos;s received or rejected.
+                </p>
+              </div>
+            ) : (
             <div className="space-y-5">
               <div>
-              <Label>Quantity to Request <span className="text-destructive">*</span></Label>
+              <Label htmlFor="request-quantity">Quantity to request <span className="text-destructive">*</span></Label>
               <Input
+                id="request-quantity"
                 type="number"
+                inputMode="numeric"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                placeholder="Enter quantity"
-                max={10000}
-                min={-10000}
+                onChange={(e) => setQuantity(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder={`1 to ${MAX_STOCK_REQUEST_QUANTITY}`}
+                max={MAX_STOCK_REQUEST_QUANTITY}
+                min={1}
+                step={1}
                 className="mt-1.5 h-11"
               />
+              {quantity !== "" && !requestQtyValid && (
+                <p className="m-0 mt-1 text-xs text-destructive">Enter a whole number from 1 to {MAX_STOCK_REQUEST_QUANTITY}.</p>
+              )}
               </div>
               <div>
-              <Label>Request Details <span className="text-destructive">*</span></Label>
+              <Label htmlFor="request-notes">Notes for IMS <span className="text-destructive">*</span></Label>
               <Textarea
-                placeholder="Please specify what stock is needed..."
+                id="request-notes"
+                placeholder="Why is the stock needed? e.g. Weekend bazaar, expecting double the usual sales."
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 maxLength={500}
-                rows={7}
+                rows={5}
                 className="mt-1.5 resize-none"
               />
+              {requestNotesInvalid && (
+                <p className="m-0 mt-1 text-xs text-destructive">Notes cannot contain &lt; or &gt;.</p>
+              )}
               </div>
+            </div>
+            )}
+            <div className="mt-6">
+              <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Requests for this item</p>
+              <StockRequestHistory requests={requests} isLoading={isRequestsLoading} />
             </div>
             </>
             )}
@@ -411,7 +461,7 @@ export default function StockAdjustmentFormDialog({
             flexShrink: 0,
           }}
         >
-          <Button variant="outline" onClick={onClose} disabled={isRecordingLoss}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={isRecordingLoss || isSubmittingRequest}>Cancel</Button>
           {mode === "loss" && onRecordLoss ? (
             <Button
               variant="destructive"
@@ -424,9 +474,10 @@ export default function StockAdjustmentFormDialog({
           ) : (
             <Button
               onClick={onSubmit}
-              disabled={!reason.trim() || !quantity || isNaN(Number(quantity))}
+              disabled={!canSubmitRequest}
             >
-              Request Stock
+              {isSubmittingRequest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmittingRequest ? "Sending to IMS…" : "Request Stock"}
             </Button>
           )}
         </div>
