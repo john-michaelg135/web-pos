@@ -358,14 +358,6 @@ export default function StockAdjustmentFormDialog({
                   className="mt-1.5 resize-none"
                 />
               </div>
-              {confirmingLoss && lossQtyValid && (
-                <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-foreground">
-                  <p className="m-0 font-semibold text-destructive">Write off {lossQty} unit{lossQty === 1 ? "" : "s"}?</p>
-                  <p className="m-0 mt-1 text-muted-foreground">
-                    Stock goes from {onHand} to {onHand - lossQty}. This can&apos;t be undone from here.
-                  </p>
-                </div>
-              )}
             </div>
             </>
             ) : (
@@ -423,11 +415,11 @@ export default function StockAdjustmentFormDialog({
           {mode === "loss" && onRecordLoss ? (
             <Button
               variant="destructive"
-              onClick={() => (confirmingLoss ? submitLoss() : setConfirmingLoss(true))}
+              onClick={() => setConfirmingLoss(true)}
               disabled={!canSubmitLoss}
             >
-              {isRecordingLoss ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageX className="mr-2 h-4 w-4" />}
-              {confirmingLoss ? "Confirm write-off" : "Record loss"}
+              <PackageX className="mr-2 h-4 w-4" />
+              Record loss
             </Button>
           ) : (
             <Button
@@ -439,6 +431,75 @@ export default function StockAdjustmentFormDialog({
           )}
         </div>
       </div>
+
+      {/* Write-off confirmation: a popup over the inventory dialog. */}
+      {confirmingLoss && lossQtyValid && (
+        <>
+          <div
+            onClick={() => !isRecordingLoss && setConfirmingLoss(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 100000, backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          />
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-loss-title"
+            aria-describedby="confirm-loss-body"
+            onKeyDown={(e) => e.key === "Escape" && !isRecordingLoss && setConfirmingLoss(false)}
+            className="rounded-2xl border border-border bg-card text-foreground shadow-2xl"
+            style={{
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 100001,
+              width: "min(440px, calc(100vw - 32px))",
+              maxHeight: "calc(100dvh - 32px)",
+              overflowY: "auto",
+            }}
+          >
+            <div className="flex items-start gap-3 px-6 pt-6">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                <PackageX className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <h2 id="confirm-loss-title" className="m-0 text-lg font-bold">
+                  Write off {lossQty} unit{lossQty === 1 ? "" : "s"}?
+                </h2>
+                <p id="confirm-loss-body" className="m-0 mt-1 text-sm text-muted-foreground">
+                  They come out of stock straight away and are kept on record as a system loss. This can&apos;t be undone from here.
+                </p>
+              </div>
+            </div>
+            <dl className="mx-6 mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-border bg-muted/30 p-4 text-sm">
+              <dt className="text-muted-foreground">Item</dt>
+              <dd className="m-0 min-w-0 truncate font-medium">{stock.variationName || `Variation ${stock.variationId}`}</dd>
+              <dt className="text-muted-foreground">Branch</dt>
+              <dd className="m-0 min-w-0 truncate font-medium">{stock.location}</dd>
+              <dt className="text-muted-foreground">Reason</dt>
+              <dd className="m-0 font-medium">{STOCK_LOSS_REASONS.find((r) => r.value === lossReason)?.label ?? lossReason}</dd>
+              {lossNotes.trim() && (
+                <>
+                  <dt className="text-muted-foreground">Notes</dt>
+                  <dd className="m-0 min-w-0 break-words">{lossNotes.trim()}</dd>
+                </>
+              )}
+              <dt className="text-muted-foreground">Stock</dt>
+              <dd className="m-0 font-semibold tabular-nums">
+                {onHand} → <span className="text-destructive">{onHand - lossQty}</span>
+              </dd>
+            </dl>
+            <div className="flex justify-end gap-2 px-6 py-5">
+              <Button variant="outline" onClick={() => setConfirmingLoss(false)} disabled={isRecordingLoss} autoFocus>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={submitLoss} disabled={!canSubmitLoss}>
+                {isRecordingLoss ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageX className="mr-2 h-4 w-4" />}
+                {isRecordingLoss ? "Writing off…" : `Write off ${lossQty} unit${lossQty === 1 ? "" : "s"}`}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 
