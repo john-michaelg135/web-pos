@@ -267,8 +267,8 @@ function PriceTimeline({ variation, productName }: { variation: Variation; produ
     };
   }, [variation.id]);
 
+  // Arbitrary width: the theme's --spacing-lg (24px) would turn max-w-lg into a 24px strip.
   return (
-      {/* Arbitrary width: the theme's --spacing-lg (24px) would turn max-w-lg into a 24px strip. */}
       <DialogContent className="w-[calc(100vw-2rem)] max-w-[32rem] max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl">
         <DialogHeader className="border-b border-border px-6 py-4">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
