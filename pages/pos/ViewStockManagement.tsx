@@ -14,7 +14,8 @@ import { StockLevelGrid } from "@/components/module-pos/StockLevelGrid";
 import { StockReceivingForm } from "@/components/module-pos/StockReceivingForm";
 import { StockMovementTable } from "@/components/module-pos/StockMovementTable";
 import { StockInventoryMovement } from "@/components/module-pos/StockInventoryTable";
-import StockAdjustmentFormDialog, { type StockLossInput } from "@/components/module-pos/StockAdjustmentFormDialog";
+import StockAdjustmentFormDialog, { MAX_STOCK_REQUEST_QUANTITY, type StockLossInput } from "@/components/module-pos/StockAdjustmentFormDialog";
+import type { StockRequestRecord } from "@/components/module-pos/StockRequestHistory";
 import { StockLossTable, type StockLossRecord } from "@/components/module-pos/StockLossTable";
 import { isManager as isManagerRole } from "@/lib/portal/roles";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
@@ -65,6 +66,9 @@ export function ViewStockManagement() {
   const [selectedStock, setSelectedStock] = useState<StockLevel | null>(null);
   const [adjustmentQuantity, setAdjustmentQuantity] = useState("");
   const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [stockRequests, setStockRequests] = useState<StockRequestRecord[]>([]);
+  const [isRequestsLoading, setIsRequestsLoading] = useState(false);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [inventoryMovements, setInventoryMovements] = useState<StockInventoryMovement[]>([]);
@@ -219,39 +223,71 @@ export function ViewStockManagement() {
     if (linked) setSelectedLocation(linked.locationName);
   }
 
+  // This item's requests to IMS at this branch (newest first), for the Stock Inventory dialog.
+  const fetchStockRequests = async (stock: StockLevel) => {
+    try {
+      setIsRequestsLoading(true);
+      const { data } = await apiClient.instance.get<StockRequestRecord[]>("/api-pos/stock-requests", {
+        params: { locationId: String(stock.locationId), variationId: String(stock.variationId) },
+      });
+      setStockRequests(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to fetch stock requests:", err);
+      setStockRequests([]);
+    } finally {
+      setIsRequestsLoading(false);
+    }
+  };
+
   const handleAdjustStock = (stock: StockLevel) => {
     setSelectedStock(stock);
     setAdjustmentQuantity("");
     setAdjustmentReason("");
+    setStockRequests([]);
     setShowAdjustmentDialog(true);
+    fetchStockRequests(stock);
   };
 
+  // Request Stock: sent straight to IMS, which approves or rejects it (no approval in POS).
   const handleAdjustmentSubmit = async () => {
-    if (!selectedStock || !adjustmentQuantity || !adjustmentReason.trim()) return;
+    if (!selectedStock || isSubmittingRequest) return;
     const qty = Number(adjustmentQuantity);
-    if (isNaN(qty) || qty === 0 || qty < -10000 || qty > 10000) {
-      toast.error("Quantity must be between -10000 and 10000 (excluding 0).");
+    const notes = adjustmentReason.trim();
+    if (!Number.isInteger(qty) || qty < 1 || qty > MAX_STOCK_REQUEST_QUANTITY) {
+      toast.error(`Quantity must be a whole number from 1 to ${MAX_STOCK_REQUEST_QUANTITY}.`);
       return;
     }
-    if (adjustmentReason.trim().length > 500) { toast.error("Reason must not exceed 500 characters."); return; }
-    if (/[<>]/.test(adjustmentReason)) { toast.error("Reason cannot contain HTML characters (<, >)."); return; }
+    if (!notes) { toast.error("Add a note so IMS knows why the stock is needed."); return; }
+    if (notes.length > 500) { toast.error("Notes must not exceed 500 characters."); return; }
+    if (/[<>]/.test(notes)) { toast.error("Notes cannot contain < or >."); return; }
 
+    setIsSubmittingRequest(true);
     try {
-      await apiClient.apiPos.inventoryAdjustmentsCreate({
+      const { data } = await apiClient.instance.post<StockRequestRecord>("/api-pos/stock-requests", {
         variationId: Number(selectedStock.variationId),
         locationId: Number(selectedStock.locationId),
         quantity: qty,
-        adjustmentType: "Correction",
-        reason: adjustmentReason.trim(),
-        submittedBy: 1,
+        notes,
       });
-      toast.success("Stock request submitted.");
-      setShowAdjustmentDialog(false);
-      fetchInventoryMovements();
-      setRefreshKey((prev) => prev + 1);
+      if (data?.status === "Submitted") {
+        toast.success("Request sent to IMS.");
+      } else if (data?.status === "Rejected") {
+        toast.error(data.remarks ? `IMS refused the request: ${data.remarks}` : "IMS refused the request.");
+      } else {
+        toast.success("Saved. IMS couldn't be reached; it will be sent automatically.");
+      }
+      setAdjustmentQuantity("");
+      setAdjustmentReason("");
+      fetchStockRequests(selectedStock);
     } catch (err) {
-      console.error("Failed to submit adjustment:", err);
-      toast.error("Failed to submit adjustment.");
+      const body = (err as { response?: { data?: unknown } })?.response?.data;
+      const message = typeof body === "string" && body
+        ? body
+        : (body as { message?: string } | undefined)?.message;
+      toast.error(message || "Failed to send the stock request.");
+      fetchStockRequests(selectedStock);
+    } finally {
+      setIsSubmittingRequest(false);
     }
   };
 
@@ -439,6 +475,9 @@ export function ViewStockManagement() {
         )}
         isMovementsLoading={isInventoryLoading}
         onRecordLoss={canRecordLoss ? handleRecordLoss : undefined}
+        requests={stockRequests}
+        isRequestsLoading={isRequestsLoading}
+        isSubmittingRequest={isSubmittingRequest}
       />
 
       <DeleteConfirmDialog
