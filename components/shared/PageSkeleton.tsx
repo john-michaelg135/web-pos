@@ -335,10 +335,10 @@ const PRODUCT_TH = "px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gr
 export function ProductTableSkeleton({ tab = "products" }: { tab?: "products" | "variations" }) {
   return (
     <div className="w-full min-w-0" role="status" aria-label={`Loading ${tab}`}>
-      <div className="flex flex-wrap gap-3 mb-5 items-center">
-        <Bone className="h-10 w-full sm:w-[200px] rounded-xl" />
-        <Bone className="h-10 w-48 rounded-xl" />
-        <Bone className="h-10 w-40 rounded-xl" />
+      <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[240px_repeat(2,minmax(0,1fr))] sm:gap-3 mb-4 sm:mb-5">
+        <Bone className="col-span-2 h-[42px] w-full rounded-xl sm:col-span-1" />
+        <Bone className="h-[38px] w-full rounded-[10px]" />
+        <Bone className="h-[38px] w-full rounded-[10px]" />
       </div>
       <SkeletonTable
         frameClassName="bg-card border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm"

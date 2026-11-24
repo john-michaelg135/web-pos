@@ -114,25 +114,27 @@ export function PriceHistoryTable({ products, changes, isLoading, error }: {
 
   return (
     <div className="w-full min-w-0 space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-3">
+      <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[240px_repeat(2,minmax(0,1fr))] sm:gap-3">
         <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search product, date or price…"
           maxLength={40}
           aria-label="Search price history"
-          className="col-span-2 sm:max-w-[240px]"
+          className="col-span-2 h-[42px] sm:col-span-1"
         />
         <CustomSelect
           value={productFilter}
           onChange={setProductFilter}
-          className="w-full sm:w-48"
+          style={{ minWidth: 0 }}
+          className="[&>button]:h-[38px]"
           options={[{ value: "all", label: "All Products" }, ...products.map((p) => ({ value: p.id, label: p.name }))]}
         />
         <CustomSelect
           value={direction}
           onChange={(v) => setDirection(v as "all" | "up" | "down")}
-          className="w-full sm:w-44"
+          style={{ minWidth: 0 }}
+          className="[&>button]:h-[38px]"
           options={[
             { value: "all", label: "All changes" },
             { value: "up", label: "Increases" },

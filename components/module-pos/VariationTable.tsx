@@ -50,19 +50,20 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
     <div className="w-full min-w-0">
 
       {/* Filters */}
-      <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-5 sm:items-center">
+      <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[240px_repeat(2,minmax(0,1fr))] sm:gap-3 mb-4 sm:mb-5">
         <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search product, size or SKU…"
           aria-label="Search pricing configuration"
           maxLength={25}
-          className="col-span-2 sm:max-w-[240px]"
+          className="col-span-2 h-[42px] sm:col-span-1"
         />
         <CustomSelect
           value={productFilter}
           onChange={(val) => setProductFilter(val)}
-          className="w-full sm:w-48"
+          style={{ minWidth: 0 }}
+          className="[&>button]:h-[38px]"
           options={[
             { value: "all", label: "All Products" },
             ...products.map((p) => ({ value: p.id, label: p.name }))
@@ -71,7 +72,8 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
         <CustomSelect
           value={statusFilter}
           onChange={(val) => setStatusFilter(val as "all" | "active" | "inactive")}
-          className="w-full sm:w-40"
+          style={{ minWidth: 0 }}
+          className="[&>button]:h-[38px]"
           options={[
             { value: "all", label: "All Status" },
             { value: "active", label: "Active" },
