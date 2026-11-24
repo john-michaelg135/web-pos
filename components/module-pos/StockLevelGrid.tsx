@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { apiClient } from "@/components/module-pos/api";
 import { StockResponseDto } from "@/components/module-pos/api/api";
 import { renderVariationBadges } from "@/components/module-pos/utils";
+import { stockRequestKey } from "@/components/module-pos/StockRequestHistory";
 import { useTheme as useRealTheme } from "@/context/ThemeContext";
 
 import { StockLevelsSkeleton } from "@/components/shared/PageSkeleton";
@@ -34,6 +35,28 @@ interface StockLevelGridProps {
   hiddenLocationIds?: number[];
   /** Show only this variation, e.g. the item a low-stock notification links to. */
   focusVariationId?: number | null;
+  /** Open requests to IMS per item, keyed by stockRequestKey(variationId, locationId). */
+  openRequestCounts?: Record<string, number>;
+  /** Opens the Requests tab for one item (from its open-requests chip). */
+  onViewRequests?: (stock: { variationId: number; variationName: string; productName: string }) => void;
+}
+
+/** "2 open requests" on an item that has stock on its way from IMS; hidden when there are none. */
+function OpenRequestsChip({ count, onClick }: { count: number; onClick?: () => void }) {
+  if (count <= 0) return null;
+  const label = `${count} open request${count === 1 ? "" : "s"}`;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      disabled={!onClick}
+      title="See this item's requests to IMS"
+      className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-bold text-purple-700 transition-colors hover:bg-purple-500/20 dark:text-purple-300"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+      {label}
+    </button>
+  );
 }
 
 // Extends StockResponseDto with parsed fields
@@ -44,7 +67,7 @@ interface ParsedStock extends Omit<StockResponseDto, 'productName' | 'quantity'>
   quantity: number;
 }
 
-export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdjustStock, canSwitchLocation = true, hiddenLocationIds = [], focusVariationId = null }: StockLevelGridProps) {
+export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdjustStock, canSwitchLocation = true, hiddenLocationIds = [], focusVariationId = null, openRequestCounts = {}, onViewRequests }: StockLevelGridProps) {
   const [stocks, setStocks] = useState<ParsedStock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // Self-managed search state (mirrors ProductTable). Falls back to the controlled
@@ -107,6 +130,17 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
     return matchesLoc && matchesQuery;
   });
 
+  const requestChip = (stock: ParsedStock) => (
+    <OpenRequestsChip
+      count={openRequestCounts[stockRequestKey(Number(stock.variationId), Number(stock.locationId))] ?? 0}
+      onClick={onViewRequests ? () => onViewRequests({
+        variationId: Number(stock.variationId),
+        variationName: stock.variationName,
+        productName: stock.productName,
+      }) : undefined}
+    />
+  );
+
   function openStock(stock: ParsedStock) {
     onAdjustStock?.({
       variationId: stock.variationId,
@@ -162,6 +196,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                     <div className="mt-1.5">
                       {renderVariationBadges(stock.variationName || "", muted, border, inputBg, true)}
                     </div>
+                    {requestChip(stock)}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-2xl font-black leading-none tracking-tight text-foreground tabular-nums m-0">{stock.quantity}</p>
@@ -233,6 +268,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                     >
                       <td className="px-6 py-4">
                         {renderVariationBadges(stock.variationName || "", muted, border, inputBg, true)}
+                        {requestChip(stock)}
                       </td>
                       <td className="px-6 py-4 text-gray-500 dark:text-gray-400 text-xs font-bold">
                         {stock.productName}
@@ -334,6 +370,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                       <div className="mt-2">
                         {renderVariationBadges(stock.variationName || "", muted, border, inputBg, true)}
                       </div>
+                      {requestChip(stock)}
                     </div>
 
                     {/* Quantity + Status */}

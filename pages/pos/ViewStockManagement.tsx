@@ -15,7 +15,15 @@ import { StockReceivingForm } from "@/components/module-pos/StockReceivingForm";
 import { StockMovementTable } from "@/components/module-pos/StockMovementTable";
 import { StockInventoryMovement } from "@/components/module-pos/StockInventoryTable";
 import StockAdjustmentFormDialog, { MAX_STOCK_REQUEST_QUANTITY, type StockLossInput } from "@/components/module-pos/StockAdjustmentFormDialog";
-import type { StockRequestRecord } from "@/components/module-pos/StockRequestHistory";
+import {
+  newClientRequestId,
+  stockRequestItemLabel,
+  stockRequestKey,
+  type StockRequestRecord,
+} from "@/components/module-pos/StockRequestHistory";
+import { StockRequestsPanel } from "@/components/module-pos/StockRequestsPanel";
+import { StockRequestDetailPanel } from "@/components/module-pos/StockRequestDetailPanel";
+import { CancelStockRequestDialog } from "@/components/module-pos/CancelStockRequestDialog";
 import { StockLossTable, type StockLossRecord } from "@/components/module-pos/StockLossTable";
 import { isManager as isManagerRole } from "@/lib/portal/roles";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
@@ -31,12 +39,16 @@ import { compactSubtabClass, subtabClass, subtabListClass } from "@/components/u
 
 import { StockManagementSkeleton } from "@/components/shared/PageSkeleton";
 
+type StockTab = "levels" | "receive" | "requests" | "history" | "losses";
+const STOCK_TABS: readonly StockTab[] = ["levels", "receive", "requests", "history", "losses"];
+const isStockTab = (value: string | null): value is StockTab => !!value && (STOCK_TABS as readonly string[]).includes(value);
+
 export function ViewStockManagement() {
   const { user: authUser, isLoading: authLoading, canRead } = useAuth();
   const { scope, locations: myLocations } = useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history" | "losses">("levels");
+  const [activeTab, setActiveTab] = useState<StockTab>("levels");
 
   // Notification links: ?tab=receive&transferId=… or ?tab=levels&locationId=…&variationId=…
   const searchParams = useSearchParams();
@@ -50,7 +62,7 @@ export function ViewStockManagement() {
   const [appliedLink, setAppliedLink] = useState<string | null>(null);
   if (linkKey !== appliedLink) {
     setAppliedLink(linkKey);
-    if (linkTab === "levels" || linkTab === "receive" || linkTab === "history" || linkTab === "losses") setActiveTab(linkTab);
+    if (isStockTab(linkTab)) setActiveTab(linkTab);
   }
 
   // Only admins/owners (super users, "all" scope) may see or switch between
@@ -72,6 +84,15 @@ export function ViewStockManagement() {
   const [stockRequests, setStockRequests] = useState<StockRequestRecord[]>([]);
   const [isRequestsLoading, setIsRequestsLoading] = useState(false);
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  // One key per request form: a double submit returns the same request instead of making a second.
+  const [clientRequestId, setClientRequestId] = useState(() => newClientRequestId());
+  // Requests tab, detail panel, cancel confirmation, and the open-request chips on Stock Levels.
+  const [branchRequests, setBranchRequests] = useState<StockRequestRecord[]>([]);
+  const [isBranchRequestsLoading, setIsBranchRequestsLoading] = useState(false);
+  const [requestItemFilter, setRequestItemFilter] = useState<{ variationId: number; label: string } | null>(null);
+  const [detailRequest, setDetailRequest] = useState<StockRequestRecord | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<StockRequestRecord | null>(null);
+  const [openRequestCounts, setOpenRequestCounts] = useState<Record<string, number>>({});
 
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [inventoryMovements, setInventoryMovements] = useState<StockInventoryMovement[]>([]);
@@ -183,6 +204,46 @@ export function ViewStockManagement() {
     }
   };
 
+  const selectedLocationId = () =>
+    selectedLocation !== "All" ? locations.find((l) => l.locationName === selectedLocation)?.locationId : undefined;
+
+  // Every request at the selected branch (or all branches for owners), for the Requests tab.
+  const fetchBranchRequests = async () => {
+    const locationId = selectedLocationId();
+    if (!canSwitchLocation && !locationId) return;
+    try {
+      setIsBranchRequestsLoading(true);
+      const { data } = await apiClient.instance.get<StockRequestRecord[]>("/api-pos/stock-requests", {
+        params: locationId ? { locationId: String(locationId) } : {},
+      });
+      setBranchRequests(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to fetch stock requests:", err);
+      toast.error("Failed to load stock requests.");
+    } finally {
+      setIsBranchRequestsLoading(false);
+    }
+  };
+
+  // Open requests per item, for the chips on Stock Levels.
+  const fetchOpenRequestCounts = async () => {
+    const locationId = selectedLocationId();
+    if (!canSwitchLocation && !locationId) return;
+    try {
+      const { data } = await apiClient.instance.get<StockRequestRecord[]>("/api-pos/stock-requests", {
+        params: { open: "true", ...(locationId ? { locationId: String(locationId) } : {}) },
+      });
+      const counts: Record<string, number> = {};
+      for (const r of Array.isArray(data) ? data : []) {
+        const key = stockRequestKey(r.variationId, r.locationId);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+      setOpenRequestCounts(counts);
+    } catch (err) {
+      console.error("Failed to fetch open stock requests:", err);
+    }
+  };
+
   useEffect(() => {
     setIsMounted(true);
     fetchMovements();
@@ -214,6 +275,8 @@ export function ViewStockManagement() {
   useEffect(() => {
     if (activeTab === "history") fetchMovements();
     if (activeTab === "losses") fetchLosses();
+    if (activeTab === "requests") fetchBranchRequests();
+    if (activeTab === "levels") fetchOpenRequestCounts();
     fetchInventoryMovements();
   }, [activeTab, selectedLocation, locations]);
 
@@ -242,27 +305,70 @@ export function ViewStockManagement() {
     }
   };
 
+  const refreshRequestViews = () => {
+    if (selectedStock && showAdjustmentDialog) fetchStockRequests(selectedStock);
+    fetchOpenRequestCounts();
+    if (activeTab === "requests") fetchBranchRequests();
+  };
+
   const handleAdjustStock = (stock: StockLevel) => {
     setSelectedStock(stock);
     setAdjustmentQuantity("");
     setAdjustmentReason("");
+    setClientRequestId(newClientRequestId());
     setStockRequests([]);
     setShowAdjustmentDialog(true);
     fetchStockRequests(stock);
   };
 
+  // "View all requests for this item": the Requests tab, narrowed to that item.
+  const handleViewItemRequests = (stock: { variationId: number | string; variationName?: string; productName?: string }) => {
+    setShowAdjustmentDialog(false);
+    setRequestItemFilter({
+      variationId: Number(stock.variationId),
+      label: stockRequestItemLabel({ productName: stock.productName ?? "", variationName: stock.variationName ?? "" }),
+    });
+    setActiveTab("requests");
+  };
+
+  // Cancel: IMS is asked first; the request is Cancelled only once IMS confirms.
+  const handleCancelRequest = async (request: StockRequestRecord, reason: string) => {
+    try {
+      const { data } = await apiClient.instance.put<StockRequestRecord>(
+        `/api-pos/stock-requests/${encodeURIComponent(request.requestId)}/cancel`,
+        { reason: reason || null },
+      );
+      toast.success(`Request ${request.requestId} cancelled. IMS was told.`);
+      if (detailRequest?.requestId === request.requestId && data) setDetailRequest(data);
+      refreshRequestViews();
+      return true;
+    } catch (err) {
+      const body = (err as { response?: { data?: unknown } })?.response?.data;
+      const message = typeof body === "string" && body ? body : (body as { message?: string } | undefined)?.message;
+      toast.error(message || "Couldn't cancel the request.");
+      // A 409 means IMS or POS moved on; show the current state.
+      refreshRequestViews();
+      return false;
+    }
+  };
+
+  const openDelivery = (transferId: string) => {
+    setDetailRequest(null);
+    router.push(`/stock-management?tab=receive&transferId=${encodeURIComponent(transferId)}`);
+  };
+
   // Request Stock: sent straight to IMS, which approves or rejects it (no approval in POS).
-  const handleAdjustmentSubmit = async () => {
-    if (!selectedStock || isSubmittingRequest) return;
+  const handleAdjustmentSubmit = async (): Promise<boolean> => {
+    if (!selectedStock || isSubmittingRequest) return false;
     const qty = Number(adjustmentQuantity);
     const notes = adjustmentReason.trim();
     if (!Number.isInteger(qty) || qty < 1 || qty > MAX_STOCK_REQUEST_QUANTITY) {
       toast.error(`Quantity must be a whole number from 1 to ${MAX_STOCK_REQUEST_QUANTITY}.`);
-      return;
+      return false;
     }
-    if (!notes) { toast.error("Add a note so IMS knows why the stock is needed."); return; }
-    if (notes.length > 500) { toast.error("Notes must not exceed 500 characters."); return; }
-    if (/[<>]/.test(notes)) { toast.error("Notes cannot contain < or >."); return; }
+    if (!notes) { toast.error("Add a note so IMS knows why the stock is needed."); return false; }
+    if (notes.length > 500) { toast.error("Notes must not exceed 500 characters."); return false; }
+    if (/[<>]/.test(notes)) { toast.error("Notes cannot contain < or >."); return false; }
 
     setIsSubmittingRequest(true);
     try {
@@ -271,17 +377,20 @@ export function ViewStockManagement() {
         locationId: Number(selectedStock.locationId),
         quantity: qty,
         notes,
+        clientRequestId,
       });
-      if (data?.status === "Submitted") {
-        toast.success("Request sent to IMS.");
-      } else if (data?.status === "Rejected") {
+      if (data?.status === "Rejected") {
         toast.error(data.remarks ? `IMS refused the request: ${data.remarks}` : "IMS refused the request.");
-      } else {
+      } else if (data?.status === "Sending") {
         toast.success("Saved. IMS couldn't be reached; it will be sent automatically.");
+      } else {
+        toast.success(data?.requestId ? `Request ${data.requestId} sent to IMS.` : "Request sent to IMS.");
       }
       setAdjustmentQuantity("");
       setAdjustmentReason("");
-      fetchStockRequests(selectedStock);
+      setClientRequestId(newClientRequestId());
+      refreshRequestViews();
+      return true;
     } catch (err) {
       const body = (err as { response?: { data?: unknown } })?.response?.data;
       const message = typeof body === "string" && body
@@ -289,6 +398,7 @@ export function ViewStockManagement() {
         : (body as { message?: string } | undefined)?.message;
       toast.error(message || "Failed to send the stock request.");
       fetchStockRequests(selectedStock);
+      return false;
     } finally {
       setIsSubmittingRequest(false);
     }
@@ -358,11 +468,12 @@ export function ViewStockManagement() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "levels" | "receive" | "history" | "losses")} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as StockTab)} className="space-y-6">
         <TabsList className={subtabListClass}>
           {[
             { value: "levels", label: "Stock Levels", short: "Levels" },
             { value: "receive", label: "Receive Stock", short: "Receive" },
+            { value: "requests", label: "Stock Requests", short: "Requests" },
             { value: "history", label: "Stock History Log", short: "History" },
             { value: "losses", label: "Stock Losses", short: "Losses" },
           ].map((tab) => (
@@ -420,7 +531,7 @@ export function ViewStockManagement() {
               </Button>
             </div>
           )}
-          <StockLevelGrid key={refreshKey} searchQuery={stockSearch} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} hiddenLocationIds={inactiveLocationIds} focusVariationId={focusVariationId} />
+          <StockLevelGrid key={refreshKey} searchQuery={stockSearch} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} hiddenLocationIds={inactiveLocationIds} focusVariationId={focusVariationId} openRequestCounts={openRequestCounts} onViewRequests={handleViewItemRequests} />
         </TabsContent>
 
         {/* Receive Stock */}
@@ -433,6 +544,19 @@ export function ViewStockManagement() {
               fetchInventoryMovements();
               setRefreshKey((prev) => prev + 1);
             }}
+          />
+        </TabsContent>
+
+        {/* Stock Requests */}
+        <TabsContent value="requests" className="subtab-content space-y-4">
+          <StockRequestsPanel
+            requests={branchRequests}
+            isLoading={isBranchRequestsLoading}
+            onRefresh={fetchBranchRequests}
+            onSelect={setDetailRequest}
+            showBranch={selectedLocation === "All"}
+            itemFilter={requestItemFilter}
+            onClearItemFilter={() => setRequestItemFilter(null)}
           />
         </TabsContent>
 
@@ -485,6 +609,21 @@ export function ViewStockManagement() {
         requests={stockRequests}
         isRequestsLoading={isRequestsLoading}
         isSubmittingRequest={isSubmittingRequest}
+        onCancelRequest={setCancelTarget}
+        onViewAllRequests={selectedStock ? () => handleViewItemRequests(selectedStock) : undefined}
+      />
+
+      <StockRequestDetailPanel
+        request={detailRequest}
+        onClose={() => setDetailRequest(null)}
+        onCancel={setCancelTarget}
+        onOpenDelivery={openDelivery}
+      />
+
+      <CancelStockRequestDialog
+        request={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleCancelRequest}
       />
 
       <DeleteConfirmDialog
