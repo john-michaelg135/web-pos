@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Variation, Product } from "@/components/module-pos/types";
+import { SearchInput } from "@/components/module-pos/SearchInput";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 interface VariationTableProps {
@@ -10,6 +11,18 @@ interface VariationTableProps {
   onEdit:     (variation: Variation) => void;
   /** Opens the variation's price history. */
   onHistory?: (variation: Variation) => void;
+}
+
+function VariationStatus({ isActive }: { isActive: boolean }) {
+  const colors = isActive
+    ? "bg-badge-purple text-badge-purple-foreground"
+    : "bg-muted text-muted-foreground";
+
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium leading-[18px] ${colors}`}>
+      {isActive ? "Active" : "Inactive"}
+    </span>
+  );
 }
 
 export function VariationTable({ variations, products, onEdit, onHistory }: VariationTableProps) {
@@ -38,12 +51,13 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
 
       {/* Filters */}
       <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-5 sm:items-center">
-        <input
+        <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by SKU or ID…"
+          placeholder="Search product, size or SKU…"
+          aria-label="Search pricing configuration"
           maxLength={25}
-          className="col-span-2 w-full sm:max-w-[200px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          className="col-span-2 sm:max-w-[240px]"
         />
         <CustomSelect
           value={productFilter}
@@ -76,13 +90,7 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
             <li key={v.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3.5 flex flex-col gap-2.5">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white m-0 min-w-0">{productMap.get(v.productId) ?? v.productId}</p>
-                <span className={`shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                  v.isActive
-                    ? "bg-success-50 dark:bg-success-500/20 text-success-600 dark:text-success-400"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                }`}>
-                  {v.isActive ? "Active" : "Inactive"}
-                </span>
+                <VariationStatus isActive={v.isActive} />
               </div>
               <div className="flex items-center gap-2 flex-wrap text-xs">
                 <span className="whitespace-nowrap font-medium px-2.5 py-0.5 rounded-full bg-blue-light-50 dark:bg-blue-light-500/20 text-blue-light-700 dark:text-blue-light-400">
@@ -160,13 +168,7 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
                       </code>
                     </td>
                     <td className="px-5 py-4">
-                      <span className={`text-xs font-bold px-4 py-1.5 rounded-full inline-flex items-center justify-center min-w-[80px] ${
-                        v.isActive
-                          ? "bg-success-50 dark:bg-success-500/20 text-success-600 dark:text-success-400"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-                      }`}>
-                        {v.isActive ? "Active" : "Inactive"}
-                      </span>
+                      <VariationStatus isActive={v.isActive} />
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">

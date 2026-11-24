@@ -17,7 +17,7 @@ export const STOCK_LOSS_REASONS = [
 
 export type StockLossReason = (typeof STOCK_LOSS_REASONS)[number]["value"];
 
-/** A recorded system loss (api-pos StockLossResponseDto). */
+/** A recorded stock loss (api-pos StockLossResponseDto). */
 export interface StockLossRecord {
   lossId: number;
   variationId: number;
@@ -41,7 +41,7 @@ const when = (iso: string) =>
 const sizeLabel = (name: string) => (name.includes("|") ? name.split("|").slice(1).filter(Boolean).join(" · ") : name);
 const reasonLabel = (value: string) => STOCK_LOSS_REASONS.find((r) => r.value === value)?.label ?? value;
 
-/** Every system loss recorded at the selected branch, with units and sales value written off. */
+/** Every stock loss recorded at the selected branch, with units and sales value written off. */
 export function StockLossTable({ losses, isLoading, onRefresh, showBranch }: {
   losses: StockLossRecord[];
   isLoading: boolean;
@@ -101,12 +101,12 @@ export function StockLossTable({ losses, isLoading, onRefresh, showBranch }: {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={showBranch ? 7 : 6} className="px-5 py-10 text-center text-muted-foreground">Loading system losses…</td></tr>
+                <tr><td colSpan={showBranch ? 7 : 6} className="px-5 py-10 text-center text-muted-foreground">Loading stock losses…</td></tr>
               ) : visible.length === 0 ? (
                 <tr>
                   <td colSpan={showBranch ? 7 : 6} className="px-5 py-12 text-center text-muted-foreground">
                     <PackageX className="mx-auto mb-2 h-6 w-6 opacity-60" aria-hidden />
-                    No system losses recorded. Use Record loss on an item in Stock Levels.
+                    No stock losses recorded. Use Record loss on an item in Stock Levels.
                   </td>
                 </tr>
               ) : (

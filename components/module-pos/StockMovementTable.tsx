@@ -60,6 +60,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                     <span className="inline-flex items-center text-[10px] font-bold px-2 py-1 rounded-md uppercase bg-primary/10 text-primary border border-primary/20">
                       {m.type}
                     </span>
+                    {m.reference && m.reference !== "-" && <span>Reference: {m.reference}</span>}
                     {m.notes && <span className="min-w-0 break-words">{m.notes}</span>}
                   </div>
                 </li>
@@ -75,7 +76,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                 <th className="px-4 sm:px-6 py-4 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Product</th>
                 <th className="px-4 sm:px-6 py-4 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide text-center whitespace-nowrap">Qty</th>
                 <th className="px-4 sm:px-6 py-4 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell whitespace-nowrap">Type</th>
-                <th className="px-4 sm:px-6 py-4 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden lg:table-cell whitespace-nowrap">Reference</th>
+                <th className="px-4 sm:px-6 py-4 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">Reference</th>
                 <th className="px-4 sm:px-6 py-4 text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide hidden sm:table-cell whitespace-nowrap">Notes</th>
               </tr>
             </thead>
@@ -133,7 +134,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                           {m.type}
                         </span>
                       </td>
-                      <td className="px-4 sm:px-6 py-4 text-sm font-medium text-gray-900 dark:text-white hidden lg:table-cell whitespace-nowrap">
+                      <td className="px-4 sm:px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
                         {m.reference}
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-400 dark:text-gray-500 hidden sm:table-cell whitespace-nowrap">

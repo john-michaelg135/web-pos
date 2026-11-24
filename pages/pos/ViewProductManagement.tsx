@@ -7,8 +7,9 @@ import { toast } from "@/lib/toast";
 import type { Product, Variation, ProductCategory } from "@/components/module-pos/types";
 import { VariationTable } from "@/components/module-pos/VariationTable";
 import { VariationFormDialog } from "@/components/module-pos/VariationFormDialog";
-import { PriceHistoryDialog, PriceHistoryTable } from "@/components/module-pos/PriceHistory";
+import { fetchPriceChanges, type PriceChange, PriceHistoryDialog, PriceHistoryTable } from "@/components/module-pos/PriceHistory";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { compactSubtabClass, subtabClass, subtabListClass } from "@/components/ui/subtab-styles";
 import { apiClient } from "@/components/module-pos/api";
 import { useAuth } from "@/context/AuthContext";
 import { useMyLocations } from "@/lib/useMyLocations";
@@ -17,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { ProductManagementSkeleton, ProductTableSkeleton } from "@/components/shared/PageSkeleton";
+import { Bone, ProductManagementSkeleton, ProductTableSkeleton } from "@/components/shared/PageSkeleton";
 
 // Products and variations come from IMS (SCMS product sync); POS only sets their selling prices.
 export default function ViewProductManagement() {
@@ -116,6 +117,21 @@ export default function ViewProductManagement() {
   const visibleProducts = assignedOnly
     ? products.filter((p) => visibleVariations.some((v) => v.productId === p.id))
     : products;
+  const hasAccess = !!authUser && canRead(POS_MODULES.PRODUCT_MANAGEMENT);
+  const [history, setHistory] = useState<{ key: number; rows: PriceChange[]; error: string | null } | null>(null);
+  useEffect(() => {
+    if (authLoading || !hasAccess) return;
+    let active = true;
+    fetchPriceChanges({}).then(
+      (rows) => { if (active) setHistory({ key: historyKey, rows, error: null }); },
+      () => { if (active) setHistory({ key: historyKey, rows: [], error: "Could not load the price history." }); },
+    );
+    return () => { active = false; };
+  }, [authLoading, hasAccess, historyKey]);
+
+  const historyLoading = history?.key !== historyKey;
+  const historyRows = history?.rows ?? [];
+  const visibleHistory = assignedOnly ? historyRows.filter((row) => carriedIds.has(String(row.variationId))) : historyRows;
   const locationLabel = scope === "assigned"
     ? myLocations.map((l) => l.locationName).filter(Boolean).join(", ") || "Your branch"
     : "All Locations";
@@ -123,10 +139,19 @@ export default function ViewProductManagement() {
   // Stats: an active item without a price stays off the sales screen until it gets one.
   const activeVariations = visibleVariations.filter((v) => v.isActive);
   const needsPrice = activeVariations.filter((v) => v.price <= 0).length;
+  const catalogLoading = isLoading || locationsLoading;
   const stats = [
-    { label: "Active Items", value: activeVariations.length, color: "text-foreground" },
-    { label: "Priced", value: activeVariations.length - needsPrice, color: "text-success-600 dark:text-success-400" },
-    { label: "Needs Price", value: needsPrice, color: needsPrice > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground" },
+    { label: "Active Items", value: activeVariations.length, loading: catalogLoading, color: "text-foreground" },
+    { label: "Priced", value: activeVariations.length - needsPrice, loading: catalogLoading, color: "text-primary" },
+    { label: "Needs Price", value: needsPrice, loading: catalogLoading, color: needsPrice > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground" },
+    {
+      label: "Price Changes",
+      value: history?.error
+        ? <span className="text-sm text-muted-foreground">Unavailable</span>
+        : visibleHistory.filter((row) => row.change != null).length,
+      loading: catalogLoading || historyLoading,
+      color: "text-primary",
+    },
   ];
 
   // Only the price is editable here; everything else is owned by IMS.
@@ -149,8 +174,6 @@ export default function ViewProductManagement() {
   }
 
   // ── Access control ────────────────────────────────────────────────
-
-  const hasAccess = !!authUser && canRead(POS_MODULES.PRODUCT_MANAGEMENT);
 
   useEffect(() => {
     if (!authLoading && !hasAccess) {
@@ -180,21 +203,23 @@ export default function ViewProductManagement() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         {stats.map((s) => (
           <Card key={s.label}>
             <CardContent className="p-3 sm:p-5">
               <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 leading-tight">
                 {s.label}
               </div>
-              <div className={cn("text-2xl sm:text-3xl font-bold", s.color)}>{s.value}</div>
+              <div aria-busy={s.loading} className={cn("text-2xl sm:text-3xl font-bold", s.color)}>
+                {s.loading ? <Bone className="h-8 w-14 rounded-lg sm:h-9" /> : s.value}
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pricing" | "history")} className="space-y-6">
-        <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start gap-1.5 md:gap-2 p-0">
+        <TabsList className={subtabListClass}>
           {[
             { value: "pricing", label: "Pricing Configuration", short: "Pricing" },
             { value: "history", label: "Price History", short: "History" },
@@ -202,11 +227,7 @@ export default function ViewProductManagement() {
             <TabsTrigger
               key={tab.value}
               value={tab.value}
-              className={cn(
-                "rounded-t-lg rounded-b-none px-4 py-2.5 text-sm font-semibold border transition-colors data-[state=active]:shadow-none md:shrink-0 max-md:flex-1 max-md:min-w-0 max-md:px-2",
-                "data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary",
-                "data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border"
-              )}
+              className={cn(subtabClass, compactSubtabClass)}
             >
               <span className="md:hidden">{tab.short}</span>
               <span className="hidden md:inline">{tab.label}</span>
@@ -215,7 +236,7 @@ export default function ViewProductManagement() {
         </TabsList>
 
         {/* Pricing */}
-        <TabsContent value="pricing" className="space-y-4">
+        <TabsContent value="pricing" className="subtab-content space-y-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-foreground">Pricing Configuration</h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -235,7 +256,7 @@ export default function ViewProductManagement() {
         </TabsContent>
 
         {/* Price history */}
-        <TabsContent value="history" className="space-y-4">
+        <TabsContent value="history" className="subtab-content space-y-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-foreground">Price History</h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -248,7 +269,9 @@ export default function ViewProductManagement() {
             <PriceHistoryTable
               key={historyKey}
               products={visibleProducts}
-              visibleVariationIds={assignedOnly ? new Set(visibleVariations.map((v) => v.id)) : undefined}
+              changes={visibleHistory}
+              isLoading={historyLoading}
+              error={history?.error ?? null}
             />
           )}
         </TabsContent>

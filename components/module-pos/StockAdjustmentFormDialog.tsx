@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDown, ArrowUp, Boxes, Loader2, MapPin, Package, PackageX, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Boxes, Loader2, MapPin, Package, X } from "lucide-react";
 import { StockLevel } from "@/components/module-pos/types";
+import { parseVariationName } from "@/components/module-pos/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -144,6 +145,7 @@ export default function StockAdjustmentFormDialog({
   }, [visibleMovements]);
 
   if (!isOpen || !stock || !mounted) return null;
+  const { packaging, size } = parseVariationName(stock.variationName ?? "");
 
   const modal = (
     <>
@@ -181,7 +183,7 @@ export default function StockAdjustmentFormDialog({
               <div className="min-w-0">
                 <h2 className="m-0 truncate text-xl font-bold tracking-tight text-foreground">Stock Inventory</h2>
                 <p className="m-0 mt-1 truncate text-sm text-muted-foreground">
-                  {stock.variationName || `Variation ${stock.variationId}`} · {stock.location}
+                  Variation {stock.variationId} · {stock.location}
                 </p>
               </div>
             </div>
@@ -207,7 +209,16 @@ export default function StockAdjustmentFormDialog({
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Package className="h-4 w-4 text-primary" /> Variation
               </div>
-              <p className="m-0 truncate text-lg font-bold text-foreground">{stock.variationName || stock.variationId}</p>
+              <p className="m-0 text-lg font-bold text-foreground">{stock.productName || "Product unavailable"}</p>
+              {(packaging || size) && (
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {[packaging, size].map((label, index) => label && (
+                    <span key={index} className="rounded-md border border-[#e2e6ed] bg-[#eef1f6] px-2 py-0.5 text-xs font-semibold uppercase text-[#4a5568]">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="rounded-xl border border-border bg-card p-3 sm:p-3.5">
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -217,8 +228,8 @@ export default function StockAdjustmentFormDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
-          <section className="rounded-2xl border border-border bg-card p-5 sm:p-6">
+          <div className="grid grid-cols-1 items-start gap-y-6 xl:grid-cols-3 xl:gap-x-3">
+          <section className="min-w-0 rounded-2xl border border-border bg-card p-5 sm:p-6 xl:col-span-2">
             <div className="mb-5 flex items-start justify-between gap-3">
               <div>
                 <p className="m-0 text-xs font-bold uppercase tracking-wider text-primary">Activity ledger</p>
@@ -320,10 +331,10 @@ export default function StockAdjustmentFormDialog({
             {mode === "loss" && onRecordLoss ? (
             <>
             <div className="mb-5">
-              <p className="m-0 text-xs font-bold uppercase tracking-wider text-destructive">System loss</p>
+              <p className="m-0 text-xs font-bold uppercase tracking-wider text-destructive">Stock loss</p>
               <h3 className="m-0 mt-1 text-xl font-bold text-foreground">Record a loss</h3>
               <p className="m-0 mt-1 text-sm text-muted-foreground">
-                Write off units that can no longer be sold. They come out of this branch&apos;s stock straight away and are kept on record as a system loss.
+                Write off units that can no longer be sold. They come out of this branch&apos;s stock straight away and are kept on record as a stock loss.
               </p>
             </div>
             <div className="space-y-5">
@@ -468,7 +479,6 @@ export default function StockAdjustmentFormDialog({
               onClick={() => setConfirmingLoss(true)}
               disabled={!canSubmitLoss}
             >
-              <PackageX className="mr-2 h-4 w-4" />
               Record loss
             </Button>
           ) : (
@@ -508,18 +518,13 @@ export default function StockAdjustmentFormDialog({
               overflowY: "auto",
             }}
           >
-            <div className="flex items-start gap-3 px-6 pt-6">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-                <PackageX className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <h2 id="confirm-loss-title" className="m-0 text-lg font-bold">
-                  Write off {lossQty} unit{lossQty === 1 ? "" : "s"}?
-                </h2>
-                <p id="confirm-loss-body" className="m-0 mt-1 text-sm text-muted-foreground">
-                  They come out of stock straight away and are kept on record as a system loss. This can&apos;t be undone from here.
-                </p>
-              </div>
+            <div className="px-6 pt-6">
+              <h2 id="confirm-loss-title" className="m-0 text-lg font-bold">
+                Write off {lossQty} unit{lossQty === 1 ? "" : "s"}?
+              </h2>
+              <p id="confirm-loss-body" className="m-0 mt-1 text-sm text-muted-foreground">
+                They come out of stock straight away and are kept on record as a stock loss. This can&apos;t be undone from here.
+              </p>
             </div>
             <dl className="mx-6 mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-border bg-muted/30 p-4 text-sm">
               <dt className="text-muted-foreground">Item</dt>
@@ -544,8 +549,7 @@ export default function StockAdjustmentFormDialog({
                 Cancel
               </Button>
               <Button variant="destructive" onClick={submitLoss} disabled={!canSubmitLoss}>
-                {isRecordingLoss ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageX className="mr-2 h-4 w-4" />}
-                {isRecordingLoss ? "Writing off…" : `Write off ${lossQty} unit${lossQty === 1 ? "" : "s"}`}
+                {isRecordingLoss ? "Confirming…" : "Confirm"}
               </Button>
             </div>
           </div>
@@ -558,8 +562,8 @@ export default function StockAdjustmentFormDialog({
 }
 
 function formatMovementType(value: string) {
-  if (value === "Loss") return "System loss";
-  if (value === "StockLoss") return "System loss (written off)";
+  if (value === "Loss") return "Stock loss";
+  if (value === "StockLoss") return "Stock loss (written off)";
   return value.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 

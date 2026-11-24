@@ -275,6 +275,17 @@ body {
   will-change: transform, opacity;
 }
 
+@keyframes subtab-content-in {
+  from { opacity: 0.75; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  .subtab-content[data-state="active"] {
+    animation: subtab-content-in 160ms ease-out;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-page-in {
     animation: none;

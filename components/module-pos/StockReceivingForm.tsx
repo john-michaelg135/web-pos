@@ -6,6 +6,7 @@ import { apiClient } from "@/components/module-pos/api";
 import { ProductResponseDto } from "@/components/module-pos/api/api";
 import { toast } from "@/lib/toast";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
+import { SearchInput } from "@/components/module-pos/SearchInput";
 import { useMyLocations } from "@/lib/useMyLocations";
 
 import { Bone, SkeletonRows } from "@/components/shared/PageSkeleton";
@@ -328,13 +329,14 @@ export function StockReceivingForm({ onSuccess, onReceived, initialSearch }: Sto
 
       {/* Filter and search */}
       <div className="w-full">
-        <input
+        <SearchInput
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search by reference, branch, product or SKU…"
+          aria-label="Search pending deliveries"
           maxLength={25}
-          className="w-full sm:max-w-[320px] px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          className="sm:max-w-[320px]"
         />
       </div>
 

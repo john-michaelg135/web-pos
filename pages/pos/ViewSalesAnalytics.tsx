@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { subtabClass, subtabListClass } from "@/components/ui/subtab-styles";
 import { ViewStartingCash, type StartingCashRecord } from "./ViewStartingCash";
 
 import { SalesReportPageSkeleton } from "@/components/shared/PageSkeleton";
@@ -384,7 +385,7 @@ export function ViewSalesAnalytics() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as "analytics" | "money-audit")} className="space-y-6">
-        <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start gap-2 p-0 print:hidden">
+        <TabsList className={cn(subtabListClass, "print:hidden")}>
           {[
             { value: "analytics", label: "Sales Report" },
             ...(canMoneyAudit ? [{ value: "money-audit", label: "Money Audit" }] : []),
@@ -392,18 +393,14 @@ export function ViewSalesAnalytics() {
             <TabsTrigger
               key={tab.value}
               value={tab.value}
-              className={cn(
-                "rounded-t-lg rounded-b-none px-4 py-2.5 text-sm font-semibold border transition-colors data-[state=active]:shadow-none",
-                "data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary",
-                "data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border"
-              )}
+              className={subtabClass}
             >
               {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="analytics" className="mt-0">
+        <TabsContent value="analytics" className="subtab-content mt-0">
           <SalesReport
             dateFrom={getStartOfDay(dateFrom)}
             dateTo={getEndOfDay(dateTo)}
@@ -415,7 +412,7 @@ export function ViewSalesAnalytics() {
         </TabsContent>
 
         {canMoneyAudit && (
-          <TabsContent value="money-audit" className="space-y-6 mt-0">
+          <TabsContent value="money-audit" className="subtab-content space-y-6 mt-0">
             {/* On paper the templated report replaces the interactive table. */}
             <MoneyAuditPrint records={moneyAuditRecords} meta={auditMeta} signature={signature} />
             <div className="print:hidden">

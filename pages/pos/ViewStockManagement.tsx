@@ -19,6 +19,7 @@ import type { StockRequestRecord } from "@/components/module-pos/StockRequestHis
 import { StockLossTable, type StockLossRecord } from "@/components/module-pos/StockLossTable";
 import { isManager as isManagerRole } from "@/lib/portal/roles";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
+import { SearchInput } from "@/components/module-pos/SearchInput";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
 import { StockLevel, StockMovement } from "@/components/module-pos/types";
@@ -26,6 +27,7 @@ import { StockLevel, StockMovement } from "@/components/module-pos/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { compactSubtabClass, subtabClass, subtabListClass } from "@/components/ui/subtab-styles";
 
 import { StockManagementSkeleton } from "@/components/shared/PageSkeleton";
 
@@ -59,6 +61,7 @@ export function ViewStockManagement() {
   const [selectedLocation, setSelectedLocation] = useState("All");
   const [locations, setLocations] = useState<any[]>([]);
   const [inactiveLocationIds, setInactiveLocationIds] = useState<number[]>([]);
+  const [stockSearch, setStockSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const isMobile = useMediaQuery("(max-width: 768px)");
 
@@ -89,7 +92,7 @@ export function ViewStockManagement() {
   const [losses, setLosses] = useState<StockLossRecord[]>([]);
   const [isLossesLoading, setIsLossesLoading] = useState(false);
 
-  // Managers (and the owner) record system losses; the API enforces the same rule.
+  // Managers (and the owner) record stock losses; the API enforces the same rule.
   const canRecordLoss = !!authUser && (authUser.isSuperUser || isManagerRole(authUser.role));
 
   const fetchLosses = async () => {
@@ -101,8 +104,8 @@ export function ViewStockManagement() {
       const { data } = await apiClient.instance.get<StockLossRecord[]>("/api-pos/inventory/adjustments/losses", { params });
       setLosses(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Failed to fetch system losses:", err);
-      toast.error("Failed to load system losses.");
+      console.error("Failed to fetch stock losses:", err);
+      toast.error("Failed to load stock losses.");
     } finally {
       setIsLossesLoading(false);
     }
@@ -118,7 +121,7 @@ export function ViewStockManagement() {
         lossReason: loss.lossReason,
         notes: loss.notes || null,
       });
-      toast.success(`Recorded a system loss of ${loss.quantity} unit${loss.quantity === 1 ? "" : "s"}.`);
+      toast.success(`Recorded a stock loss of ${loss.quantity} unit${loss.quantity === 1 ? "" : "s"}.`);
       setSelectedStock({ ...selectedStock, quantity: selectedStock.quantity - loss.quantity });
       fetchInventoryMovements();
       fetchLosses();
@@ -145,7 +148,7 @@ export function ViewStockManagement() {
         quantity: item.quantityReceived || 0,
         type: "arrival",
         date: item.receivedAt || new Date().toISOString(),
-        reference: "-",
+        reference: item.transferId || "-",
         notes: item.notes || "",
       }));
       setMovements(mappedMovements);
@@ -356,21 +359,17 @@ export function ViewStockManagement() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "levels" | "receive" | "history" | "losses")} className="space-y-6">
-        <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start max-md:items-end max-md:h-auto gap-1.5 md:gap-2 p-0">
+        <TabsList className={subtabListClass}>
           {[
             { value: "levels", label: "Stock Levels", short: "Levels" },
             { value: "receive", label: "Receive Stock", short: "Receive" },
             { value: "history", label: "Stock History Log", short: "History" },
-            { value: "losses", label: "System Losses", short: "Losses" },
+            { value: "losses", label: "Stock Losses", short: "Losses" },
           ].map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
-              className={cn(
-                "rounded-t-lg rounded-b-none px-4 py-2.5 text-sm font-semibold border transition-colors data-[state=active]:shadow-none md:shrink-0 max-md:flex-1 max-md:min-w-0 max-md:px-2",
-                "data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary",
-                "data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border"
-              )}
+              className={cn(subtabClass, compactSubtabClass)}
             >
               <span className="md:hidden">{tab.short}</span>
               <span className="hidden md:inline">{tab.label}</span>
@@ -379,8 +378,16 @@ export function ViewStockManagement() {
         </TabsList>
 
         {/* Stock Levels */}
-        <TabsContent value="levels" className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-end gap-4 rounded-xl border border-border bg-card p-3 md:p-4">
+        <TabsContent value="levels" className="subtab-content space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-border bg-card p-3 md:p-4">
+            <SearchInput
+              value={stockSearch}
+              onChange={(e) => setStockSearch(e.target.value)}
+              placeholder="Search product, variation or location…"
+              aria-label="Search stock levels"
+              maxLength={25}
+              className="min-w-0 md:max-w-[320px]"
+            />
             <div className="flex flex-wrap items-center gap-4 max-md:w-full">
               <div className="flex items-center gap-2 max-md:w-full">
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider max-md:sr-only">Location:</span>
@@ -413,11 +420,11 @@ export function ViewStockManagement() {
               </Button>
             </div>
           )}
-          <StockLevelGrid key={refreshKey} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} hiddenLocationIds={inactiveLocationIds} focusVariationId={focusVariationId} />
+          <StockLevelGrid key={refreshKey} searchQuery={stockSearch} selectedLocation={selectedLocation} viewMode={viewMode} onAdjustStock={handleAdjustStock} canSwitchLocation={canSwitchLocation} hiddenLocationIds={inactiveLocationIds} focusVariationId={focusVariationId} />
         </TabsContent>
 
         {/* Receive Stock */}
-        <TabsContent value="receive" className="space-y-4">
+        <TabsContent value="receive" className="subtab-content space-y-4">
           <StockReceivingForm
             initialSearch={linkTab === "receive" ? linkTransferId : undefined}
             onSuccess={handleRecordArrival}
@@ -430,14 +437,14 @@ export function ViewStockManagement() {
         </TabsContent>
 
         {/* Stock History Log */}
-        <TabsContent value="history" className="space-y-4">
+        <TabsContent value="history" className="subtab-content space-y-4">
           <StockMovementTable movements={movements} />
         </TabsContent>
 
-        {/* System Losses */}
-        <TabsContent value="losses" className="space-y-4">
+        {/* Stock Losses */}
+        <TabsContent value="losses" className="subtab-content space-y-4">
           <div>
-            <h2 className="text-lg font-bold text-foreground">System Losses</h2>
+            <h2 className="text-lg font-bold text-foreground">Stock Losses</h2>
             <p className="text-sm text-muted-foreground">
               Stock written off as unsellable: expired, damaged or mishandled items.
               {canRecordLoss ? " To record one, open an item in Stock Levels and choose Record loss." : ""}

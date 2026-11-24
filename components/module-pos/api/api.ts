@@ -1015,6 +1015,7 @@ export interface UpdateVoucherDto {
 }
 
 export interface StockReceivingResponseDto {
+  transferId?: null | string;
   receivingId?: number;
   variationId?: number;
   variationName?: string;

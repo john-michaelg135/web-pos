@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, History, Loader2, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDownRight, ArrowUpRight, Loader2 } from "lucide-react";
 
 import { apiClient } from "@/components/module-pos/api";
+import { SearchInput } from "@/components/module-pos/SearchInput";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import type { Product, Variation } from "@/components/module-pos/types";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +40,7 @@ export function variationLabel(name: string) {
   return rest.map((p) => p.trim()).filter(Boolean).join(" · ") || name;
 }
 
-async function fetchPriceChanges(params: { productId?: number; variationId?: number }) {
+export async function fetchPriceChanges(params: { productId?: number; variationId?: number }) {
   const { data } = await apiClient.instance.get<PriceChange[]>("/api-pos/product-catalog/price-history", { params });
   return Array.isArray(data) ? data : [];
 }
@@ -83,72 +83,45 @@ function Period({ change }: { change: PriceChange }) {
 }
 
 /** Every price change across the catalog the viewer can see, newest first. */
-export function PriceHistoryTable({ products, visibleVariationIds }: {
+export function PriceHistoryTable({ products, changes, isLoading, error }: {
   products: Product[];
-  /** Branch staff: only items their branch carries (the API also enforces this). */
-  visibleVariationIds?: Set<string>;
+  changes: PriceChange[];
+  isLoading: boolean;
+  error: string | null;
 }) {
-  const [changes, setChanges] = useState<PriceChange[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [productFilter, setProductFilter] = useState("all");
   const [direction, setDirection] = useState<"all" | "up" | "down">("all");
   const [search, setSearch] = useState("");
 
-  // Results land in callbacks, so a refresh never sets state inside the effect itself.
-  const [reloadKey, setReloadKey] = useState(0);
-  const load = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
-    setReloadKey((k) => k + 1);
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    fetchPriceChanges({})
-      .then((rows) => {
-        if (active) setChanges(rows);
-      })
-      .catch((err) => {
-        console.error("Failed to load price history:", err);
-        if (active) setError("Could not load the price history.");
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [reloadKey]);
-
   const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
     return changes.filter((c) => {
-      if (visibleVariationIds && !visibleVariationIds.has(String(c.variationId))) return false;
       if (productFilter !== "all" && String(c.productId) !== productFilter) return false;
       if (direction === "up" && !(c.change != null && c.change > 0)) return false;
       if (direction === "down" && !(c.change != null && c.change < 0)) return false;
-      if (!q) return true;
-      return (
-        c.productName.toLowerCase().includes(q) ||
-        c.variationName.toLowerCase().includes(q) ||
-        (c.setByName ?? "").toLowerCase().includes(q)
-      );
+      if (!terms.length) return true;
+      const fields = [
+        c.productName, c.variationName, variationLabel(c.variationName),
+        when(c.effectiveFrom), c.effectiveTo && when(c.effectiveTo),
+        c.isCurrent && "current price", c.change == null && "first price",
+        "new price", peso(c.price), c.price,
+        c.previousPrice != null && `old price ${peso(c.previousPrice)} ${c.previousPrice}`,
+        c.setByName || (c.setBy && `Staff #${c.setBy}`),
+      ].filter((value) => value !== false && value != null).join(" ").toLowerCase();
+      return terms.every((term) => fields.includes(term));
     });
-  }, [changes, visibleVariationIds, productFilter, direction, search]);
-
-  const changeCount = visible.filter((c) => c.change != null).length;
+  }, [changes, productFilter, direction, search]);
 
   return (
     <div className="w-full min-w-0 space-y-4">
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:gap-3">
-        <input
+        <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search product, size or staff…"
+          placeholder="Search product, date or price…"
           maxLength={40}
           aria-label="Search price history"
-          className="col-span-2 w-full sm:max-w-[240px] px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="col-span-2 sm:max-w-[240px]"
         />
         <CustomSelect
           value={productFilter}
@@ -166,15 +139,6 @@ export function PriceHistoryTable({ products, visibleVariationIds }: {
             { value: "down", label: "Decreases" },
           ]}
         />
-        <div className="col-span-2 flex items-center justify-between gap-3 sm:ml-auto">
-          <span className="text-xs text-muted-foreground">
-            {changeCount} {changeCount === 1 ? "change" : "changes"}
-          </span>
-          <Button variant="outline" size="sm" className="gap-2 rounded-lg" onClick={load} disabled={isLoading}>
-            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
-            Refresh
-          </Button>
-        </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -271,8 +235,7 @@ function PriceTimeline({ variation, productName }: { variation: Variation; produ
   return (
       <DialogContent className="w-[calc(100vw-2rem)] max-w-[32rem] max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden rounded-2xl">
         <DialogHeader className="border-b border-border px-6 py-4">
-          <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <History className="h-5 w-5 text-primary" aria-hidden />
+          <DialogTitle className="text-lg font-bold">
             Price History
           </DialogTitle>
           <DialogDescription>

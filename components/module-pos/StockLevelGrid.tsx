@@ -107,6 +107,18 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
     return matchesLoc && matchesQuery;
   });
 
+  function openStock(stock: ParsedStock) {
+    onAdjustStock?.({
+      variationId: stock.variationId,
+      variationName: stock.variationName,
+      productName: stock.productName,
+      location: stock.locationName,
+      locationId: stock.locationId,
+      quantity: stock.quantity,
+      lowStockThreshold: stock.lowStockThreshold,
+    });
+  }
+
   if (isLoading) {
     return (
       <StockLevelsSkeleton viewMode={viewMode} withSearch={searchQuery === undefined} />
@@ -173,7 +185,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                     <span className="shrink-0 text-[11px] italic text-muted-foreground">Read-only</span>
                   ) : (
                     <button
-                      onClick={() => onAdjustStock && onAdjustStock({ variationId: stock.variationId, productName: stock.productName, variationName: stock.variationName, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold })}
+                      onClick={() => openStock(stock)}
                       className={`shrink-0 h-9 px-4 text-xs font-semibold rounded-lg transition-colors ${
                         isLowStock ? `${LOW_FILL} text-white shadow-sm shadow-red-500/25` : `${BRAND_FILL} text-white shadow-sm shadow-primary/25`
                       }`}
@@ -260,7 +272,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                             <span className="text-xs text-gray-400 dark:text-gray-500 italic">Read-only (SCM)</span>
                           ) : (
                             <button
-                              onClick={() => onAdjustStock && onAdjustStock({ variationId: stock.variationId, productName: stock.productName, variationName: stock.variationName, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold })}
+                              onClick={() => openStock(stock)}
                               className={`px-3 py-1.5 text-white text-xs font-bold rounded-lg transition-all shadow-sm ${
                                 isLowStock
                                   ? `${LOW_FILL} hover:opacity-90 shadow-red-500/20`
@@ -384,9 +396,7 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (onAdjustStock) {
-                              onAdjustStock({ variationId: stock.variationId, location: stock.locationName, locationId: stock.locationId, quantity: stock.quantity, lowStockThreshold: stock.lowStockThreshold });
-                            }
+                            openStock(stock);
                           }}
                           className={`w-full py-2.5 text-xs font-semibold rounded-lg transition-all duration-200 ${
                             isLowStock

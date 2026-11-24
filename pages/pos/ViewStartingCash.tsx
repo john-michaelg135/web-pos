@@ -231,7 +231,7 @@ export function ViewStartingCash({
   const total = useMemo(() => visible.reduce((sum, r) => sum + r.amount, 0), [visible]);
 
   if (authLoading) {
-    if (embedded) return <MoneyAuditSkeleton />;
+    if (embedded) return <MoneyAuditSkeleton showCardIcons={false} />;
     return (
       <div className="w-full py-8 px-6 md:px-8 space-y-6">
         <div>
@@ -279,9 +279,11 @@ export function ViewStartingCash({
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Declarations</span>
               <span className="text-2xl sm:text-3xl font-extrabold text-foreground">{visible.length}</span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Banknote className="w-6 h-6" />
-            </div>
+            {!embedded && (
+              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Banknote className="w-6 h-6" />
+              </div>
+            )}
           </div>
 
           <div className="w-full sm:w-72 p-5 bg-card border border-border rounded-xl shadow-none flex items-center justify-between">
@@ -289,9 +291,11 @@ export function ViewStartingCash({
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Starting Cash</span>
               <span className="text-2xl sm:text-3xl font-extrabold text-primary">{peso(total)}</span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Banknote className="w-6 h-6" />
-            </div>
+            {!embedded && (
+              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Banknote className="w-6 h-6" />
+              </div>
+            )}
           </div>
         </div>
 

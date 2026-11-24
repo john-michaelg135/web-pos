@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { compactSubtabClass, subtabClass, subtabListClass } from "@/components/ui/subtab-styles";
 import { cn } from "@/lib/utils";
 
 /*
@@ -134,19 +135,22 @@ function PageTitle({ title, subtitle, badge = true, action }: {
   );
 }
 
-/** Underlined tab row used on Stock Management and the Sales Report; the first tab is active. */
-function OutlineTabs({ labels }: { labels: string[] }) {
+/** Underlined tab row used while the page loads; the first tab is active. */
+function SubtabSkeleton({ labels, shortLabels }: { labels: string[]; shortLabels?: string[] }) {
   return (
-    <div className="flex gap-2 border-b border-border">
+    <div className={subtabListClass}>
       {labels.map((label, i) => (
         <span
           key={label}
-          className={cn(
-            "rounded-t-lg px-4 py-2.5 text-sm font-semibold border",
-            i === 0 ? "bg-primary/10 text-primary border-primary" : "text-muted-foreground border-border"
-          )}
+          data-state={i === 0 ? "active" : "inactive"}
+          className={cn(subtabClass, shortLabels && compactSubtabClass)}
         >
-          {label}
+          {shortLabels ? (
+            <>
+              <span className="md:hidden">{shortLabels[i]}</span>
+              <span className="hidden md:inline">{label}</span>
+            </>
+          ) : label}
         </span>
       ))}
     </div>
@@ -241,14 +245,18 @@ export function StockManagementSkeleton() {
         title="Stock Management"
         subtitle="Monitor stock levels, manage adjustments, and record new arrivals."
       />
-      <OutlineTabs labels={["Stock Levels", "Receive Stock", "Stock History Log"]} />
+      <SubtabSkeleton
+        labels={["Stock Levels", "Receive Stock", "Stock History Log", "Stock Losses"]}
+        shortLabels={["Levels", "Receive", "History", "Losses"]}
+      />
       <div className="space-y-4">
-        <div className="flex items-center justify-end gap-4 rounded-xl border border-border bg-card p-3 md:p-4">
+        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-3 md:p-4">
+          <Bone className="h-10 w-full rounded-xl md:mr-auto md:max-w-[320px]" />
           <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider max-md:sr-only">Location:</span>
           <Bone className="h-10 w-48 rounded-xl" />
           <Bone className="hidden md:block h-10 w-[72px] rounded-lg" />
         </div>
-        <StockLevelsSkeleton />
+        <StockLevelsSkeleton withSearch={false} />
       </div>
     </Shell>
   );
@@ -367,14 +375,15 @@ export function ProductManagementSkeleton() {
         subtitle="Set selling prices for products from IMS"
         badge={false}
       />
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {["Active Items", "Priced", "Needs Price"].map((label) => (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+        {["Active Items", "Priced", "Needs Price", "Price Changes"].map((label) => (
           <div key={label} className="rounded-xl border border-border bg-card p-3 sm:p-5">
             <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2">{label}</div>
             <Bone className="h-8 w-14 rounded-lg" />
           </div>
         ))}
       </div>
+      <SubtabSkeleton labels={["Pricing Configuration", "Price History"]} shortLabels={["Pricing", "History"]} />
       <ProductTableSkeleton tab="variations" />
     </Shell>
   );
@@ -620,7 +629,7 @@ export function SalesReportPageSkeleton() {
           </div>
         </div>
       </div>
-      <OutlineTabs labels={["Sales Report", "Money Audit"]} />
+      <SubtabSkeleton labels={["Sales Report", "Money Audit"]} />
       <ReportSkeleton />
     </Shell>
   );
@@ -631,7 +640,7 @@ export function SalesReportPageSkeleton() {
 /** Column shapes of the Money Audit records table (7 columns). */
 export const MONEY_AUDIT_COLUMNS: CellKind[] = ["stack", "text", "text", "stack", "text", "stack", "badge"];
 
-export function MoneyAuditSkeleton() {
+export function MoneyAuditSkeleton({ showCardIcons = true }: { showCardIcons?: boolean }) {
   return (
     <div role="status" aria-label="Loading starting cash records" className="w-full space-y-6">
       <div className="flex flex-wrap items-center gap-4">
@@ -641,7 +650,7 @@ export function MoneyAuditSkeleton() {
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
               <Bone className="h-8 w-28 rounded-lg" />
             </div>
-            <div className="w-12 h-12 rounded-xl bg-primary/10" />
+            {showCardIcons && <div className="w-12 h-12 rounded-xl bg-primary/10" />}
           </div>
         ))}
       </div>
