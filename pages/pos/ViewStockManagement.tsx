@@ -14,7 +14,9 @@ import { StockLevelGrid } from "@/components/module-pos/StockLevelGrid";
 import { StockReceivingForm } from "@/components/module-pos/StockReceivingForm";
 import { StockMovementTable } from "@/components/module-pos/StockMovementTable";
 import { StockInventoryMovement } from "@/components/module-pos/StockInventoryTable";
-import StockAdjustmentFormDialog from "@/components/module-pos/StockAdjustmentFormDialog";
+import StockAdjustmentFormDialog, { type StockLossInput } from "@/components/module-pos/StockAdjustmentFormDialog";
+import { StockLossTable, type StockLossRecord } from "@/components/module-pos/StockLossTable";
+import { isManager as isManagerRole } from "@/lib/portal/roles";
 import { DeleteConfirmDialog } from "@/components/module-pos/DeleteConfirmDialog";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { useMediaQuery } from "@/components/module-pos/useMediaQuery";
@@ -31,7 +33,7 @@ export function ViewStockManagement() {
   const { scope, locations: myLocations } = useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history">("levels");
+  const [activeTab, setActiveTab] = useState<"levels" | "receive" | "history" | "losses">("levels");
 
   // Notification links: ?tab=receive&transferId=… or ?tab=levels&locationId=…&variationId=…
   const searchParams = useSearchParams();
@@ -45,7 +47,7 @@ export function ViewStockManagement() {
   const [appliedLink, setAppliedLink] = useState<string | null>(null);
   if (linkKey !== appliedLink) {
     setAppliedLink(linkKey);
-    if (linkTab === "levels" || linkTab === "receive" || linkTab === "history") setActiveTab(linkTab);
+    if (linkTab === "levels" || linkTab === "receive" || linkTab === "history" || linkTab === "losses") setActiveTab(linkTab);
   }
 
   // Only admins/owners (super users, "all" scope) may see or switch between
@@ -80,6 +82,53 @@ export function ViewStockManagement() {
   } | null>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [losses, setLosses] = useState<StockLossRecord[]>([]);
+  const [isLossesLoading, setIsLossesLoading] = useState(false);
+
+  // Managers (and the owner) record system losses; the API enforces the same rule.
+  const canRecordLoss = !!authUser && (authUser.isSuperUser || isManagerRole(authUser.role));
+
+  const fetchLosses = async () => {
+    const selectedLocationId = locations.find((location) => location.locationName === selectedLocation)?.locationId;
+    if (!canSwitchLocation && !selectedLocationId) return;
+    try {
+      setIsLossesLoading(true);
+      const params = selectedLocation !== "All" && selectedLocationId ? { locationId: String(selectedLocationId) } : {};
+      const { data } = await apiClient.instance.get<StockLossRecord[]>("/api-pos/inventory/adjustments/losses", { params });
+      setLosses(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to fetch system losses:", err);
+      toast.error("Failed to load system losses.");
+    } finally {
+      setIsLossesLoading(false);
+    }
+  };
+
+  const handleRecordLoss = async (loss: StockLossInput) => {
+    if (!selectedStock) return false;
+    try {
+      await apiClient.instance.post("/api-pos/inventory/adjustments/losses", {
+        variationId: Number(selectedStock.variationId),
+        locationId: Number(selectedStock.locationId),
+        quantity: loss.quantity,
+        lossReason: loss.lossReason,
+        notes: loss.notes || null,
+      });
+      toast.success(`Recorded a system loss of ${loss.quantity} unit${loss.quantity === 1 ? "" : "s"}.`);
+      setSelectedStock({ ...selectedStock, quantity: selectedStock.quantity - loss.quantity });
+      fetchInventoryMovements();
+      fetchLosses();
+      setRefreshKey((prev) => prev + 1);
+      return true;
+    } catch (err) {
+      const data = (err as { response?: { data?: unknown } })?.response?.data;
+      const message = typeof data === "string" && data
+        ? data
+        : (data as { message?: string } | undefined)?.message;
+      toast.error(message || "Failed to record the loss.");
+      return false;
+    }
+  };
 
   const fetchMovements = async () => {
     try {
@@ -157,6 +206,7 @@ export function ViewStockManagement() {
 
   useEffect(() => {
     if (activeTab === "history") fetchMovements();
+    if (activeTab === "losses") fetchLosses();
     fetchInventoryMovements();
   }, [activeTab, selectedLocation, locations]);
 
@@ -269,12 +319,13 @@ export function ViewStockManagement() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "levels" | "receive" | "history")} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "levels" | "receive" | "history" | "losses")} className="space-y-6">
         <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start max-md:items-end max-md:h-auto gap-1.5 md:gap-2 p-0">
           {[
             { value: "levels", label: "Stock Levels", short: "Levels" },
             { value: "receive", label: "Receive Stock", short: "Receive" },
             { value: "history", label: "Stock History Log", short: "History" },
+            { value: "losses", label: "System Losses", short: "Losses" },
           ].map((tab) => (
             <TabsTrigger
               key={tab.value}
@@ -346,6 +397,23 @@ export function ViewStockManagement() {
         <TabsContent value="history" className="space-y-4">
           <StockMovementTable movements={movements} />
         </TabsContent>
+
+        {/* System Losses */}
+        <TabsContent value="losses" className="space-y-4">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">System Losses</h2>
+            <p className="text-sm text-muted-foreground">
+              Stock written off as unsellable: expired, damaged or mishandled items.
+              {canRecordLoss ? " To record one, open an item in Stock Levels and choose Record loss." : ""}
+            </p>
+          </div>
+          <StockLossTable
+            losses={losses}
+            isLoading={isLossesLoading}
+            onRefresh={fetchLosses}
+            showBranch={selectedLocation === "All"}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Dialogs */}
@@ -370,6 +438,7 @@ export function ViewStockManagement() {
           movement.locationId === Number(selectedStock?.locationId)
         )}
         isMovementsLoading={isInventoryLoading}
+        onRecordLoss={canRecordLoss ? handleRecordLoss : undefined}
       />
 
       <DeleteConfirmDialog

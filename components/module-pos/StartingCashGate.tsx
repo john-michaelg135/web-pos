@@ -20,6 +20,10 @@ interface StartingCashEntry {
   createdAt: string;
   endShiftAmount?: number | null;
   endShiftAt?: string | null;
+  expectedCash?: number | null;
+  cashTenderedAmount?: number | null;
+  changeGivenAmount?: number | null;
+  approvedRefundAmount?: number | null;
 }
 
 interface StartingCashGateProps {
@@ -28,6 +32,9 @@ interface StartingCashGateProps {
   /** Tells the parent whether today's starting cash is recorded (gates selling). */
   onChange?: (declared: boolean, shiftClosed: boolean) => void;
 }
+
+/** The drawer must open with enough cash to give change (same rule as api-pos). */
+export const MIN_STARTING_CASH = 300;
 
 const peso = (n: number) =>
   `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -125,8 +132,8 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
 
   const handleSave = async () => {
     const value = parseFloat(amount);
-    if (isNaN(value) || value < 0 || amount.split(".")[0].length > 6) {
-      toast.error("Enter starting cash from 0 to 999,999.");
+    if (isNaN(value) || value < MIN_STARTING_CASH || amount.split(".")[0].length > 6) {
+      toast.error(`Starting cash must be at least ${peso(MIN_STARTING_CASH)} so the drawer can give change.`);
       return;
     }
     setIsSaving(true);
@@ -239,7 +246,7 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
               <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
                 <p style={{ margin: 0, fontSize: 14, color: "#71717a", lineHeight: 1.5 }}>
                   Before selling, count the cash in the drawer and enter it below. It is recorded under your name and
-                  can&apos;t be edited afterwards.
+                  can&apos;t be edited afterwards. The drawer needs at least {peso(MIN_STARTING_CASH)} so you can give change.
                 </p>
                 <div>
                   <label
@@ -261,7 +268,8 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
                     value={amount}
                     onChange={(e) => setAmount(sanitizeMoney(e.target.value))}
                     onKeyDown={(e) => e.key === "Enter" && !isSaving && handleSave()}
-                    placeholder="e.g. 2000.00"
+                    placeholder={`At least ${MIN_STARTING_CASH.toFixed(2)}`}
+                    aria-describedby="starting-cash-hint"
                     maxLength={9}
                     style={{
                       width: "100%",
@@ -275,6 +283,15 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
                       boxSizing: "border-box",
                     }}
                   />
+                  {amount !== "" && amount !== "." && parseFloat(amount) < MIN_STARTING_CASH ? (
+                    <p id="starting-cash-hint" style={{ margin: "6px 0 0", fontSize: 12, color: "#ef4444" }}>
+                      Minimum is {peso(MIN_STARTING_CASH)}.
+                    </p>
+                  ) : (
+                    <p id="starting-cash-hint" style={{ margin: "6px 0 0", fontSize: 12, color: "#71717a" }}>
+                      Minimum {peso(MIN_STARTING_CASH)}.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -299,7 +316,7 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
                 )}
                 <Button
                   onClick={handleSave}
-                  disabled={isSaving || amount === "" || amount === "."}
+                  disabled={isSaving || amount === "" || amount === "." || parseFloat(amount) < MIN_STARTING_CASH}
                   style={{ display: "flex", alignItems: "center", gap: 8 }}
                 >
                   {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -349,6 +366,15 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
           {entry.endShiftAt && (
             <span className="ml-auto font-semibold text-destructive">
               End shift recorded: {peso(entry.endShiftAmount ?? 0)}
+            </span>
+          )}
+          {entry.endShiftAt && entry.expectedCash != null && (
+            <span className="basis-full text-xs text-muted-foreground">
+              Expected {peso(entry.expectedCash)}
+              {entry.cashTenderedAmount != null && entry.changeGivenAmount != null && (
+                <> (cash received {peso(entry.cashTenderedAmount)} − change given {peso(entry.changeGivenAmount)}
+                  {entry.approvedRefundAmount ? <> − refunds {peso(entry.approvedRefundAmount)}</> : null})</>
+              )}
             </span>
           )}
         </div>

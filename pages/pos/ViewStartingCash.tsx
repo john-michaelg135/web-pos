@@ -9,6 +9,7 @@ import { apiClient } from "@/components/module-pos/api";
 import { useAuth } from "@/context/AuthContext";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { isManager as isManagerRole } from "@/lib/portal/roles";
+import { MIN_STARTING_CASH } from "@/components/module-pos/StartingCashGate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,7 +34,14 @@ export interface StartingCashRecord {
   approvedRefundAmount?: number | null;
   /** GCash and other non-cash payments: wallet money, not part of expected cash. */
   nonCashSalesAmount?: number | null;
+  /** Cash customers handed over for cash sales (amount tendered). */
+  cashTenderedAmount?: number | null;
+  /** Change handed back from the drawer; tendered less change is the cash sales. */
+  changeGivenAmount?: number | null;
+  /** Starting cash + cash tendered − change given − cash refunds. */
   expectedCash?: number | null;
+  /** The shift is still open: the figures are running totals so far. */
+  isLive?: boolean;
   cashVariance?: number | null;
   cashShortage?: number | null;
   /** Closed by the system at the end of the business day because no cashier ended the shift. */
@@ -166,8 +174,8 @@ export function ViewStartingCash({
   const handleAddStartingCash = async () => {
     const value = parseFloat(modalAmount);
     const wholeDigits = modalAmount.split(".")[0] ?? "";
-    if (isNaN(value) || value < 0 || wholeDigits.length > 6) {
-      toast.error("Enter a starting cash amount from 0 to 999,999.");
+    if (isNaN(value) || value < MIN_STARTING_CASH || wholeDigits.length > 6) {
+      toast.error(`Starting cash must be at least ${peso(MIN_STARTING_CASH)} so the drawer can give change.`);
       return;
     }
     const targetLoc = effectiveLocationId || selectedBranchId || branchLocations[0]?.locationId;
@@ -359,8 +367,16 @@ export function ViewStartingCash({
                     <td className="px-5 py-3.5 print:px-2 print:py-2">
                       <div className="space-y-1.5">
                         <div><span className="text-muted-foreground">Starting:</span> <span className="font-semibold text-foreground">{peso(r.amount)}</span></div>
-                        <div><span className="text-muted-foreground">Cash sales:</span> <span className="text-foreground">{r.successfulSalesAmount == null ? "—" : peso(r.successfulSalesAmount)}</span></div>
-                        <div><span className="text-muted-foreground">Cash refunds:</span> <span className="text-foreground">{r.approvedRefundAmount == null ? "—" : peso(r.approvedRefundAmount)}</span></div>
+                        <div title="Cash customers handed over for cash sales.">
+                          <span className="text-muted-foreground">Cash received:</span> <span className="text-foreground">{r.cashTenderedAmount == null ? "—" : peso(r.cashTenderedAmount)}</span>
+                        </div>
+                        <div title="Change handed back from the drawer.">
+                          <span className="text-muted-foreground">Change given:</span> <span className="text-foreground">{r.changeGivenAmount == null ? "—" : `−${peso(r.changeGivenAmount)}`}</span>
+                        </div>
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Net cash sales:</span> <span className="text-muted-foreground">{r.successfulSalesAmount == null ? "—" : peso(r.successfulSalesAmount)}</span>
+                        </div>
+                        <div><span className="text-muted-foreground">Cash refunds:</span> <span className="text-foreground">{r.approvedRefundAmount == null ? "—" : r.approvedRefundAmount ? `−${peso(r.approvedRefundAmount)}` : peso(0)}</span></div>
                         {r.nonCashSalesAmount != null && r.nonCashSalesAmount !== 0 && (
                           <div className="text-xs" title="GCash goes to the company wallet, so it isn't part of the expected cash in the drawer.">
                             <span className="text-muted-foreground">GCash (not in drawer):</span> <span className="text-muted-foreground">{peso(r.nonCashSalesAmount)}</span>
@@ -378,7 +394,10 @@ export function ViewStartingCash({
                     <td className="px-5 py-3.5 print:px-2 print:py-2">
                       <div className="space-y-1.5">
                         <div><span className="text-muted-foreground">End:</span> <span className="font-semibold text-foreground">{r.endShiftAmount != null ? peso(r.endShiftAmount) : r.autoClosed ? <span className="font-normal text-muted-foreground">Not counted</span> : "—"}</span></div>
-                        <div><span className="text-muted-foreground">Expected:</span> <span className="text-foreground">{r.expectedCash == null ? "—" : peso(r.expectedCash)}</span></div>
+                        <div title="Starting cash + cash received − change given − cash refunds.">
+                          <span className="text-muted-foreground">Expected{r.isLive ? " so far" : ""}:</span>{" "}
+                          <span className="font-semibold text-foreground">{r.expectedCash == null ? "—" : peso(r.expectedCash)}</span>
+                        </div>
                         <div>
                           <span className="text-muted-foreground">Variance:</span>{" "}
                           <span className={cn(
@@ -402,9 +421,12 @@ export function ViewStartingCash({
                           Auto-closed
                         </span>
                       ) : r.endShiftAmount == null ? (
-                        <span className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-amber-600 dark:text-amber-400">
-                          <span className="h-2 w-2 rounded-full bg-amber-400" />
-                          Not Closed
+                        <span
+                          className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-amber-600 dark:text-amber-400"
+                          title="The shift is still open; expected cash is a running total until the cashier counts the drawer."
+                        >
+                          <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                          Open (live)
                         </span>
                       ) : r.cashVariance != null && r.cashVariance < 0 ? (
                         <span className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-destructive">
@@ -479,6 +501,7 @@ export function ViewStartingCash({
               <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
                 <p style={{ margin: 0, fontSize: 14, color: "#71717a", lineHeight: 1.5 }}>
                   Declare the drawer starting cash for this branch shift. Once saved, it will be tracked for the shift.
+                  The drawer needs at least {peso(MIN_STARTING_CASH)} so the cashier can give change.
                 </p>
 
                 {branchLocations.length > 1 && (
@@ -544,7 +567,7 @@ export function ViewStartingCash({
                       setModalAmount(rest.length === 0 ? limitedWhole : `${limitedWhole}.${rest.join("").slice(0, 2)}`);
                     }}
                     onKeyDown={(e) => e.key === "Enter" && !isSubmitting && handleAddStartingCash()}
-                    placeholder="e.g. 2000.00"
+                    placeholder={`At least ${MIN_STARTING_CASH.toFixed(2)}`}
                     maxLength={9}
                     style={{
                       width: "100%",
@@ -579,7 +602,7 @@ export function ViewStartingCash({
                 </Button>
                 <Button
                   onClick={handleAddStartingCash}
-                  disabled={isSubmitting || modalAmount === "" || modalAmount === "."}
+                  disabled={isSubmitting || modalAmount === "" || modalAmount === "." || parseFloat(modalAmount) < MIN_STARTING_CASH}
                   style={{ display: "flex", alignItems: "center", gap: 8 }}
                 >
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
