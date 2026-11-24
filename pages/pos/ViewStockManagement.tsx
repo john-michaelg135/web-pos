@@ -22,7 +22,7 @@ import {
   type StockRequestRecord,
 } from "@/components/module-pos/StockRequestHistory";
 import { StockRequestsPanel } from "@/components/module-pos/StockRequestsPanel";
-import { StockRequestDetailPanel } from "@/components/module-pos/StockRequestDetailPanel";
+import { StockRequestDetailDialog } from "@/components/module-pos/StockRequestDetailDialog";
 import { CancelStockRequestDialog } from "@/components/module-pos/CancelStockRequestDialog";
 import { StockLossTable, type StockLossRecord } from "@/components/module-pos/StockLossTable";
 import { isManager as isManagerRole } from "@/lib/portal/roles";
@@ -613,10 +613,10 @@ export function ViewStockManagement() {
         onViewAllRequests={selectedStock ? () => handleViewItemRequests(selectedStock) : undefined}
       />
 
-      <StockRequestDetailPanel
+      <StockRequestDetailDialog
         request={detailRequest}
         onClose={() => setDetailRequest(null)}
-        onCancel={setCancelTarget}
+        onConfirmCancel={handleCancelRequest}
         onOpenDelivery={openDelivery}
       />
 

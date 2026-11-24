@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronRight, ClipboardList, RefreshCw, X } from "lucide-react";
+import { ClipboardList, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/module-pos/SearchInput";
 import {
@@ -165,47 +165,56 @@ export function StockRequestsPanel({ requests, isLoading, onRefresh, onSelect, s
             ))}
           </ul>
 
-          {/* Tablets and up: a table */}
-          <div className="hidden overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:block">
+          {/* Tablets and up: a table, every column left-aligned */}
+          <div className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 md:block">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="px-5 py-3">Request</th>
-                  <th className="px-5 py-3">Item</th>
-                  {showBranch && <th className="px-5 py-3">Branch</th>}
-                  <th className="px-5 py-3 text-right">Qty</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Requested</th>
-                  <th className="w-10 px-3 py-3" aria-label="Open" />
+                <tr className="border-b border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/50">
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Request</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Item</th>
+                  {showBranch && <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Branch</th>}
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Qty</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Requested</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {visible.map((r) => (
-                  <tr
-                    key={r.requestId}
-                    onClick={() => onSelect(r)}
-                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onSelect(r))}
-                    tabIndex={0}
-                    className="cursor-pointer transition-colors hover:bg-muted/30 focus:bg-muted/40 focus:outline-none"
-                  >
-                    <td className="px-5 py-3.5 font-mono text-xs font-semibold text-foreground">{r.requestId}</td>
-                    <td className="max-w-[260px] px-5 py-3.5">
+                  <tr key={r.requestId} className="align-top transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-950/20">
+                    <td className="px-6 py-4 font-mono text-sm font-bold text-gray-900 dark:text-white">{r.requestId}</td>
+                    <td className="max-w-[280px] px-6 py-4">
                       <p className="m-0 truncate font-semibold text-foreground">{stockRequestItemLabel(r)}</p>
-                      <p className="m-0 mt-0.5 truncate text-xs text-muted-foreground">{describeStockRequest(r)}</p>
+                      <p className="m-0 mt-1 truncate text-xs text-muted-foreground">{describeStockRequest(r)}</p>
                     </td>
-                    {showBranch && <td className="px-5 py-3.5 text-xs text-muted-foreground">{r.locationName}</td>}
-                    <td className="px-5 py-3.5 text-right tabular-nums">
-                      <span className="font-bold text-foreground">{r.approvedQuantity ?? r.quantity}</span>
+                    {showBranch && (
+                      <td className="px-6 py-4">
+                        <span className="whitespace-nowrap rounded-lg border border-gray-200 bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                          {r.locationName}
+                        </span>
+                      </td>
+                    )}
+                    <td className="px-6 py-4 tabular-nums">
+                      <span className="font-black text-gray-900 dark:text-white">{r.approvedQuantity ?? r.quantity}</span>
                       {r.approvedQuantity !== null && r.approvedQuantity !== r.quantity && (
-                        <span className="text-xs text-muted-foreground"> / {r.quantity}</span>
+                        <span className="text-xs text-muted-foreground"> of {r.quantity}</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5"><StockRequestStatusBadge request={r} /></td>
-                    <td className="px-5 py-3.5 text-xs text-muted-foreground">
+                    <td className="px-6 py-4"><StockRequestStatusBadge request={r} /></td>
+                    <td className="px-6 py-4 text-xs text-gray-500 dark:text-gray-400">
                       {formatWhenShort(r.requestedAt)}
-                      {r.requestedByName && <span className="block truncate">{r.requestedByName}</span>}
+                      {r.requestedByName && <span className="mt-0.5 block truncate">{r.requestedByName}</span>}
                     </td>
-                    <td className="px-3 py-3.5 text-muted-foreground"><ChevronRight className="h-4 w-4" /></td>
+                    <td className="px-6 py-4">
+                      <button
+                        type="button"
+                        onClick={() => onSelect(r)}
+                        aria-label={`View request ${r.requestId}`}
+                        className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-primary/90"
+                      >
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
