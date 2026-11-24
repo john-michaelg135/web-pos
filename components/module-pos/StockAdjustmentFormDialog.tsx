@@ -2,13 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDown, ArrowUp, Boxes, MapPin, Package, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Boxes, Loader2, MapPin, Package, PackageX, X } from "lucide-react";
 import { StockLevel } from "@/components/module-pos/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StockInventoryMovement } from "@/components/module-pos/StockInventoryTable";
+import { STOCK_LOSS_REASONS, type StockLossReason } from "@/components/module-pos/StockLossTable";
+
+export interface StockLossInput {
+  quantity: number;
+  lossReason: StockLossReason;
+  notes: string;
+}
 
 interface StockAdjustmentFormDialogProps {
   isOpen: boolean;
@@ -28,6 +35,8 @@ interface StockAdjustmentFormDialogProps {
   isMobile?: boolean;
   movements?: StockInventoryMovement[];
   isMovementsLoading?: boolean;
+  /** Managers: write off unsellable units. Resolves true once recorded. */
+  onRecordLoss?: (loss: StockLossInput) => Promise<boolean>;
 }
 
 export default function StockAdjustmentFormDialog({
@@ -41,13 +50,53 @@ export default function StockAdjustmentFormDialog({
   onSubmit,
   movements = [],
   isMovementsLoading = false,
+  onRecordLoss,
 }: StockAdjustmentFormDialogProps) {
   const [mounted, setMounted] = useState(false);
   const [movementView, setMovementView] = useState<"today" | "history">("today");
+  const [mode, setMode] = useState<"request" | "loss">("request");
+  const [lossQuantity, setLossQuantity] = useState("");
+  const [lossReason, setLossReason] = useState<StockLossReason>("Expired");
+  const [lossNotes, setLossNotes] = useState("");
+  const [confirmingLoss, setConfirmingLoss] = useState(false);
+  const [isRecordingLoss, setIsRecordingLoss] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Each item opens on the request form with an empty loss form (reset while rendering, not in an effect).
+  const formKey = `${isOpen}:${stock?.variationId ?? ""}:${stock?.locationId ?? ""}`;
+  const [appliedFormKey, setAppliedFormKey] = useState(formKey);
+  if (formKey !== appliedFormKey) {
+    setAppliedFormKey(formKey);
+    setMode("request");
+    setLossQuantity("");
+    setLossReason("Expired");
+    setLossNotes("");
+    setConfirmingLoss(false);
+  }
+
+  const onHand = stock?.quantity ?? 0;
+  const lossQty = Number(lossQuantity);
+  const lossQtyValid = lossQuantity !== "" && Number.isInteger(lossQty) && lossQty >= 1 && lossQty <= onHand;
+  const lossNotesValid = lossReason !== "Other" || lossNotes.trim().length > 0;
+  const canSubmitLoss = !!onRecordLoss && lossQtyValid && lossNotesValid && !/[<>]/.test(lossNotes) && !isRecordingLoss;
+
+  const submitLoss = async () => {
+    if (!onRecordLoss || !canSubmitLoss) return;
+    setIsRecordingLoss(true);
+    try {
+      const ok = await onRecordLoss({ quantity: lossQty, lossReason, notes: lossNotes.trim() });
+      if (ok) {
+        setLossQuantity("");
+        setLossNotes("");
+        setConfirmingLoss(false);
+      }
+    } finally {
+      setIsRecordingLoss(false);
+    }
+  };
 
   const visibleMovements = useMemo(() => {
     if (movementView === "history") return movements;
@@ -201,6 +250,9 @@ export default function StockAdjustmentFormDialog({
                             <p className="m-0 mt-1 truncate text-xs text-muted-foreground">
                               {formatDate(movement.occurredAt)}{movement.reference ? ` · ${movement.reference}` : ""}
                             </p>
+                            {movement.movementType === "StockLoss" && movement.notes && (
+                              <p className="m-0 mt-1 text-xs text-destructive">{movement.notes}</p>
+                            )}
                           </div>
                           <div className="shrink-0 text-right">
                             <p className={`m-0 text-base font-black tabular-nums ${movement.quantityDelta > 0 ? "text-emerald-600" : "text-destructive"}`}>
@@ -222,6 +274,102 @@ export default function StockAdjustmentFormDialog({
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-5 sm:p-6 xl:sticky xl:top-0">
+            {onRecordLoss && (
+              <div className="mb-5 flex items-center rounded-lg border border-border bg-muted/40 p-1" role="tablist" aria-label="Action">
+                {([
+                  { value: "request", label: "Request stock" },
+                  { value: "loss", label: "Record loss" },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === tab.value}
+                    onClick={() => { setMode(tab.value); setConfirmingLoss(false); }}
+                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${mode === tab.value ? (tab.value === "loss" ? "bg-card text-destructive shadow-sm" : "bg-card text-primary shadow-sm") : "text-muted-foreground"}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {mode === "loss" && onRecordLoss ? (
+            <>
+            <div className="mb-5">
+              <p className="m-0 text-xs font-bold uppercase tracking-wider text-destructive">System loss</p>
+              <h3 className="m-0 mt-1 text-xl font-bold text-foreground">Record a loss</h3>
+              <p className="m-0 mt-1 text-sm text-muted-foreground">
+                Write off units that can no longer be sold. They come out of this branch&apos;s stock straight away and are kept on record as a system loss.
+              </p>
+            </div>
+            <div className="space-y-5">
+              <div>
+                <Label htmlFor="loss-quantity">Units lost <span className="text-destructive">*</span></Label>
+                <Input
+                  id="loss-quantity"
+                  type="number"
+                  inputMode="numeric"
+                  value={lossQuantity}
+                  onChange={(e) => { setLossQuantity(e.target.value.replace(/[^0-9]/g, "")); setConfirmingLoss(false); }}
+                  placeholder={onHand > 0 ? `1 to ${onHand}` : "No stock to write off"}
+                  min={1}
+                  max={onHand}
+                  disabled={onHand <= 0}
+                  className="mt-1.5 h-11"
+                />
+                <p className={`m-0 mt-1 text-xs ${lossQuantity !== "" && !lossQtyValid ? "text-destructive" : "text-muted-foreground"}`}>
+                  {lossQuantity !== "" && !lossQtyValid ? `Enter a whole number from 1 to ${onHand}.` : `${onHand} in stock.`}
+                </p>
+              </div>
+              <fieldset className="m-0 border-0 p-0">
+                <legend className="text-sm font-medium">Reason <span className="text-destructive">*</span></legend>
+                <div className="mt-1.5 grid grid-cols-2 gap-2">
+                  {STOCK_LOSS_REASONS.map((r) => (
+                    <label
+                      key={r.value}
+                      title={r.hint}
+                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${lossReason === r.value ? "border-destructive bg-destructive/5 font-semibold text-destructive" : "border-border text-foreground hover:bg-muted/40"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="loss-reason"
+                        value={r.value}
+                        checked={lossReason === r.value}
+                        onChange={() => { setLossReason(r.value); setConfirmingLoss(false); }}
+                        className="sr-only"
+                      />
+                      {r.label}
+                    </label>
+                  ))}
+                </div>
+                <p className="m-0 mt-1 text-xs text-muted-foreground">{STOCK_LOSS_REASONS.find((r) => r.value === lossReason)?.hint}</p>
+              </fieldset>
+              <div>
+                <Label htmlFor="loss-notes">
+                  What happened {lossReason === "Other" ? <span className="text-destructive">*</span> : <span className="text-muted-foreground">(optional)</span>}
+                </Label>
+                <Textarea
+                  id="loss-notes"
+                  placeholder="e.g. Batch expired on the shelf; jar cracked when the box was dropped…"
+                  value={lossNotes}
+                  onChange={(e) => { setLossNotes(e.target.value); setConfirmingLoss(false); }}
+                  maxLength={500}
+                  rows={4}
+                  className="mt-1.5 resize-none"
+                />
+              </div>
+              {confirmingLoss && lossQtyValid && (
+                <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-sm text-foreground">
+                  <p className="m-0 font-semibold text-destructive">Write off {lossQty} unit{lossQty === 1 ? "" : "s"}?</p>
+                  <p className="m-0 mt-1 text-muted-foreground">
+                    Stock goes from {onHand} to {onHand - lossQty}. This can&apos;t be undone from here.
+                  </p>
+                </div>
+              )}
+            </div>
+            </>
+            ) : (
+            <>
             <div className="mb-5">
               <p className="m-0 text-xs font-bold uppercase tracking-wider text-primary">Inventory request</p>
               <h3 className="m-0 mt-1 text-xl font-bold text-foreground">Request stock</h3>
@@ -252,6 +400,8 @@ export default function StockAdjustmentFormDialog({
               />
               </div>
             </div>
+            </>
+            )}
           </section>
           </div>
         </div>
@@ -269,13 +419,24 @@ export default function StockAdjustmentFormDialog({
             flexShrink: 0,
           }}
         >
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button
-            onClick={onSubmit}
-            disabled={!reason.trim() || !quantity || isNaN(Number(quantity))}
-          >
-            Request Stock
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={isRecordingLoss}>Cancel</Button>
+          {mode === "loss" && onRecordLoss ? (
+            <Button
+              variant="destructive"
+              onClick={() => (confirmingLoss ? submitLoss() : setConfirmingLoss(true))}
+              disabled={!canSubmitLoss}
+            >
+              {isRecordingLoss ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PackageX className="mr-2 h-4 w-4" />}
+              {confirmingLoss ? "Confirm write-off" : "Record loss"}
+            </Button>
+          ) : (
+            <Button
+              onClick={onSubmit}
+              disabled={!reason.trim() || !quantity || isNaN(Number(quantity))}
+            >
+              Request Stock
+            </Button>
+          )}
         </div>
       </div>
     </>
@@ -286,6 +447,7 @@ export default function StockAdjustmentFormDialog({
 
 function formatMovementType(value: string) {
   if (value === "Loss") return "System loss";
+  if (value === "StockLoss") return "System loss (written off)";
   return value.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 

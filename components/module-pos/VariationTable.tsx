@@ -8,9 +8,11 @@ interface VariationTableProps {
   variations: Variation[];
   products:   Product[];
   onEdit:     (variation: Variation) => void;
+  /** Opens the variation's price history. */
+  onHistory?: (variation: Variation) => void;
 }
 
-export function VariationTable({ variations, products, onEdit }: VariationTableProps) {
+export function VariationTable({ variations, products, onEdit, onHistory }: VariationTableProps) {
   const [search, setSearch] = useState("");
   const [productFilter, setProductFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
@@ -91,12 +93,22 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
               </div>
               <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-gray-100 dark:border-gray-800">
                 <span className="text-lg font-bold text-gray-900 dark:text-white tabular-nums">₱{v.price.toLocaleString()}</span>
-                <button
-                  onClick={() => onEdit(v)}
-                  className="h-9 px-4 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  Edit Price
-                </button>
+                <div className="flex items-center gap-2">
+                  {onHistory && (
+                    <button
+                      onClick={() => onHistory(v)}
+                      className="h-9 px-3 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      History
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onEdit(v)}
+                    className="h-9 px-4 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Edit Price
+                  </button>
+                </div>
               </div>
             </li>
           ))
@@ -164,6 +176,14 @@ export function VariationTable({ variations, products, onEdit }: VariationTableP
                         >
                           Edit Price
                         </button>
+                        {onHistory && (
+                          <button
+                            onClick={() => onHistory(v)}
+                            className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            History
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

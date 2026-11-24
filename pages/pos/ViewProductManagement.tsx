@@ -7,6 +7,8 @@ import { toast } from "@/lib/toast";
 import type { Product, Variation, ProductCategory } from "@/components/module-pos/types";
 import { VariationTable } from "@/components/module-pos/VariationTable";
 import { VariationFormDialog } from "@/components/module-pos/VariationFormDialog";
+import { PriceHistoryDialog, PriceHistoryTable } from "@/components/module-pos/PriceHistory";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiClient } from "@/components/module-pos/api";
 import { useAuth } from "@/context/AuthContext";
 import { useMyLocations } from "@/lib/useMyLocations";
@@ -26,6 +28,10 @@ export default function ViewProductManagement() {
   const [products, setProducts] = useState<Product[]>([]);
   const [variations, setVariations] = useState<Variation[]>([]);
   const [editVariation, setEditVariation] = useState<Variation | null>(null);
+  const [historyVariation, setHistoryVariation] = useState<Variation | null>(null);
+  const [activeTab, setActiveTab] = useState<"pricing" | "history">("pricing");
+  // Bumped after a price change so the history tab reloads.
+  const [historyKey, setHistoryKey] = useState(0);
   // Variations with a stock record at each location, for branch staff's view.
   const [stockedAt, setStockedAt] = useState<Map<number, Set<string>> | null>(null);
   const { scope, locations: myLocations, isLoading: locationsLoading } = useMyLocations();
@@ -133,6 +139,7 @@ export default function ViewProductManagement() {
         });
       }
       toast.success("Price updated.");
+      setHistoryKey((k) => k + 1);
       fetchProducts();
       setEditVariation(null);
     } catch (error) {
@@ -186,20 +193,72 @@ export default function ViewProductManagement() {
         ))}
       </div>
 
-      {/* Pricing section */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-foreground">Pricing Configuration</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Selling prices for each product variation. Products and variations come from IMS; use Edit Price to change what the POS charges.
-        </p>
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pricing" | "history")} className="space-y-6">
+        <TabsList className="bg-transparent border-b border-border rounded-none w-full justify-start gap-1.5 md:gap-2 p-0">
+          {[
+            { value: "pricing", label: "Pricing Configuration", short: "Pricing" },
+            { value: "history", label: "Price History", short: "History" },
+          ].map((tab) => (
+            <TabsTrigger
+              key={tab.value}
+              value={tab.value}
+              className={cn(
+                "rounded-t-lg rounded-b-none px-4 py-2.5 text-sm font-semibold border transition-colors data-[state=active]:shadow-none md:shrink-0 max-md:flex-1 max-md:min-w-0 max-md:px-2",
+                "data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary",
+                "data-[state=inactive]:bg-transparent data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-border"
+              )}
+            >
+              <span className="md:hidden">{tab.short}</span>
+              <span className="hidden md:inline">{tab.label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {/* Pricing table */}
-      {isLoading || locationsLoading ? (
-        <ProductTableSkeleton tab="variations" />
-      ) : (
-        <VariationTable variations={visibleVariations} products={visibleProducts} onEdit={setEditVariation} />
-      )}
+        {/* Pricing */}
+        <TabsContent value="pricing" className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Pricing Configuration</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Selling prices for each product variation. Products and variations come from IMS; use Edit Price to change what the POS charges.
+            </p>
+          </div>
+          {isLoading || locationsLoading ? (
+            <ProductTableSkeleton tab="variations" />
+          ) : (
+            <VariationTable
+              variations={visibleVariations}
+              products={visibleProducts}
+              onEdit={setEditVariation}
+              onHistory={setHistoryVariation}
+            />
+          )}
+        </TabsContent>
+
+        {/* Price history */}
+        <TabsContent value="history" className="space-y-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Price History</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Every selling price each item has had, with the price it replaced, when it changed and who changed it.
+            </p>
+          </div>
+          {isLoading || locationsLoading ? (
+            <ProductTableSkeleton tab="variations" />
+          ) : (
+            <PriceHistoryTable
+              key={historyKey}
+              products={visibleProducts}
+              visibleVariationIds={assignedOnly ? new Set(visibleVariations.map((v) => v.id)) : undefined}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <PriceHistoryDialog
+        variation={historyVariation}
+        productName={historyVariation ? products.find((p) => p.id === historyVariation.productId)?.name : undefined}
+        onClose={() => setHistoryVariation(null)}
+      />
 
       <VariationFormDialog
         isOpen={editVariation !== null}

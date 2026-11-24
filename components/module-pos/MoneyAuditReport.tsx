@@ -20,7 +20,9 @@ export interface MoneyAuditMeta {
 /** Printed under "Notes to the report", and shown in the signing dialog before printing. */
 export const MONEY_AUDIT_NOTES = [
   "All amounts are in Philippine pesos (₱).",
-  "Expected cash is the shift's starting cash plus its cash sales, less refunds on cash-paid orders.",
+  "Expected cash is the shift's starting cash plus the cash received from customers, less the change given back and refunds on cash-paid orders.",
+  "Cash received is what customers handed over; change given is what went back out of the drawer. Received less change is the cash sales.",
+  "Shifts not yet closed show their running figures up to the time the report was generated.",
   "GCash and other non-cash payments go to the company wallet, not the drawer, so they are shown separately and are not part of expected cash.",
   "Variance is the counted cash less the expected cash: negative is short, positive is over.",
   "Auto-closed shifts were not ended by a cashier and were closed by the system at the end of the business day; no cash was counted, so they have no variance.",
@@ -70,6 +72,8 @@ function totalsOf(records: StartingCashRecord[]) {
     shifts: records.length,
     startingCash: sum(records, (r) => r.amount),
     sales: sum(records, (r) => r.successfulSalesAmount),
+    tendered: sum(records, (r) => r.cashTenderedAmount),
+    change: sum(records, (r) => r.changeGivenAmount),
     refunds: sum(records, (r) => r.approvedRefundAmount),
     nonCash: sum(records, (r) => r.nonCashSalesAmount),
     expected: sum(records, (r) => r.expectedCash),
@@ -141,7 +145,8 @@ export function MoneyAuditPrint({ records, meta, signature }: {
             <p className="text-xs text-muted-foreground m-0">Declared by cashiers</p>
           </ReportFigure>
           <ReportFigure label="Expected cash" value={peso(t.expected)}>
-            <p className="text-xs text-muted-foreground m-0">Cash sales {peso(t.sales)} · Refunds {peso(t.refunds)}</p>
+            <p className="text-xs text-muted-foreground m-0">Received {peso(t.tendered)} · Change {peso(t.change)}</p>
+            <p className="text-xs text-muted-foreground m-0">Cash refunds {peso(t.refunds)}</p>
             <p className="text-xs text-muted-foreground m-0">GCash (not in drawer) {peso(t.nonCash)}</p>
           </ReportFigure>
           <ReportFigure label="Net variance" value={t.countedShifts ? signedPeso(t.netVariance) : "—"} tone={varianceTone}>
@@ -196,7 +201,8 @@ export function MoneyAuditPrint({ records, meta, signature }: {
                     <th className={TH}>Cashier</th>
                     {multiBranch && <th className={TH}>Branch</th>}
                     <th className={cn(TH, "!text-right")}>Starting</th>
-                    <th className={cn(TH, "!text-right")}>Cash sales</th>
+                    <th className={cn(TH, "!text-right")}>Cash received</th>
+                    <th className={cn(TH, "!text-right")}>Change given</th>
                     <th className={cn(TH, "!text-right")}>Cash refunds</th>
                     <th className={cn(TH, "!text-right")}>Expected</th>
                     <th className={cn(TH, "!text-right")}>Counted</th>
@@ -217,7 +223,8 @@ export function MoneyAuditPrint({ records, meta, signature }: {
                         <td className={TD}>{r.cashierName}</td>
                         {multiBranch && <td className={TD}>{r.locationName || `Branch ${r.locationId}`}</td>}
                         <td className={cn(TD, NUM)}>{peso(r.amount)}</td>
-                        <td className={cn(TD, NUM)}>{orDash(r.successfulSalesAmount)}</td>
+                        <td className={cn(TD, NUM)}>{orDash(r.cashTenderedAmount)}</td>
+                        <td className={cn(TD, NUM)}>{orDash(r.changeGivenAmount)}</td>
                         <td className={cn(TD, NUM)}>{orDash(r.approvedRefundAmount)}</td>
                         <td className={cn(TD, NUM)}>{orDash(r.expectedCash)}</td>
                         <td className={cn(TD, NUM)}>{r.autoClosed ? "Not counted" : orDash(r.endShiftAmount)}</td>
@@ -232,7 +239,8 @@ export function MoneyAuditPrint({ records, meta, signature }: {
                   <tr className={TOTAL_ROW}>
                     <td className={TD} colSpan={multiBranch ? 3 : 2}>Total ({t.shifts} shifts)</td>
                     <td className={cn(TD, NUM)}>{peso(t.startingCash)}</td>
-                    <td className={cn(TD, NUM)}>{peso(t.sales)}</td>
+                    <td className={cn(TD, NUM)}>{peso(t.tendered)}</td>
+                    <td className={cn(TD, NUM)}>{peso(t.change)}</td>
                     <td className={cn(TD, NUM)}>{peso(t.refunds)}</td>
                     <td className={cn(TD, NUM)}>{peso(t.expected)}</td>
                     <td className={cn(TD, NUM)}>{peso(t.counted)}</td>
@@ -246,7 +254,7 @@ export function MoneyAuditPrint({ records, meta, signature }: {
         </Section>
 
         <ReportNotes notes={MONEY_AUDIT_NOTES} preparedBy={meta.preparedBy} signature={signature} />
-        {/* Eleven columns on portrait A4: slimmer cells than the shared report tables. */}
+        {/* Twelve columns on portrait A4: slimmer cells than the shared report tables. */}
         <style>{`@media print { .audit-details table th { padding: 5px 5px !important; } .audit-details table td { padding: 4px 5px !important; font-size: 8pt !important; } }`}</style>
       </div>
     </ReportPrintFrame>
@@ -282,8 +290,8 @@ export function moneyAuditXlsx(records: StartingCashRecord[], meta: MoneyAuditMe
   ]);
   blank();
 
-  section("Shift details", 13);
-  rows.push(header("Date", "Started", "Cashier", "Branch", "Starting cash", "Cash sales", "Cash refunds", "Expected cash", "Counted cash", "Variance", "GCash (not in drawer)", "Closed by", "Status"));
+  section("Shift details", 15);
+  rows.push(header("Date", "Started", "Cashier", "Branch", "Starting cash", "Cash received", "Change given", "Cash sales", "Cash refunds", "Expected cash", "Counted cash", "Variance", "GCash (not in drawer)", "Closed by", "Status"));
   records.forEach((r) =>
     rows.push([
       // Real dates so the column sorts and filters as dates.
@@ -292,6 +300,8 @@ export function moneyAuditXlsx(records: StartingCashRecord[], meta: MoneyAuditMe
       r.cashierName,
       r.locationName || `Branch ${r.locationId}`,
       money(r.amount),
+      money(r.cashTenderedAmount),
+      money(r.changeGivenAmount),
       money(r.successfulSalesAmount),
       money(r.approvedRefundAmount),
       money(r.expectedCash),
@@ -308,6 +318,8 @@ export function moneyAuditXlsx(records: StartingCashRecord[], meta: MoneyAuditMe
     { v: "", s: "totalLabel" },
     { v: "", s: "totalLabel" },
     { v: t.startingCash, s: "totalMoney" },
+    { v: t.tendered, s: "totalMoney" },
+    { v: t.change, s: "totalMoney" },
     { v: t.sales, s: "totalMoney" },
     { v: t.refunds, s: "totalMoney" },
     { v: t.expected, s: "totalMoney" },
@@ -319,10 +331,12 @@ export function moneyAuditXlsx(records: StartingCashRecord[], meta: MoneyAuditMe
   ]);
   blank();
 
-  section("Notes", 13);
+  section("Notes", 15);
   [
     "Amounts in Philippine pesos; amounts in parentheses are negative.",
-    "Expected cash is the shift's starting cash plus its cash sales, less refunds on cash-paid orders.",
+    "Expected cash is the shift's starting cash plus the cash received, less the change given and refunds on cash-paid orders.",
+    "Cash received less change given is the cash sales.",
+    "Shifts not yet closed show their running figures up to the time of export.",
     "GCash and other non-cash payments go to the company wallet, not the drawer, so they are not part of expected cash.",
     "Variance is the counted cash less the expected cash: negative is short, positive is over.",
     "Auto-closed shifts were closed by the system at the end of the business day; no cash was counted.",

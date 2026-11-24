@@ -32,6 +32,7 @@ const typeLabel: Record<string, string> = {
   Sale: "Sale deduction",
   Refund: "Refund return",
   Loss: "System loss",
+  StockLoss: "System loss (written off)",
   Adjustment: "Adjustment",
 };
 
