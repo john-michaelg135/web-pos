@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDown, ArrowUp, Boxes, Loader2, MapPin, Package, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, Boxes, Loader2, MapPin, Package, Plus, X } from "lucide-react";
 import { StockLevel } from "@/components/module-pos/types";
 import { parseVariationName } from "@/components/module-pos/utils";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { StockInventoryMovement } from "@/components/module-pos/StockInventoryTable";
 import { STOCK_LOSS_REASONS, type StockLossReason } from "@/components/module-pos/StockLossTable";
 import {
-  StockRequestHistory,
   StockRequestStatusBadge,
   describeStockRequest,
+  expectedUnits,
+  formatWhenShort,
   isOpenStockRequest,
   type StockRequestRecord,
 } from "@/components/module-pos/StockRequestHistory";
@@ -36,7 +37,8 @@ interface StockAdjustmentFormDialogProps {
   setQuantity: (qty: string) => void;
   reason: string;
   setReason: (reason: string) => void;
-  onSubmit: () => void;
+  /** Sends the request form. Resolves true once saved, so the form can close. */
+  onSubmit: () => Promise<boolean> | void;
   primary: string;
   muted: string;
   border: string;
@@ -52,6 +54,10 @@ interface StockAdjustmentFormDialogProps {
   requests?: StockRequestRecord[];
   isRequestsLoading?: boolean;
   isSubmittingRequest?: boolean;
+  /** Opens the cancel confirmation for a request IMS hasn't decided on. */
+  onCancelRequest?: (request: StockRequestRecord) => void;
+  /** Opens the Requests tab filtered to this item. */
+  onViewAllRequests?: () => void;
 }
 
 export default function StockAdjustmentFormDialog({
@@ -69,6 +75,8 @@ export default function StockAdjustmentFormDialog({
   requests = [],
   isRequestsLoading = false,
   isSubmittingRequest = false,
+  onCancelRequest,
+  onViewAllRequests,
 }: StockAdjustmentFormDialogProps) {
   const [mounted, setMounted] = useState(false);
   const [movementView, setMovementView] = useState<"today" | "history">("today");
@@ -78,6 +86,7 @@ export default function StockAdjustmentFormDialog({
   const [lossNotes, setLossNotes] = useState("");
   const [confirmingLoss, setConfirmingLoss] = useState(false);
   const [isRecordingLoss, setIsRecordingLoss] = useState(false);
+  const [showRequestForm, setShowRequestForm] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -93,6 +102,7 @@ export default function StockAdjustmentFormDialog({
     setLossReason("Expired");
     setLossNotes("");
     setConfirmingLoss(false);
+    setShowRequestForm(false);
   }
 
   const onHand = stock?.quantity ?? 0;
@@ -101,12 +111,21 @@ export default function StockAdjustmentFormDialog({
   const lossNotesValid = lossReason !== "Other" || lossNotes.trim().length > 0;
   const canSubmitLoss = !!onRecordLoss && lossQtyValid && lossNotesValid && !/[<>]/.test(lossNotes) && !isRecordingLoss;
 
-  // Request stock: whole units from 1 to 10000, a note, and no other request still open for this item.
-  const openRequest = requests.find(isOpenStockRequest) ?? null;
+  // Request stock: whole units from 1 to 10000 and a note. Other open requests for the item don't block a new one.
+  const openRequests = requests.filter(isOpenStockRequest);
+  const lastClosed = requests.find((r) => !isOpenStockRequest(r)) ?? null;
+  const unitsExpected = expectedUnits(requests);
+  // With nothing open, the form is the point of the panel; otherwise it opens on "New request".
+  const requestFormVisible = showRequestForm || (!isRequestsLoading && openRequests.length === 0);
   const requestQty = Number(quantity);
   const requestQtyValid = quantity !== "" && Number.isInteger(requestQty) && requestQty >= 1 && requestQty <= MAX_STOCK_REQUEST_QUANTITY;
   const requestNotesInvalid = /[<>]/.test(reason);
-  const canSubmitRequest = !openRequest && requestQtyValid && reason.trim().length > 0 && !requestNotesInvalid && !isSubmittingRequest && !isRequestsLoading;
+  const canSubmitRequest = requestFormVisible && requestQtyValid && reason.trim().length > 0 && !requestNotesInvalid && !isSubmittingRequest;
+
+  const submitRequest = async () => {
+    if (!canSubmitRequest) return;
+    if ((await onSubmit()) === true) setShowRequestForm(false);
+  };
 
   const submitLoss = async () => {
     if (!onRecordLoss || !canSubmitLoss) return;
@@ -397,23 +416,80 @@ export default function StockAdjustmentFormDialog({
             </>
             ) : (
             <>
-            <div className="mb-5">
-              <p className="m-0 text-xs font-bold uppercase tracking-wider text-primary">Inventory request</p>
-              <h3 className="m-0 mt-1 text-xl font-bold text-foreground">Request stock</h3>
-              <p className="m-0 mt-1 text-sm text-muted-foreground">Ask IMS to send more of this item to this branch. IMS approves or rejects it, and an approved request arrives under Receive Stock.</p>
-            </div>
-            {openRequest ? (
-              <div className="rounded-xl border border-primary/30 bg-primary/5 p-4" role="status">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="m-0 text-sm font-bold text-foreground">Request {openRequest.requestId} is open</p>
-                  <StockRequestStatusBadge status={openRequest.status} />
-                </div>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="m-0 text-xs font-bold uppercase tracking-wider text-primary">Requests to IMS</p>
+                <h3 className="m-0 mt-1 text-xl font-bold text-foreground">Request stock</h3>
                 <p className="m-0 mt-1 text-sm text-muted-foreground">
-                  {describeStockRequest(openRequest)} You can request this item again once it&apos;s received or rejected.
+                  {isRequestsLoading && requests.length === 0
+                    ? "Loading requests…"
+                    : openRequests.length > 0
+                      ? `${openRequests.length} open · ${unitsExpected} unit${unitsExpected === 1 ? "" : "s"} expected`
+                      : "IMS approves or rejects each request; approved stock arrives under Receive Stock."}
                 </p>
               </div>
-            ) : (
-            <div className="space-y-5">
+              {!requestFormVisible && (
+                <Button size="sm" className="shrink-0" onClick={() => setShowRequestForm(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" /> New request
+                </Button>
+              )}
+            </div>
+
+            {openRequests.length > 0 && (
+              <ul className="m-0 mb-5 max-h-[260px] list-none space-y-2 overflow-y-auto p-0 pr-1">
+                {openRequests.map((r) => (
+                  <li key={r.requestId} className="rounded-xl border border-border bg-card px-3.5 py-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-sm font-bold tabular-nums text-foreground">
+                        {r.approvedQuantity ?? r.quantity} unit{(r.approvedQuantity ?? r.quantity) === 1 ? "" : "s"}
+                        <span className="ml-2 font-mono text-xs font-medium text-muted-foreground">{r.requestId}</span>
+                      </span>
+                      <StockRequestStatusBadge request={r} />
+                    </div>
+                    <p className="m-0 mt-1 text-xs text-muted-foreground">{describeStockRequest(r)}</p>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-muted-foreground">
+                        {formatWhenShort(r.requestedAt)}{r.requestedByName ? ` · ${r.requestedByName}` : ""}
+                      </span>
+                      {r.canCancel && onCancelRequest && (
+                        <button
+                          type="button"
+                          onClick={() => onCancelRequest(r)}
+                          className="rounded-md px-2 py-1 text-xs font-semibold text-destructive hover:bg-destructive/10"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {requestFormVisible && (
+            <div className="space-y-5 rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="m-0 text-sm font-bold text-foreground">New request</p>
+                {openRequests.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRequestForm(false)}
+                    disabled={isSubmittingRequest}
+                    className="rounded-md px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted"
+                  >
+                    Close form
+                  </button>
+                )}
+              </div>
+              {openRequests.length > 0 && (
+                <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200" role="note">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span>
+                    You already have {openRequests.length} open request{openRequests.length === 1 ? "" : "s"} for this item ({unitsExpected} unit{unitsExpected === 1 ? "" : "s"}).
+                    Send another only if it&apos;s a separate need; IMS decides on each one.
+                  </span>
+                </div>
+              )}
               <div>
               <Label htmlFor="request-quantity">Quantity to request <span className="text-destructive">*</span></Label>
               <Input
@@ -426,7 +502,8 @@ export default function StockAdjustmentFormDialog({
                 max={MAX_STOCK_REQUEST_QUANTITY}
                 min={1}
                 step={1}
-                className="mt-1.5 h-11"
+                className="mt-1.5 h-11 bg-card"
+                disabled={isSubmittingRequest}
               />
               {quantity !== "" && !requestQtyValid && (
                 <p className="m-0 mt-1 text-xs text-destructive">Enter a whole number from 1 to {MAX_STOCK_REQUEST_QUANTITY}.</p>
@@ -440,19 +517,42 @@ export default function StockAdjustmentFormDialog({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 maxLength={500}
-                rows={5}
-                className="mt-1.5 resize-none"
+                rows={4}
+                className="mt-1.5 resize-none bg-card"
+                disabled={isSubmittingRequest}
               />
-              {requestNotesInvalid && (
-                <p className="m-0 mt-1 text-xs text-destructive">Notes cannot contain &lt; or &gt;.</p>
-              )}
+              <div className="mt-1 flex justify-between gap-2 text-xs">
+                <span className="text-destructive">{requestNotesInvalid ? "Notes cannot contain < or >." : ""}</span>
+                <span className="text-muted-foreground tabular-nums">{reason.length}/500</span>
+              </div>
               </div>
             </div>
             )}
-            <div className="mt-6">
-              <p className="m-0 mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Requests for this item</p>
-              <StockRequestHistory requests={requests} isLoading={isRequestsLoading} />
-            </div>
+
+            {lastClosed && (
+              <div className="mt-5 flex items-start justify-between gap-2 rounded-xl border border-dashed border-border px-3.5 py-3">
+                <div className="min-w-0">
+                  <p className="m-0 text-xs text-muted-foreground">
+                    Last closed · <span className="font-mono">{lastClosed.requestId}</span> · {formatWhenShort(lastClosed.cancelledAt ?? lastClosed.fulfilledAt ?? lastClosed.decidedAt ?? lastClosed.requestedAt)}
+                  </p>
+                  <p className="m-0 mt-1 text-xs text-foreground">{describeStockRequest(lastClosed)}</p>
+                  {lastClosed.status === "Rejected" && lastClosed.remarks && (
+                    <p className="m-0 mt-1 break-words text-xs text-destructive">IMS: {lastClosed.remarks}</p>
+                  )}
+                </div>
+                <StockRequestStatusBadge request={lastClosed} />
+              </div>
+            )}
+
+            {onViewAllRequests && requests.length > 0 && (
+              <button
+                type="button"
+                onClick={onViewAllRequests}
+                className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+              >
+                View all requests for this item <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            )}
             </>
             )}
           </section>
@@ -472,7 +572,7 @@ export default function StockAdjustmentFormDialog({
             flexShrink: 0,
           }}
         >
-          <Button variant="outline" onClick={onClose} disabled={isRecordingLoss || isSubmittingRequest}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={isRecordingLoss || isSubmittingRequest}>Close</Button>
           {mode === "loss" && onRecordLoss ? (
             <Button
               variant="destructive"
@@ -481,15 +581,15 @@ export default function StockAdjustmentFormDialog({
             >
               Record loss
             </Button>
-          ) : (
+          ) : requestFormVisible ? (
             <Button
-              onClick={onSubmit}
+              onClick={submitRequest}
               disabled={!canSubmitRequest}
             >
               {isSubmittingRequest && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSubmittingRequest ? "Sending to IMS…" : "Request Stock"}
+              {isSubmittingRequest ? "Sending to IMS…" : "Send request"}
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
