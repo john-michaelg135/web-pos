@@ -184,8 +184,8 @@ export function PriceHistoryTable({ products, visibleVariationIds }: {
               <tr className="border-b border-border bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <th className="px-5 py-3.5">Effective</th>
                 <th className="px-5 py-3.5">Product</th>
-                <th className="px-5 py-3.5 text-right">Old price</th>
-                <th className="px-5 py-3.5 text-right">New price</th>
+                <th className="px-5 py-3.5">Old price</th>
+                <th className="px-5 py-3.5">New price</th>
                 <th className="px-5 py-3.5">Change</th>
                 <th className="px-5 py-3.5">Changed by</th>
               </tr>
@@ -213,10 +213,10 @@ export function PriceHistoryTable({ products, visibleVariationIds }: {
                       <div className="font-semibold text-foreground">{c.productName}</div>
                       <div className="text-xs text-muted-foreground">{variationLabel(c.variationName)}</div>
                     </td>
-                    <td className="px-5 py-3.5 text-right align-top tabular-nums text-muted-foreground">
+                    <td className="px-5 py-3.5 align-top tabular-nums text-muted-foreground">
                       {c.previousPrice == null ? "—" : peso(c.previousPrice)}
                     </td>
-                    <td className="px-5 py-3.5 text-right align-top font-semibold tabular-nums text-foreground">{peso(c.price)}</td>
+                    <td className="px-5 py-3.5 align-top font-semibold tabular-nums text-foreground">{peso(c.price)}</td>
                     <td className="px-5 py-3.5 align-top"><ChangeBadge change={c} /></td>
                     <td className="px-5 py-3.5 align-top text-muted-foreground">{c.setByName || (c.setBy ? `Staff #${c.setBy}` : "—")}</td>
                   </tr>
