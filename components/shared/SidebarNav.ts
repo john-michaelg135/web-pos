@@ -87,7 +87,7 @@ export const systems: SystemItem[] = [
     active: false,
   },
   {
-    fullName: "Human Resource Management",
+    fullName: "Human Resource Management System",
     portalName: "HRMS",
     desc: "Staff directory & payroll",
     icon: Users2,
@@ -95,7 +95,7 @@ export const systems: SystemItem[] = [
     active: false,
   },
   {
-    fullName: "Point of Sale",
+    fullName: "Point of Sale System",
     portalName: "POS",
     desc: "Retail & register checkout",
     icon: CreditCard,
