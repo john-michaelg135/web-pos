@@ -387,6 +387,10 @@ export default function ViewLocationsManagement() {
     );
   }
 
+  const listedBranches = locations.filter((loc) =>
+    Number(loc.locationId) !== 999 && loc.locationType?.toLowerCase() !== "commissary" &&
+    loc.locationName?.trim().toLowerCase() !== "commissary"
+  );
   const activeBranches = locations.filter((l) => l.isActive);
 
   return (
@@ -408,7 +412,7 @@ export default function ViewLocationsManagement() {
               <div className="space-y-1.5 min-w-0">
                 <CardTitle className="text-base">Branches</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  The stores, bazaars and commissary your business sells from. Switch a branch off to
+                  The stores and bazaars your business sells from. Switch a branch off to
                   hide it from sales and assignments without losing its history.
                 </p>
               </div>
@@ -428,7 +432,7 @@ export default function ViewLocationsManagement() {
           <div className={TABLE_CARD}>
               {loadingLocations ? (
                 <BranchTableSkeleton />
-              ) : locations.length === 0 ? (
+              ) : listedBranches.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">
                   No branches yet. Add your first branch.
                 </p>
@@ -444,7 +448,7 @@ export default function ViewLocationsManagement() {
                       </tr>
                     </thead>
                     <tbody>
-                      {locations.map((loc) => (
+                      {listedBranches.map((loc) => (
                         <tr key={loc.locationId} className={TR}>
                           <td className="px-5 py-4 text-sm font-medium text-muted-foreground align-middle">{loc.locationName}</td>
                           <td className="px-5 py-4 align-middle">
@@ -455,7 +459,6 @@ export default function ViewLocationsManagement() {
                           <td className="px-5 py-4 align-middle">
                             <div className="flex items-center gap-2">
                               <Switch
-                                disabled={Number(loc.locationId) === 999 || loc.locationName?.trim().toLowerCase() === "commissary"}
                                 aria-label={`Active status for ${loc.locationName}`}
                                 checked={!!loc.isActive}
                                 onCheckedChange={() => toggleBranchActive(loc)}
