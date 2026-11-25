@@ -79,7 +79,7 @@ export const systems: SystemItem[] = [
     isPortal: true,
   },
   {
-    fullName: "CREOMS",
+    fullName: "Customer Relation and Ecommerce Ordering Management System",
     portalName: "CRMS",
     desc: "Customers, orders, tickets & feedback",
     icon: Building2,
