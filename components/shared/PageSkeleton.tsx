@@ -1,3 +1,5 @@
+import { ChevronDown, LayoutGrid, List, Search } from "lucide-react";
+import { OrderTablePlaceholder } from "./OrderTablePlaceholder";
 import type { CSSProperties, ReactNode } from "react";
 
 import { compactSubtabClass, subtabClass, subtabListClass } from "@/components/ui/subtab-styles";
@@ -277,25 +279,25 @@ export const orderListColumns: SkeletonColumn[] = [
 
 /** Orders list content: the list table (default) or order cards (grid view / phones). */
 export function OrderListSkeleton({ viewMode = "list" }: { viewMode?: "grid" | "list" }) {
-  if (viewMode === "grid") {
-    return (
-      <div role="status" aria-label="Loading orders" className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(450px,1fr))]">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Bone key={i} className="h-56 rounded-xl" />
-        ))}
-      </div>
-    );
-  }
   return (
     <div role="status" aria-label="Loading orders">
-      <SkeletonTable
-        frameClassName="bg-card border border-border rounded-xl shadow-sm [&_table]:table-fixed"
-        minWidth={800}
-        thClassName="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-        cellClassName="h-[50px] px-3 py-1"
-        rows={7}
-        columns={orderListColumns}
-      />
+      {viewMode === "grid" ? (
+        <div className="grid gap-3 min-[769px]:gap-6 min-[769px]:grid-cols-[repeat(auto-fill,minmax(450px,1fr))]">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Bone key={i} className="h-56 rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <OrderTablePlaceholder columns={orderListColumns} />
+      )}
+      <div aria-hidden className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
+        <Bone className="h-3 w-24 rounded-md" />
+        <div className="flex gap-2">
+          {["Previous", "Next"].map(label => (
+            <span key={label} className="inline-flex h-8 items-center rounded-md border border-input px-3 text-xs opacity-50">{label}</span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -323,13 +325,24 @@ export function OrderManagementSkeleton() {
           </span>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-2 rounded-t-xl border border-border px-3 py-2.5">
-        <Bone className="h-9 w-full sm:w-80" />
-        <Bone className="h-8 w-28" />
-        <Bone className="h-8 w-24" />
-        <Bone className="ml-auto hidden h-8 w-20 sm:block" />
+      <div className="min-w-0 min-[769px]:overflow-hidden min-[769px]:rounded-xl min-[769px]:border min-[769px]:border-border min-[769px]:bg-card min-[769px]:shadow-sm">
+        <div aria-hidden className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5">
+          <div className="flex h-9 w-full items-center gap-2 rounded-md border border-input px-3 text-sm text-muted-foreground sm:w-80">
+            <Search className="size-4" /> Search order or reference
+          </div>
+          {["All Channels", "All statuses"].map(label => (
+            <span key={label} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-input px-3 text-xs font-semibold">
+              {label}<ChevronDown className="size-4 text-muted-foreground" />
+            </span>
+          ))}
+          <div className="ml-auto hidden h-8 items-stretch rounded-lg bg-muted/50 p-0.5 min-[769px]:flex">
+            <span className="flex items-center px-3 text-muted-foreground"><LayoutGrid className="size-4" /></span>
+            <span className="flex items-center rounded-lg bg-background px-3 shadow-sm"><List className="size-4" /></span>
+          </div>
+        </div>
+        <div className="hidden min-[769px]:block"><OrderListSkeleton /></div>
+        <div className="min-[769px]:hidden"><OrderListSkeleton viewMode="grid" /></div>
       </div>
-      <OrderListSkeleton />
     </Shell>
   );
 }

@@ -25,6 +25,7 @@ import { useMyLocations } from "@/lib/useMyLocations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { orderTablePageSize } from "@/lib/orderTablePageSize";
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -703,12 +704,7 @@ export default function ViewOrderManagement() {
         setPageSize(columns === "none" ? 1 : Math.max(1, columns.split(" ").length));
         return;
       }
-      const bottom = Math.min(window.innerHeight, main?.getBoundingClientRect().bottom ?? window.innerHeight);
-      const rowTop = row.getBoundingClientRect().top + (main?.scrollTop ?? 0);
-      const scroller = row.closest("table")?.parentElement;
-      const scrollbar = scroller ? scroller.offsetHeight - scroller.clientHeight : 0;
-      const available = bottom - rowTop - footer.offsetHeight - scrollbar - 16;
-      setPageSize(Math.max(1, Math.floor(available / Math.max(1, row.getBoundingClientRect().height))));
+      setPageSize(orderTablePageSize(row, footer));
     };
     measure();
     const observer = new ResizeObserver(measure);
