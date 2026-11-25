@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -409,7 +410,7 @@ onRejectVoid,
               <button
                 type="button"
                 onClick={() => setShowConfirmDelivery(true)}
-                className="px-4 py-2 text-xs font-black uppercase rounded-lg text-white active:scale-95 transition-all whitespace-nowrap"
+                className="px-4 py-2 text-xs font-black rounded-lg text-white active:scale-95 transition-all whitespace-nowrap"
                 style={{ background: primary }}
               >
                 Confirm Delivery
@@ -689,7 +690,7 @@ onRejectVoid,
             {canRequestVoid && !isPartlyRefunded && !["void_requested", "voided", "refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestVoid && (
               <button
                 onClick={onRequestVoid}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-orange-600 rounded-lg hover:bg-orange-700 active:scale-95 transition-all shadow-sm"
+                className="px-4 py-2 text-xs font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 active:scale-95 transition-all shadow-sm"
               >
                 Request Void
               </button>
@@ -723,7 +724,7 @@ onRejectVoid,
             {canRequestRefund && isShippedInstitutional && onRequestRefund && (
               <button
                 onClick={onRequestRefund}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
+                className="px-4 py-2 text-xs font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
               >
                 Failed Delivery
               </button>
@@ -777,13 +778,9 @@ onRejectVoid,
                 Print Waybill
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="px-5 py-2 rounded-lg text-sm font-medium text-white transition-colors shadow-sm cursor-pointer"
-              style={{ background: primary }}
-            >
+            <Button type="button" variant="outline" onClick={onClose}>
               Close
-            </button>
+            </Button>
           </div>
         </div>
 
