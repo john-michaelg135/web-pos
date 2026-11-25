@@ -17,11 +17,11 @@ A feature area of POS that the Enterprise Portal grants or revokes per Staff mem
 _Avoid_: Permission, feature, role
 
 **Role**:
-The label the Enterprise Portal returns for a Staff member, such as Cashier, Manager or Super Admin. For most Roles it never decides Module access; only the Modules granted to that Staff member do. Super Admin and CEO are the exception: they open every Module and every page, whatever the Enterprise Portal granted. The one page outside every Module, Starting Cash, is also decided by Role: it opens for Cashier, Manager, Super Admin and CEO.
+The label the Enterprise Portal returns for a Staff member, such as Cashier, Manager or Admin. For most Roles it never decides Module access; only the Modules granted to that Staff member do. Admin and CEO are the exception: they open every Module and every page, whatever the Enterprise Portal granted. The one page outside every Module, Starting Cash, is also decided by Role: it opens for Cashier, Manager, Admin and CEO.
 _Avoid_: Permission group, access level
 
 **Owner**:
-The Staff member who owns the business: anyone whose Role is Super Admin or CEO. Only the Owner sees the Dashboard; every other Staff member is sent to their first Module instead, even if the Enterprise Portal granted them the Dashboard.
+The Staff member who owns the business: anyone whose Role is Admin or CEO. Only the Owner sees the Dashboard; every other Staff member is sent to their first Module instead, even if the Enterprise Portal granted them the Dashboard.
 _Avoid_: Admin, superuser
 
 **Dashboard**:

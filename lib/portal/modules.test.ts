@@ -34,9 +34,9 @@ describe("POS role access", () => {
   });
 
   it("gives administrators all modules and routes", () => {
-    expect(modulesForRole("Super Admin")).toHaveLength(7);
+    expect(modulesForRole("Admin")).toHaveLength(7);
     expect(roleMayUseModule("CEO", "Dashboard")).toBe(true);
-    expect(mayPerformAction("Super Admin", "Order Management", "approve")).toBe(true);
+    expect(mayPerformAction("Admin", "Order Management", "approve")).toBe(true);
     expect(firstModulePathForRole("Cashier")).toBe("/sales-processing");
     expect(firstModulePathForRole("POS Manager")).toBe("/sales-processing");
   });

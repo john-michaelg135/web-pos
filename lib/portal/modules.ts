@@ -1,3 +1,5 @@
+import { SUPER_ROLES } from "./roles";
+
 /** The seven Modules, named as the Enterprise Portal seeds them, in sidebar order. */
 export const MODULES = [
   { name: "Dashboard", path: "/" },
@@ -12,7 +14,6 @@ export const MODULES = [
 /** Starting Cash belongs to no Module; the Role guard owns it. */
 const STARTING_CASH = "/manager/starting-cash";
 
-const SUPER_ROLES = ["Super Admin", "CEO"];
 const MANAGER_ROLES = ["POS Manager", "Manager"];
 
 const MODULES_FOR_ROLE: Record<string, readonly string[]> = {

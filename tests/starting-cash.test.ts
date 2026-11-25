@@ -10,7 +10,7 @@ describe("starting cash rule by Role", () => {
     expect(startingCashRule(role)).toBe("optional");
   });
 
-  it.each(["Super Admin", "CEO"])("%s is exempt from the starting cash prompt", (role) => {
+  it.each(["Admin", "CEO"])("%s is exempt from the starting cash prompt", (role) => {
     expect(startingCashRule(role)).toBe("exempt");
   });
 });

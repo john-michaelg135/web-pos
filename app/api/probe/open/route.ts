@@ -25,7 +25,7 @@ async function assignedLocation(request: NextRequest): Promise<ProbeLocation | u
 
 /**
  * "Open Probe": re-checks the Staff member with the Enterprise Portal, then sends the browser
- * to POS-PROBE with a signed pass. Only the owner (Super Admin, CEO) and POS Managers get one;
+ * to POS-PROBE with a signed pass. Only the owner (Admin, CEO) and POS Managers get one;
  * a manager's pass carries the branch they're assigned to.
  */
 export async function GET(request: NextRequest) {

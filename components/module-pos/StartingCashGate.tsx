@@ -63,7 +63,7 @@ const errorMessage = (err: any, fallback: string) => {
  * Rules:
  * The Role the Enterprise Portal returns decides (see startingCashRule):
  * - Managers: prompted but may cancel; selling is not blocked.
- * - Super Admin and CEO: never prompted; selling is never blocked.
+ * - Admin and CEO: never prompted; selling is never blocked.
  * - Cashier and any unknown Role: mandatory daily prompt with no way to dismiss
  *   it; selling is blocked until declared.
  */

@@ -9,7 +9,7 @@ import { mayPerformAction, roleMayUseModule } from "@/lib/portal/modules";
 type User = Staff & {
   /** Kept so existing callers that read a user id keep compiling; the Enterprise Portal sends no numeric id. */
   id: string;
-  /** Super Admin, CEO and General Manager: every location, full rights in the Modules they hold. */
+  /** Admin, CEO and General Manager: every location, full rights in the Modules they hold. */
   isSuperUser: boolean;
   locationId?: number;
 };
