@@ -26,7 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { absoluteUrl, groupNavItems, navItemsFor, systems } from "./SidebarNav";
+import { absoluteUrl, groupNavItems, navItemsFor } from "./SidebarNav";
+import { useVisibleSystems } from "./use-visible-systems";
 import { ReturningToPortalCard } from "./ReturningToPortalCard";
 import { SidebarProfileFooter } from "./SidebarProfileFooter";
 import { useAuth } from "@/context/AuthContext";
@@ -39,6 +40,7 @@ export function Sidebar() {
   const { open, openMobile, setOpenMobile, toggleSidebar, isMobile } =
     useSidebar();
   const [mounted, setMounted] = useState(false);
+  const visibleSystems = useVisibleSystems();
   const [returning, setReturning] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -94,7 +96,7 @@ export function Sidebar() {
                     Select Enterprise Module
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="-mx-1.5 mt-0 mb-1 bg-border" />
-                  {systems.map((sys) => {
+                  {visibleSystems.map((sys) => {
                     const SysIcon = sys.icon;
                     return (
                       <DropdownMenuItem
