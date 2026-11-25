@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   BellUnavailableError,
-  alertAge,
+  alertTime,
   listAlerts,
   liveTicketUrl,
   mergeAlerts,
@@ -38,13 +38,9 @@ describe("staff bell helpers", () => {
     expect(safeAlertLink("")).toBeNull();
   });
 
-  it("describes an alert's age", () => {
-    const now = Date.parse("2026-11-21T03:00:00Z");
-    expect(alertAge("2026-11-21T02:59:40Z", now)).toBe("Just now");
-    expect(alertAge("2026-11-21T02:55:00Z", now)).toBe("5m ago");
-    expect(alertAge("2026-11-21T00:00:00Z", now)).toBe("3h ago");
-    expect(alertAge("2026-11-19T03:00:00Z", now)).toBe("2d ago");
-    expect(alertAge("not a date", now)).toBe("");
+  it("shows when an alert was made in Philippine time", () => {
+    expect(alertTime("2026-11-25T16:26:48Z")).toBe("11/26/2026, 12:26:48 AM");
+    expect(alertTime("not a date")).toBe("");
   });
 
   it("merges a refreshed page newest first, preferring fresh state", () => {

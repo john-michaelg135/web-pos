@@ -2,17 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AlertTriangle,
-  Ban,
-  Bell,
-  CheckCheck,
-  CircleCheck,
-  CircleX,
-  Loader2,
-  Package,
-  RotateCcw,
-} from "lucide-react";
+import { Bell, CheckCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,7 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 import {
   BellUnavailableError,
-  alertAge,
+  alertTime,
   listAlerts,
   liveTicketUrl,
   markAlertRead,
@@ -42,18 +32,6 @@ const LIVE_SAFETY_MS = 5 * 60_000;
 // After live updates are reported off, ask again this much later.
 const LIVE_RETRY_MS = 5 * 60_000;
 
-const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  "pos.refund-requested": RotateCcw,
-  "pos.void-requested": Ban,
-  "pos.refund-approved": CircleCheck,
-  "pos.void-approved": CircleCheck,
-  "pos.refund-rejected": CircleX,
-  "pos.void-rejected": CircleX,
-  "pos.transfer-arrived": Package,
-  "pos.low-stock": AlertTriangle,
-  "pos.stock-request-approved": CircleCheck,
-  "pos.stock-request-rejected": CircleX,
-};
 
 export function HeaderNotifications() {
   const { can } = useAuth();
@@ -230,11 +208,11 @@ export function HeaderNotifications() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="w-[min(22rem,calc(100vw-2rem))] p-0 bg-popover border-border text-popover-foreground z-[99999]"
+        className="w-80 max-w-[calc(100vw-2rem)] p-0 bg-popover border-border text-popover-foreground shadow-lg z-[99999]"
         align="end"
       >
-        <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
-          <DropdownMenuLabel className="p-0 text-sm font-bold text-foreground">Notifications</DropdownMenuLabel>
+        <div className="flex items-center justify-between gap-2 p-3 border-b border-border">
+          <DropdownMenuLabel className="p-0 text-base font-semibold text-foreground">Notifications</DropdownMenuLabel>
           <Button
             variant="ghost"
             size="sm"
@@ -243,46 +221,44 @@ export function HeaderNotifications() {
               e.preventDefault();
               void markAll();
             }}
-            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            className="h-auto p-0 text-sm font-medium text-primary hover:bg-transparent hover:text-primary/80"
           >
-            <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark all read
+            <CheckCheck className="size-4" /> Mark all read
           </Button>
         </div>
 
-        <div className="max-h-[min(24rem,60vh)] overflow-y-auto divide-y divide-border">
+        <div className="max-h-80 overflow-y-auto divide-y divide-border">
           {loading && items.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading…
             </div>
           ) : items.length === 0 ? (
-            <p className="py-8 px-4 text-center text-sm text-muted-foreground m-0">
-              {failed ? "Couldn't load notifications. Try again shortly." : "You're all caught up."}
-            </p>
+            <div className="p-6 text-center text-muted-foreground space-y-1">
+              <Bell aria-hidden="true" className="size-6 mx-auto opacity-30" />
+              <p className="m-0 text-sm font-medium">
+                {failed ? "Couldn't load notifications. Try again shortly." : "You're all caught up."}
+              </p>
+            </div>
           ) : (
-            items.map((alert) => {
-              const Icon = ICONS[alert.kind] ?? Bell;
-              return (
-                <DropdownMenuItem
-                  key={alert.id}
-                  onSelect={() => void openAlert(alert)}
-                  className={`flex items-start gap-2.5 rounded-none px-3 py-2.5 cursor-pointer ${alert.read ? "" : "bg-primary/5"}`}
-                >
-                  <div className="p-1.5 rounded-full bg-muted border border-border mt-0.5 shrink-0">
-                    <Icon className="w-3.5 h-3.5 text-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <span className={`text-sm text-foreground line-clamp-1 ${alert.read ? "font-medium" : "font-semibold"}`}>
-                        {alert.title}
-                      </span>
-                      <span className="text-xs text-muted-foreground shrink-0 mt-0.5">{alertAge(alert.createdAt)}</span>
-                    </div>
-                    {alert.body && <p className="text-xs text-muted-foreground line-clamp-2 m-0">{alert.body}</p>}
-                  </div>
-                  {!alert.read && <span aria-label="Unread" className="mt-2 w-2 h-2 rounded-full bg-primary shrink-0" />}
-                </DropdownMenuItem>
-              );
-            })
+            items.map((alert) => (
+              <DropdownMenuItem
+                key={alert.id}
+                onSelect={() => void openAlert(alert)}
+                className={`flex items-start gap-2.5 rounded-none p-3 cursor-pointer focus:bg-muted ${alert.read ? "" : "bg-muted/50"}`}
+              >
+                <div aria-hidden="true" className="p-1.5 rounded-full bg-muted border border-border mt-0.5 shrink-0">
+                  <Bell className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-0.5">
+                  <p className="m-0 text-sm font-semibold text-foreground break-words">{alert.title}</p>
+                  {alert.body && <p className="m-0 text-sm text-muted-foreground break-words">{alert.body}</p>}
+                  <time dateTime={alert.createdAt} className="block text-xs text-muted-foreground">
+                    {alertTime(alert.createdAt)}
+                  </time>
+                  {!alert.read && <span className="sr-only">Unread</span>}
+                </div>
+              </DropdownMenuItem>
+            ))
           )}
         </div>
 
