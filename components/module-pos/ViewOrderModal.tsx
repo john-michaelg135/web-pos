@@ -138,6 +138,7 @@ onRejectVoid,
   ).filter((s) => !isPartiallyPaid || !["paid", "shipped", "completed"].includes(s)) as OrderStatus[];
   // Hide the changer when there's nowhere valid to move to (e.g. a Shipped institutional order).
   const canChangeStatus = allowedStatuses.some((s) => s !== order.status);
+  const canConfirmShipment = order.status === "paid" && isAuthorizedToEdit && allowedStatuses.includes("shipped");
 
   const pricing = useMemo(() => {
     if (!isPwdOrder) {
@@ -398,22 +399,23 @@ onRejectVoid,
             </div>
           )}
 
-          {/* Institutional: record proof of delivery and complete the order */}
-          {canConfirmDelivery && (
+          {(canConfirmShipment || canConfirmDelivery) && (
             <div className="p-4 rounded-xl border mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: `${primary}40`, background: `${primary}0D` }}>
               <div className="flex flex-col gap-1">
-                <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>Delivered?</p>
+                <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>{canConfirmShipment ? "Shipped?" : "Delivered?"}</p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 m-0">
-                  Record who received it, with the Lalamove proof or a signed receipt, to complete the order.
+                  {canConfirmShipment
+                    ? "Mark this order as shipped once the courier has picked it up."
+                    : "Record who received it, with the Lalamove proof or a signed receipt, to complete the order."}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowConfirmDelivery(true)}
+                onClick={() => canConfirmShipment ? setStatusToConfirm("shipped") : setShowConfirmDelivery(true)}
                 className="px-4 py-2 text-xs font-black rounded-lg text-white active:scale-95 transition-all whitespace-nowrap"
                 style={{ background: primary }}
               >
-                Confirm Delivery
+                {canConfirmShipment ? "Confirm Shipment" : "Confirm Delivery"}
               </button>
             </div>
           )}
@@ -429,7 +431,7 @@ onRejectVoid,
           )}
 
           {/* Direct Status Changer (Admin / Order Manager / dev) */}
-          {isAuthorizedToEdit && canChangeStatus && order.status !== "refund_requested" && order.status !== "refunded" && order.status !== "rejected" && order.status !== "cancelled" && (
+          {isAuthorizedToEdit && canChangeStatus && !canConfirmShipment && order.status !== "refund_requested" && order.status !== "refunded" && order.status !== "rejected" && order.status !== "cancelled" && (
             <div className="p-4 rounded-xl border mb-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: border, background: `${border}10` }}>
               <div className="flex flex-col gap-1 w-full sm:w-auto">
                 <p className="text-xs font-black uppercase tracking-wider m-0" style={{ color: text }}>Change Order Status</p>
@@ -687,7 +689,7 @@ onRejectVoid,
             )}
 
             {/* Request Void Button (For pending/completed orders) */}
-            {canRequestVoid && !isPartlyRefunded && !["void_requested", "voided", "refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestVoid && (
+            {canRequestVoid && !isPartlyRefunded && !["shipped", "void_requested", "voided", "refund_requested", "refunded", "cancelled", "rejected"].includes(order.status) && onRequestVoid && (
               <button
                 onClick={onRequestVoid}
                 className="px-4 py-2 text-xs font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 active:scale-95 transition-all shadow-sm"
