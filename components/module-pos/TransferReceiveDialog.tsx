@@ -127,8 +127,8 @@ export function TransferReceiveDialog({
 
   return (
     <Dialog open={!!transfer} onOpenChange={(open) => !open && !submitting && onClose()}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-[44rem] rounded-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[44rem] flex max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0">
+        <DialogHeader className="shrink-0 px-6 py-4">
           <DialogTitle>{confirming ? "Confirm receipt" : "Receive delivery"}</DialogTitle>
           <DialogDescription>
             <span className="font-mono">{transfer?.transferId}</span> to {transfer?.destinationLocationName}
@@ -137,7 +137,7 @@ export function TransferReceiveDialog({
         </DialogHeader>
 
         {confirming ? (
-          <div className="space-y-3">
+          <div className="min-h-0 space-y-3 overflow-y-auto px-6 py-5">
             <p className="text-sm text-foreground m-0">
               Add <span className="font-semibold">{totals.received} units</span> to {transfer?.destinationLocationName}&apos;s stock?
               {totals.damaged > 0 && <> {totals.damaged} damaged units will be reported to IMS and not added.</>}
@@ -162,7 +162,7 @@ export function TransferReceiveDialog({
             <p className="text-xs text-muted-foreground m-0">This can&apos;t be undone. Fix any later mistake with a stock adjustment.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="min-h-0 space-y-4 overflow-y-auto px-6 py-5">
             {unmatched.length > 0 && (
               <p className="text-sm m-0 rounded-xl border border-error-200 dark:border-error-900/40 bg-error-50 dark:bg-error-500/10 text-error-700 dark:text-error-400 px-3.5 py-2.5">
                 {unmatched.length === 1 ? "1 item isn't" : `${unmatched.length} items aren't`} in the POS catalog yet. Ask IMS to sync
@@ -255,7 +255,7 @@ export function TransferReceiveDialog({
           </div>
         )}
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="shrink-0 gap-2 px-6 py-3">
           {confirming ? (
             <>
               <Button type="button" variant="outline" onClick={() => setConfirming(false)} disabled={submitting}>

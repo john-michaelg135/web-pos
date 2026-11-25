@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -237,9 +238,12 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
                   flexShrink: 0,
                 }}
               >
-                <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
-                  Starting Cash
-                </h2>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
+                    Starting Cash
+                  </h2>
+                  {isOptional && <ModalCloseButton onClick={handleCancel} disabled={isSaving} />}
+                </div>
               </div>
 
               {/* Body */}
@@ -413,9 +417,12 @@ export default function StartingCashGate({ locationId, onChange }: StartingCashG
             }}
           >
             <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)" }}>
-              <h2 id="end-shift-title" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-                End Shift
-              </h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 id="end-shift-title" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+                  End Shift
+                </h2>
+                <ModalCloseButton onClick={() => setShowEndShiftModal(false)} disabled={isEndingShift} />
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "20px 24px" }}>
               <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--muted-foreground)" }}>

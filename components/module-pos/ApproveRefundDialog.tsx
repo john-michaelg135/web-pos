@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { variationLabel } from "@/components/module-pos/utils";
@@ -64,6 +65,7 @@ export default function ApproveRefundDialog({
             </svg>
             Approve Refund Request
           </h2>
+          <ModalCloseButton onClick={onClose} />
         </div>
 
         {/* Body */}

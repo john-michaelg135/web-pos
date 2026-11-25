@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { Ban, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   StockRequestStatusBadge,
   StockRequestTimeline,
   describeStockRequest,
-  stockRequestItemLabel,
   type StockRequestRecord,
 } from "@/components/module-pos/StockRequestHistory";
 
@@ -58,21 +57,18 @@ export function StockRequestDetailDialog({ request, onClose, onConfirmCancel, on
 
   return (
     <Dialog open={!!request} onOpenChange={(open) => !open && !isCancelling && onClose()}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-[36rem] rounded-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent aria-describedby={undefined} className="flex max-h-[90dvh] w-[calc(100vw-2rem)] max-w-[38rem] flex-col gap-0 overflow-hidden rounded-t-3xl p-0 sm:rounded-2xl">
         {request && (
           <>
-            <DialogHeader>
+            <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left sm:px-6">
               <div className="flex flex-wrap items-center gap-2 pr-6">
                 <DialogTitle>{confirmingCancel ? `Cancel request ${request.requestId}?` : `Request ${request.requestId}`}</DialogTitle>
                 {!confirmingCancel && <StockRequestStatusBadge request={request} />}
               </div>
-              <DialogDescription>
-                {stockRequestItemLabel(request)}{request.locationName ? ` · ${request.locationName}` : ""}
-              </DialogDescription>
             </DialogHeader>
 
             {confirmingCancel ? (
-              <div className="space-y-4">
+              <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
                 <p className="m-0 text-sm text-foreground">
                   IMS will be told to drop this request for <span className="font-semibold">{request.quantity} unit{request.quantity === 1 ? "" : "s"}</span>.
                   This can&apos;t be undone, but you can send a new request any time.
@@ -92,7 +88,7 @@ export function StockRequestDetailDialog({ request, onClose, onConfirmCancel, on
                 </label>
               </div>
             ) : (
-              <div className="space-y-5">
+              <div className="grid min-h-0 gap-4 overflow-y-auto px-5 py-5 sm:px-6">
                 <p className="m-0 text-sm text-foreground">{describeStockRequest(request)}</p>
 
                 <dl className="m-0 grid grid-cols-3 gap-2">
@@ -101,7 +97,7 @@ export function StockRequestDetailDialog({ request, onClose, onConfirmCancel, on
                   <Fact label="Received" value={request.receivedQuantity ?? "—"} />
                 </dl>
 
-                <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-xs">
+                <dl className="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 break-words text-xs">
                   <dt className="text-muted-foreground">SKU</dt>
                   <dd className="m-0 font-mono">{request.sku}</dd>
                   {request.transferId && (
@@ -126,14 +122,14 @@ export function StockRequestDetailDialog({ request, onClose, onConfirmCancel, on
                   </div>
                 )}
 
-                <div>
-                  <h3 className="m-0 mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">History</h3>
+                <div className="border-t border-border pt-4">
+                  <h3 className="m-0 mb-3 text-sm font-semibold text-foreground">Request history</h3>
                   <StockRequestTimeline request={request} />
                 </div>
               </div>
             )}
 
-            <DialogFooter className="gap-2">
+            <DialogFooter className="shrink-0 gap-2 border-t border-border px-5 py-3 sm:px-6">
               {confirmingCancel ? (
                 <>
                   <Button type="button" variant="outline" onClick={() => setConfirmingCancel(false)} disabled={isCancelling}>

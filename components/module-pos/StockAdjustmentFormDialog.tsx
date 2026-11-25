@@ -1,8 +1,9 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, Boxes, Loader2, MapPin, Package, Plus, X } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, Boxes, Loader2, MapPin, Package, Plus } from "lucide-react";
 import { StockLevel } from "@/components/module-pos/types";
 import { parseVariationName } from "@/components/module-pos/utils";
 import { Button } from "@/components/ui/button";
@@ -183,7 +184,7 @@ export default function StockAdjustmentFormDialog({
           zIndex: 99999,
           width: "calc(100% - 32px)",
           maxWidth: 1100,
-          maxHeight: "90vh",
+          height: "90dvh",
           backgroundColor: "#ffffff",
           borderRadius: 12,
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
@@ -206,17 +207,12 @@ export default function StockAdjustmentFormDialog({
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 4, color: "#71717a" }}
-            >
-              <X style={{ width: 20, height: 20 }} />
-            </button>
+            <ModalCloseButton onClick={onClose} disabled={isRecordingLoss || isSubmittingRequest} />
           </div>
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto bg-muted/10 p-5 sm:p-8" style={{ flex: 1 }}>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/10 p-5 [scrollbar-gutter:stable] sm:p-8">
           <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-border bg-card p-3 sm:p-3.5">
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -618,10 +614,13 @@ export default function StockAdjustmentFormDialog({
               overflowY: "auto",
             }}
           >
-            <div className="px-6 pt-6">
-              <h2 id="confirm-loss-title" className="m-0 text-lg font-bold">
-                Write off {lossQty} unit{lossQty === 1 ? "" : "s"}?
-              </h2>
+            <div className="border-b border-border px-6 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 id="confirm-loss-title" className="m-0 text-lg font-bold">
+                  Write off {lossQty} unit{lossQty === 1 ? "" : "s"}?
+                </h2>
+                <ModalCloseButton onClick={() => setConfirmingLoss(false)} disabled={isRecordingLoss} />
+              </div>
               <p id="confirm-loss-body" className="m-0 mt-1 text-sm text-muted-foreground">
                 They come out of stock straight away and are kept on record as a stock loss. This can&apos;t be undone from here.
               </p>
@@ -644,7 +643,7 @@ export default function StockAdjustmentFormDialog({
                 {onHand} → <span className="text-destructive">{onHand - lossQty}</span>
               </dd>
             </dl>
-            <div className="flex justify-end gap-2 px-6 py-5">
+            <div className="mt-5 flex justify-end gap-2 rounded-b-2xl border-t border-border bg-muted/30 px-6 py-3">
               <Button variant="outline" onClick={() => setConfirmingLoss(false)} disabled={isRecordingLoss} autoFocus>
                 Cancel
               </Button>

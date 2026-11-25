@@ -63,15 +63,15 @@ export function SidebarProfileFooter() {
         <DialogContent
           onEscapeKeyDown={(event) => loggingOut && event.preventDefault()}
           onInteractOutside={(event) => loggingOut && event.preventDefault()}
-          className="max-w-110"
+          className="max-w-110 gap-0 overflow-hidden p-0"
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0 px-6 py-4">
             <DialogTitle>Log out?</DialogTitle>
             <DialogDescription>
               You will be signed out of the Enterprise Portal and every system you opened.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="px-6 py-3">
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={loggingOut}>
                 Cancel

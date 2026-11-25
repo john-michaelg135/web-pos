@@ -1,7 +1,7 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { createPortal } from "react-dom";
-import { CloseLineIcon } from "@/icons/index";
 
 interface DeleteConfirmDialogProps {
   isOpen: boolean;
@@ -36,6 +36,7 @@ export function DeleteConfirmDialog({
           <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
             {title}
           </h2>
+          <ModalCloseButton onClick={onClose} />
         </div>
 
         {/* Body */}

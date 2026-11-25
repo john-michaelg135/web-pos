@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import { BrandLockup } from "@/components/brand/BrandLockup";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronsUpDown, Check, X } from "lucide-react";
+import { ChevronsUpDown, Check } from "lucide-react";
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import {
   SidebarHeader,
   SidebarContent,
@@ -15,7 +16,6 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarRail,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
@@ -146,12 +146,7 @@ export function Sidebar() {
               </DropdownMenu>
             </div>
             {isMobile && (
-              <SidebarTrigger
-                className="text-muted-foreground hover:text-sidebar-foreground h-8 w-8 rounded-lg shrink-0 cursor-pointer"
-                title="Close Sidebar"
-              >
-                <X className="w-5 h-5" />
-              </SidebarTrigger>
+              <ModalCloseButton aria-label="Close sidebar" onClick={() => setOpenMobile(false)} />
             )}
           </div>
         </SidebarHeader>

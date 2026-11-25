@@ -1,8 +1,8 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -183,12 +183,7 @@ export default function PwdFormModal({
             <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#111827" }}>
               Senior/PWD Details
             </h2>
-            <button
-              onClick={onClose}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 4, color: "#6b7280" }}
-            >
-              <X style={{ width: 20, height: 20 }} />
-            </button>
+            <ModalCloseButton onClick={onClose} />
           </div>
         </div>
 

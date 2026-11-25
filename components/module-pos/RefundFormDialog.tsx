@@ -1,9 +1,9 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { variationLabel } from "@/components/module-pos/utils";
-import { CloseLineIcon } from "@/icons/index";
 import { Order, REFUND_METHOD_HINT, SubmitOutcome, refundMethodOf, refundableQuantity } from "@/components/module-pos/types";
 import type { RefundItemDto } from "@/components/module-pos/api/api";
 import { ProofPayload, ProofPhotoField, isProofReferenceRefusal, useProofPhoto } from "./ProofPhotoPicker";
@@ -173,6 +173,7 @@ export default function RefundFormDialog({
             </svg>
             {isFailedDelivery ? "Failed Delivery Refund" : "Request Refund"}
           </h2>
+          <ModalCloseButton onClick={onClose} disabled={isSubmitting} />
         </div>
 
         {/* Body */}

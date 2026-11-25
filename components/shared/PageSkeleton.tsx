@@ -246,8 +246,8 @@ export function StockManagementSkeleton() {
         subtitle="Monitor stock levels, manage adjustments, and record new arrivals."
       />
       <SubtabSkeleton
-        labels={["Stock Levels", "Receive Stock", "Stock History Log", "Stock Losses"]}
-        shortLabels={["Levels", "Receive", "History", "Losses"]}
+        labels={["Stock Levels", "Receive Stock", "Stock Requests", "Stock History Log", "Stock Losses"]}
+        shortLabels={["Levels", "Receive", "Requests", "History", "Losses"]}
       />
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-3 md:p-4">

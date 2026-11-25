@@ -1,8 +1,8 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CloseLineIcon } from "@/icons/index";
 import { DeliveryConfirmation, DeliveryConfirmationInput, Order, SubmitOutcome } from "@/components/module-pos/types";
 import { ProofPhotoField, isProofReferenceRefusal, useProofPhoto } from "./ProofPhotoPicker";
 
@@ -82,14 +82,7 @@ export function ConfirmDeliveryDialog({ isOpen, onClose, order, onSubmit }: Conf
             <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white m-0">Confirm Delivery</h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 m-0 truncate">{order.orderNumber || order.id} · {order.customer}</p>
           </div>
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            aria-label="Close"
-            className="p-2 shrink-0 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <CloseLineIcon className="w-5 h-5" />
-          </button>
+          <ModalCloseButton onClick={onClose} disabled={isSubmitting} />
         </div>
 
         {/* Body */}
@@ -335,6 +328,7 @@ export function ProofPhoto({ src, alt, border, muted }: ProofPhotoProps) {
           onClick={() => setShowFull(false)}
           className="fixed inset-0 z-[100010] bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
         >
+          <ModalCloseButton className="absolute right-4 top-4 bg-card" onClick={() => setShowFull(false)} />
           <img src={photo} alt={alt} referrerPolicy="no-referrer" onError={handleImageError} className="max-w-full max-h-full rounded-lg shadow-2xl" />
         </div>,
         document.body

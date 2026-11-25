@@ -1,8 +1,8 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { CloseLineIcon } from "@/icons/index";
 import { Search, Filter, LayoutGrid, List } from "lucide-react";
 import { DeliveryConfirmationInput, Order, OrderStatus, REFUND_METHOD_HINT, STATUS_LABELS, SubmitOutcome, latestRefundWasRejected, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
@@ -992,12 +992,7 @@ export default function ViewOrderManagement() {
                   Manager PIN
                 </h2>
               </div>
-              <button 
-                onClick={() => setShowManagerPinDialog(false)}
-                className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <CloseLineIcon className="w-5 h-5" />
-              </button>
+              <ModalCloseButton onClick={() => setShowManagerPinDialog(false)} />
             </div>
 
             {/* Body */}

@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Variation, Product } from "@/components/module-pos/types";
@@ -207,9 +208,12 @@ export function VariationFormDialog({
 
         {/* Header */}
         <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
-            {isEdit ? "Edit Variation Price" : "Add Variation"}
-          </h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
+              {isEdit ? "Edit Variation Price" : "Add Variation"}
+            </h2>
+            <ModalCloseButton onClick={onClose} />
+          </div>
         </div>
 
         {/* Body */}

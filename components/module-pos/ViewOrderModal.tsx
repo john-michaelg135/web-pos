@@ -1,8 +1,9 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { CloseLineIcon, CheckCircleIcon } from "@/icons/index";
+import { CheckCircleIcon } from "@/icons/index";
 import { DeliveryConfirmationInput, SubmitOutcome, Order, STATUS_LABELS, OrderStatus, formatRefundDeadline, refundMethodOf } from "@/components/module-pos/types";
 import { ConfirmDeliveryDialog, DeliveryConfirmationDetails, ProofPhoto } from "./ConfirmDeliveryDialog";
 import { renderVariationBadges } from "./utils";
@@ -211,13 +212,7 @@ onRejectVoid,
               {STATUS_LABELS[order.status]}
             </span>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="p-2 sm:p-1.5 shrink-0 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <CloseLineIcon className="w-5 h-5" />
-          </button>
+          <ModalCloseButton onClick={onClose} />
         </div>
 
         {/* Body */}
@@ -970,9 +965,12 @@ onRejectVoid,
             }}
           >
             <div style={{ padding: "16px 24px", borderBottom: `1px solid ${border}` }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: text }}>
-                Confirm Status Update
-              </h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: text }}>
+                  Confirm Status Update
+                </h2>
+                <ModalCloseButton onClick={() => setStatusToConfirm(null)} />
+              </div>
             </div>
             <div style={{ padding: "24px" }}>
               <p style={{ margin: 0, fontSize: 14, color: muted }}>
@@ -1034,9 +1032,12 @@ onRejectVoid,
             }}
           >
             <div style={{ padding: "16px 24px", borderBottom: `1px solid ${border}` }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: text }}>
-                Confirm Remaining Payment
-              </h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: text }}>
+                  Confirm Remaining Payment
+                </h2>
+                <ModalCloseButton onClick={() => setCompletePaymentToConfirm(false)} disabled={isCompletingPayment} />
+              </div>
             </div>
             <div style={{ padding: "24px" }}>
               <p style={{ margin: 0, fontSize: 14, color: muted }}>
@@ -1111,9 +1112,12 @@ onRejectVoid,
             }}
           >
             <div style={{ padding: "16px 24px", borderBottom: `1px solid ${border}` }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#dc2626" }}>
-                Cancel Order
-              </h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#dc2626" }}>
+                  Cancel Order
+                </h2>
+                <ModalCloseButton onClick={() => setCancelToConfirm(false)} />
+              </div>
             </div>
             <div style={{ padding: "24px" }}>
               <p style={{ margin: 0, fontSize: 14, color: muted }}>

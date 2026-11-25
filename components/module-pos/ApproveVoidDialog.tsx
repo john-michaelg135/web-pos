@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import PinInput from "@/components/module-pos/PinInput";
@@ -56,6 +57,7 @@ export default function ApproveVoidDialog({
             </svg>
             Approve Void Request
           </h2>
+          <ModalCloseButton onClick={onClose} />
         </div>
 
         {/* Body */}

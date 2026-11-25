@@ -1,6 +1,7 @@
 "use client";
 
-import { CloseLineIcon, TimeIcon } from "@/icons/index";
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
+import { TimeIcon } from "@/icons/index";
 import { Order } from "@/components/module-pos/types";
 
 interface ReviewDialogProps {
@@ -71,6 +72,7 @@ export default function ReviewDialog({
             <TimeIcon viewBox="0 0 20 20" className="w-5 h-5 text-brand-500" />
             {order.status === "refund_requested" ? "Review Refund Request" : "Review Order"}
           </h2>
+          <ModalCloseButton onClick={onClose} />
         </div>
 
         {/* Body */}

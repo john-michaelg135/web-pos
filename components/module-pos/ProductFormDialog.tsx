@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Product, ProductCategory } from "@/components/module-pos/types";
@@ -140,9 +141,12 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
 
         {/* Header */}
         <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
-            {isEdit ? "Edit Product" : "Add Product"}
-          </h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
+              {isEdit ? "Edit Product" : "Add Product"}
+            </h2>
+            <ModalCloseButton onClick={handleCancel} />
+          </div>
         </div>
 
         {/* Body */}
@@ -262,15 +266,18 @@ export function ProductFormDialog({ isOpen, onClose, onSubmit, initial }: Produc
       {confirmAction && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100000, backgroundColor: "rgba(0, 0, 0, 0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div style={{ backgroundColor: "#ffffff", borderRadius: 12, padding: 24, maxWidth: 400, width: "calc(100% - 32px)", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", display: "flex", flexDirection: "column", gap: 16 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
-              {confirmAction === "add" ? "Confirm Add Product" : "Discard Changes"}
-            </h3>
+            <div className="flex items-center justify-between gap-3 -mx-6 border-b border-border px-6 pb-3">
+              <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
+                {confirmAction === "add" ? "Confirm Add Product" : "Discard Changes"}
+              </h3>
+              <ModalCloseButton onClick={() => setConfirmAction(null)} />
+            </div>
             <p style={{ fontSize: 14, color: "#71717a", margin: 0 }}>
               {confirmAction === "add"
                 ? "Are you sure you want to add this product?"
                 : "Are you sure you want to cancel? Any unsaved changes will be lost."}
             </p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
+            <div className="-mx-6 -mb-6 flex justify-end gap-2 rounded-b-xl border-t border-border bg-muted/30 px-6 py-3">
               <button
                 type="button"
                 onClick={() => setConfirmAction(null)}

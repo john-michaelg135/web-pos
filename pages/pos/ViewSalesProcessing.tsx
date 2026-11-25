@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import axios from "axios";
@@ -12,7 +13,6 @@ import {
   ChevronDown,
   Check,
   Calendar,
-  X,
   Radar,
 } from "lucide-react";
 import { apiClient } from "../../components/module-pos/api";
@@ -705,14 +705,7 @@ export default function ViewSalesProcessing() {
         <h2 className="text-title-lg font-bold text-foreground">Cart</h2>
         <div className="flex items-center gap-3">
           {isMobile && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowMobileCart(false)}
-              className="h-10 w-10 rounded-xl"
-            >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </Button>
+            <ModalCloseButton onClick={() => setShowMobileCart(false)} />
           )}
 
           {/* Order Type Dropdown */}
@@ -1165,9 +1158,12 @@ export default function ViewSalesProcessing() {
           >
             {/* Header */}
             <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
-                {isPreOrder ? "Complete Pre-order" : "Confirm Sale"}
-              </h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
+                  {isPreOrder ? "Complete Pre-order" : "Confirm Sale"}
+                </h2>
+                <ModalCloseButton onClick={() => setShowCheckoutDialog(false)} />
+              </div>
             </div>
 
             {/* Body */}
@@ -1407,7 +1403,10 @@ export default function ViewSalesProcessing() {
             }}
           >
             <div className="px-6 py-4 border-b border-border">
-              <h2 id="gcash-confirm-title" className="text-lg font-semibold m-0">Confirm GCash Payment</h2>
+              <div className="flex items-center justify-between gap-3">
+                <h2 id="gcash-confirm-title" className="text-lg font-semibold m-0">Confirm GCash Payment</h2>
+                <ModalCloseButton onClick={() => setShowGcashConfirm(false)} />
+              </div>
             </div>
             <div className="px-6 py-5 flex flex-col gap-3 text-sm text-muted-foreground">
               <p className="m-0">

@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { apiClient } from "@/components/module-pos/api";
@@ -223,14 +224,7 @@ export function StockReceivingForm({ onSuccess, onReceived, initialSearch }: Sto
             <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>Add Receive Stock</h2>
-                <button
-                  onClick={() => setShowManualDialog(false)}
-                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
+                <ModalCloseButton onClick={() => setShowManualDialog(false)} />
               </div>
             </div>
 

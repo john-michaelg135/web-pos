@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Ban, Loader2 } from "lucide-react";
@@ -65,7 +66,7 @@ export function CancelStockRequestDialog({ request, onClose, onConfirm }: Cancel
           overflowY: "auto",
         }}
       >
-        <div className="flex items-start gap-3 px-6 pt-6">
+        <div className="flex items-start gap-3 border-b border-border px-6 py-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
             <Ban className="h-5 w-5" aria-hidden />
           </div>
@@ -75,6 +76,7 @@ export function CancelStockRequestDialog({ request, onClose, onConfirm }: Cancel
               IMS will be told to drop it. This can&apos;t be undone, but you can send a new request any time.
             </p>
           </div>
+          <ModalCloseButton onClick={close} disabled={isCancelling} />
         </div>
         <dl className="mx-6 mt-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-border bg-muted/30 p-4 text-sm">
           <dt className="text-muted-foreground">Item</dt>
@@ -102,7 +104,7 @@ export function CancelStockRequestDialog({ request, onClose, onConfirm }: Cancel
           />
           {invalid && <p className="m-0 mt-1 text-xs text-destructive">The reason cannot contain &lt; or &gt;.</p>}
         </div>
-        <div className="flex justify-end gap-2 px-6 py-5">
+        <div className="mt-5 flex justify-end gap-2 rounded-b-2xl border-t border-border bg-muted/30 px-6 py-3">
           <Button variant="outline" onClick={close} disabled={isCancelling} autoFocus>Keep request</Button>
           <Button variant="destructive" onClick={confirm} disabled={invalid || isCancelling}>
             {isCancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}

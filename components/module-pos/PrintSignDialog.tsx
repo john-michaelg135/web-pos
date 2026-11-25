@@ -165,15 +165,15 @@ export function PrintSignDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Explicit width: this project's --spacing-xl token (32px) hijacks Tailwind's max-w-xl. */}
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-[36rem] rounded-2xl print:hidden">
-        <DialogHeader>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-[36rem] flex max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-2xl p-0 print:hidden">
+        <DialogHeader className="shrink-0 px-6 py-4">
           <DialogTitle>Sign the {title}</DialogTitle>
           <DialogDescription>
             Read the notes that will print with the report, then sign below. Your signature is added to this printout only.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="min-h-0 space-y-4 overflow-y-auto px-6 py-5">
           <div className="rounded-xl border border-border bg-muted/30 p-4 max-h-56 overflow-y-auto">
             <p className="text-sm font-semibold text-foreground m-0 mb-2">Notes to the report</p>
             <ol className="list-decimal pl-5 space-y-1.5 text-sm text-muted-foreground m-0">
@@ -234,7 +234,7 @@ export function PrintSignDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="shrink-0 gap-2 px-6 py-3">
           <p className="mr-auto text-left text-xs text-muted-foreground">
             By clicking Confirm &amp; Print, you certify that you have reviewed and approved this report.
           </p>

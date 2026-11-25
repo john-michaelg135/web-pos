@@ -1,8 +1,8 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { CloseLineIcon } from "@/icons/index";
 import { Order } from "@/components/module-pos/types";
 
 interface VoidFormDialogProps {
@@ -102,6 +102,7 @@ export default function VoidFormDialog({
             </svg>
             Request Void
           </h2>
+          <ModalCloseButton onClick={onClose} />
         </div>
 
         {/* Body */}

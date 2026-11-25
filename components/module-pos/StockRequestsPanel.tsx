@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ClipboardList, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/module-pos/SearchInput";
+import { Bone, SkeletonRows } from "@/components/shared/PageSkeleton";
 import {
   StockRequestStatusBadge,
   describeStockRequest,
@@ -22,6 +23,8 @@ const FILTERS = [
   { value: "cancelled", label: "Cancelled", match: (r: StockRequestRecord) => r.status === "Cancelled" },
   { value: "all", label: "All", match: () => true },
 ] as const;
+
+const viewRequestStyle = "inline-flex items-center justify-center whitespace-nowrap rounded-lg border border-[#e5e0ed] bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-primary dark:border-border";
 
 type FilterValue = (typeof FILTERS)[number]["value"];
 
@@ -63,6 +66,7 @@ export function StockRequestsPanel({ requests, isLoading, onRefresh, onSelect, s
   }, [scoped, filter, search]);
 
   const openCount = counts.open;
+  const loadingRows = isLoading && requests.length === 0;
   const onTheWay = expectedUnits(scoped);
 
   return (
@@ -123,17 +127,14 @@ export function StockRequestsPanel({ requests, isLoading, onRefresh, onSelect, s
         />
       </div>
 
-      {isLoading && requests.length === 0 ? (
-        <div className="space-y-2">
-          {[0, 1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/60" />)}
-        </div>
-      ) : visible.length === 0 ? (
+      {loadingRows && <span role="status" className="sr-only">Loading stock requests…</span>}
+      {!loadingRows && visible.length === 0 ? (
         <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
           <ClipboardList className="h-8 w-8 text-muted-foreground" aria-hidden />
           <p className="m-0 mt-3 text-sm font-semibold text-foreground">
             {scoped.length === 0 ? "No stock requests yet" : "No requests match these filters"}
           </p>
-          <p className="m-0 mt-1 max-w-sm text-sm text-muted-foreground">
+          <p className="m-0 mt-1 w-full max-w-[48ch] text-sm text-muted-foreground">
             {scoped.length === 0
               ? "Open an item in Stock Levels and choose New request to ask IMS for more."
               : "Try another status or clear the search."}
@@ -143,6 +144,19 @@ export function StockRequestsPanel({ requests, isLoading, onRefresh, onSelect, s
         <>
           {/* Phones: cards */}
           <ul className="m-0 flex list-none flex-col gap-2 p-0 md:hidden">
+            {loadingRows && [0, 1, 2].map((row) => (
+              <li key={row} aria-hidden className="rounded-xl border border-border bg-card p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Bone className="h-5 w-3/4 rounded-md" />
+                    <Bone className="mt-0.5 h-4 w-1/2 rounded-md" />
+                  </div>
+                  <Bone className="h-5 w-20 rounded-full" />
+                </div>
+                <Bone className="mt-2 h-4 w-2/3 rounded-md" />
+                <Bone className="mt-3 h-8 w-24 rounded-lg" />
+              </li>
+            ))}
             {visible.map((r) => (
               <li key={r.requestId}>
                 <button
@@ -160,6 +174,7 @@ export function StockRequestsPanel({ requests, isLoading, onRefresh, onSelect, s
                     <StockRequestStatusBadge request={r} />
                   </div>
                   <p className="m-0 mt-2 text-xs text-foreground">{describeStockRequest(r)}</p>
+                  <span className={cn(viewRequestStyle, "mt-3")}>View request</span>
                 </button>
               </li>
             ))}
@@ -180,6 +195,13 @@ export function StockRequestsPanel({ requests, isLoading, onRefresh, onSelect, s
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {loadingRows && (
+                  <SkeletonRows
+                    rows={3}
+                    columns={["short", "stack", ...(showBranch ? ["badge" as const] : []), "short", "badge", "stack", "button"]}
+                    cellClassName="px-6 py-4"
+                  />
+                )}
                 {visible.map((r) => (
                   <tr key={r.requestId} className="align-top transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-950/20">
                     <td className="px-6 py-4 font-mono text-sm font-bold text-gray-900 dark:text-white">{r.requestId}</td>
@@ -210,9 +232,9 @@ export function StockRequestsPanel({ requests, isLoading, onRefresh, onSelect, s
                         type="button"
                         onClick={() => onSelect(r)}
                         aria-label={`View request ${r.requestId}`}
-                        className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-primary/90"
+                        className={viewRequestStyle}
                       >
-                        View
+                        View request
                       </button>
                     </td>
                   </tr>

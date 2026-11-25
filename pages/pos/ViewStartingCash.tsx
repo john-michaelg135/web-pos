@@ -1,5 +1,6 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -496,9 +497,12 @@ export function ViewStartingCash({
                   flexShrink: 0,
                 }}
               >
-                <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
-                  Add Starting Cash
-                </h2>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
+                    Add Starting Cash
+                  </h2>
+                  <ModalCloseButton onClick={() => setShowAddModal(false)} disabled={isSubmitting} />
+                </div>
               </div>
 
               {/* Body */}

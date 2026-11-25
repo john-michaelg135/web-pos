@@ -1,8 +1,8 @@
 "use client";
 
+import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 import { STATUS_LABELS } from "@/components/module-pos/types";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { Button } from "@/components/ui/button";
@@ -110,19 +110,7 @@ export default function OrderFilters({
                 Refine your order management view
               </p>
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 4,
-                borderRadius: 4,
-                color: "#6b7280",
-              }}
-            >
-              <X style={{ width: 20, height: 20 }} />
-            </button>
+            <ModalCloseButton onClick={onClose} />
           </div>
         </div>
 
