@@ -739,7 +739,7 @@ onRejectVoid,
                 onClick={onRequestRefund}
                 disabled={refundWindowClosed}
                 title={refundWindowClosed && refundDeadlineText ? `The refund window ended on ${refundDeadlineText}.` : undefined}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600 disabled:active:scale-100"
+                className="px-4 py-2 text-xs font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-600 disabled:active:scale-100"
               >
                 Request Refund
               </button>

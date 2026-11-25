@@ -1,7 +1,7 @@
 "use client";
 
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Search, Filter, LayoutGrid, List } from "lucide-react";
 import { DeliveryConfirmationInput, Order, OrderStatus, REFUND_METHOD_HINT, STATUS_LABELS, SubmitOutcome, latestRefundWasRejected, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Bone, OrderListSkeleton, OrderManagementSkeleton } from "@/components/shared/PageSkeleton";
+import { Bone, orderListColumns, OrderListSkeleton, OrderManagementSkeleton } from "@/components/shared/PageSkeleton";
 
 // Legacy color props for child components that haven't been rewritten yet
 const LEGACY_COLORS = {
@@ -40,9 +40,6 @@ const LEGACY_COLORS = {
   cardBg: "#ffffff",
   inputBg: "#fafafa",
 };
-
-/** The order list loads this many days at a time (see "Load more" under the list). */
-const ORDER_HISTORY_STEP_DAYS = 30;
 
 type OrderTab = "active" | "paid" | "completed" | "refunds" | "voids" | "cancelled";
 type RefundSubTab = "requested" | "refunded" | "rejected";
@@ -98,8 +95,7 @@ export default function ViewOrderManagement() {
   const [linkedOrderMissing, setLinkedOrderMissing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
-  // The history window the loaded `orders` came from (undefined until the first load).
-  const [loadedWindow, setLoadedWindow] = useState<number | null | undefined>(undefined);
+  const [hasLoadedOrders, setHasLoadedOrders] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [cashierLocationName, setCashierLocationName] = useState<string>("");
 
@@ -225,10 +221,6 @@ export default function ViewOrderManagement() {
     refundDeadline: (dto as any).refundDeadline ?? null,
   });
 
-  // How far back the list goes. Older orders that still need action always load (the server
-  // adds them), so this only limits finished history. null = everything.
-  const [historyDays, setHistoryDays] = useState<number | null>(ORDER_HISTORY_STEP_DAYS);
-
   const fetchOrders = useCallback(async (targetLocId?: number) => {
     try {
       setIsLoading(true);
@@ -237,22 +229,17 @@ export default function ViewOrderManagement() {
         ...headers,
         ...(locId ? { "X-Location-Id": String(locId) } : {}),
       };
-      const queryParams = {
-        ...(!canSwitchLocation && locId ? { LocationId: locId } : {}),
-        ...(historyDays != null
-          ? { DateFrom: new Date(Date.now() - historyDays * 86_400_000).toISOString(), IncludeOpen: true }
-          : {}),
-      };
+      const queryParams = !canSwitchLocation && locId ? { LocationId: locId } : {};
       const { data } = await apiClient.apiPos.orderManagementOrdersList(queryParams, { headers: reqHeaders });
       setOrders(data.map(mapToFrontendOrder));
-      setLoadedWindow(historyDays);
+      setHasLoadedOrders(true);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
       toast.error("Failed to load orders.");
     } finally {
       setIsLoading(false);
     }
-  }, [assignedLocation?.locationId, canSwitchLocation, headers, historyDays]);
+  }, [assignedLocation?.locationId, canSwitchLocation, headers]);
 
   const requestManagerEndpoint = async (path: string, body?: unknown) => {
     const response = await fetch(`/api/pos/${path}`, {
@@ -324,31 +311,25 @@ export default function ViewOrderManagement() {
     setSearchQuery("");
   };
 
-  // Open the order a notification links to: its tab, and only that order. If it is older than
-  // the loaded window, load everything once before saying it isn't there. (State is adjusted
-  // while rendering, when the link or the loaded orders change, rather than in an effect.)
+  // A notification selects the matching order across the full branch history.
   if (linkedOrderId !== handledOrderLink) {
     if (!linkedOrderId) {
       setHandledOrderLink(null);
       setFocusOrderId(null);
       setLinkedOrderMissing(false);
-    } else if (!isLoading && loadedWindow !== undefined) {
+    } else if (!isLoading && hasLoadedOrders) {
       const order = orders.find((o) => o.id === linkedOrderId);
-      if (!order && loadedWindow !== null) {
-        if (historyDays !== null) setHistoryDays(null);
-      } else {
-        setHandledOrderLink(linkedOrderId);
-        setFocusOrderId(order?.id ?? null);
-        setLinkedOrderMissing(!order);
-        if (order) {
-          const { tab, refund, void: voidSub } = tabForOrder(order);
-          setActiveTab(tab);
-          if (refund) setRefundSubTab(refund);
-          if (voidSub) setVoidSubTab(voidSub);
-          setSearchQuery("");
-          setFilterType("All");
-          setFilterStatus("All");
-        }
+      setHandledOrderLink(linkedOrderId);
+      setFocusOrderId(order?.id ?? null);
+      setLinkedOrderMissing(!order);
+      if (order) {
+        const { tab, refund, void: voidSub } = tabForOrder(order);
+        setActiveTab(tab);
+        if (refund) setRefundSubTab(refund);
+        if (voidSub) setVoidSubTab(voidSub);
+        setSearchQuery("");
+        setFilterType("All");
+        setFilterStatus("All");
       }
     }
   }
@@ -663,10 +644,6 @@ export default function ViewOrderManagement() {
 
   useEffect(() => { if (!authLoading && !hasAccess) router.replace("/no-access"); }, [authUser, authLoading, hasAccess, router]);
 
-  if (authLoading) return <OrderManagementSkeleton />;
-  if (!hasAccess) return null;
-  if (!isMounted) return <OrderManagementSkeleton />;
-
   const statusTabs: { key: typeof activeTab; label: string; count: number; destructive?: boolean }[] = [
     { key: "active", label: "Active", count: activeOrders.length },
     { key: "paid", label: "Paid", count: paidOrders.length },
@@ -678,10 +655,72 @@ export default function ViewOrderManagement() {
 
   const currentOrders = activeTab === "active" ? activeOrders : activeTab === "paid" ? paidOrders : activeTab === "completed" ? completedOrders : activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : activeTab === "voids" ? (voidSubTab === "requested" ? voidRequests : voidSubTab === "voided" ? voidedOrders : rejectedVoids) : cancelledOrders;
 
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLElement>(null);
+  const [pageSize, setPageSize] = useState(1);
+  const hasRows = currentOrders.length > 0;
+  useLayoutEffect(() => {
+    const results = resultsRef.current;
+    const footer = footerRef.current;
+    if (!results || !footer || !hasRows) return;
+    const main = results.closest("main");
+    const measure = () => {
+      const row = results.querySelector("tbody tr");
+      if (!row) {
+        // Large order cards vary in height. Page through one grid row at a time.
+        const columns = getComputedStyle(results).gridTemplateColumns;
+        setPageSize(columns === "none" ? 1 : Math.max(1, columns.split(" ").length));
+        return;
+      }
+      const bottom = Math.min(window.innerHeight, main?.getBoundingClientRect().bottom ?? window.innerHeight);
+      const rowTop = row.getBoundingClientRect().top + (main?.scrollTop ?? 0);
+      const scroller = row.closest("table")?.parentElement;
+      const scrollbar = scroller ? scroller.offsetHeight - scroller.clientHeight : 0;
+      const available = bottom - rowTop - footer.offsetHeight - scrollbar - 16;
+      setPageSize(Math.max(1, Math.floor(available / Math.max(1, row.getBoundingClientRect().height))));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(results);
+    observer.observe(footer);
+    if (main) observer.observe(main);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [hasRows, isLoading, isMounted, authLoading, hasAccess, activeTab, isMobile, viewMode, focusOrderId, linkedOrderMissing]);
+
+  const filterKey = JSON.stringify([activeTab, refundSubTab, voidSubTab, channelTab, searchQuery, filterType, filterStatus, filterLocation, focusOrderId, assignedLocation?.locationId, viewMode, isMobile]);
+  const [pagination, setPagination] = useState({ filterKey, page: 1 });
+  const pageCount = Math.max(1, Math.ceil(currentOrders.length / pageSize));
+  const page = pagination.filterKey === filterKey ? Math.min(pagination.page, pageCount) : 1;
+  if (pagination.filterKey !== filterKey || pagination.page !== page) {
+    setPagination({ filterKey, page });
+  }
+  const offset = (page - 1) * pageSize;
+  const pageOrders = currentOrders.slice(offset, offset + pageSize);
+
+  if (authLoading) return <OrderManagementSkeleton />;
+  if (!hasAccess) return null;
+  if (!isMounted) return <OrderManagementSkeleton />;
+
+  const paginationFooter = (
+    <nav ref={footerRef} aria-label="Order pages" className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2">
+      <span aria-live="polite" className="text-xs text-muted-foreground tabular-nums">
+        {currentOrders.length ? `Showing ${(offset + 1).toLocaleString()}–${(offset + pageOrders.length).toLocaleString()} of ${currentOrders.length.toLocaleString()}` : "Showing 0 of 0"}
+      </span>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPagination({ filterKey, page: page - 1 })}>Previous</Button>
+        <Button variant="outline" size="sm" disabled={page === pageCount} onClick={() => setPagination({ filterKey, page: page + 1 })}>Next</Button>
+      </div>
+    </nav>
+  );
+
   return (
-    <div className="w-full min-h-full py-8 px-6 md:px-8 space-y-6 animate-page-in">
+    <div className="w-full min-h-full px-4 pt-8 pb-4 md:px-5 space-y-3 animate-page-in">
       {/* Header */}
-      <div className={cn("flex justify-between gap-5", isMobile ? "flex-col gap-4" : "items-center")}>
+      <div className={cn("mx-2 flex justify-between gap-5 pb-3 md:mx-3", isMobile ? "flex-col gap-4" : "items-center")}>
         <div className="flex items-start justify-between gap-3 min-w-0">
           <div className="min-w-0">
             <h1 className="text-headline-md font-bold tracking-tight text-foreground">Order Management</h1>
@@ -789,8 +828,8 @@ export default function ViewOrderManagement() {
 
       {/* Status Tabs */}
       <div role="tablist" className={cn(
-        "flex overflow-x-auto gap-1 pb-3 border-b border-border",
-        isMobile && "-mx-6 px-6 scroll-px-6 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        "flex overflow-x-auto gap-1",
+        isMobile && "-mx-4 px-4 scroll-px-4 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       )}>
         {statusTabs.map(({ key, label, count, destructive }) => {
           const selected = activeTab === key;
@@ -802,7 +841,7 @@ export default function ViewOrderManagement() {
               aria-selected={selected}
               onClick={() => setActiveTab(key)}
               className={cn(
-                "shrink-0 snap-start inline-flex items-center gap-2 h-10 px-4 rounded-lg text-sm whitespace-nowrap transition-colors",
+                "shrink-0 snap-start inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs whitespace-nowrap transition-colors",
                 selected && !destructive && "bg-primary/10 text-primary font-medium",
                 selected && destructive && "bg-destructive/10 text-destructive font-medium",
                 !selected && "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -810,7 +849,7 @@ export default function ViewOrderManagement() {
             >
               {label}
               <span className={cn(
-                "min-w-5 h-5 px-1.5 inline-flex items-center justify-center rounded-full text-xs tabular-nums",
+                "min-w-4 h-4 px-1 inline-flex items-center justify-center rounded-full text-[10px] tabular-nums",
                 selected ? "bg-background text-foreground" : "bg-muted text-muted-foreground"
               )}>
                 {count}
@@ -845,7 +884,7 @@ export default function ViewOrderManagement() {
             </div>
           )}
 
-          <div className={cn(
+          <div ref={resultsRef} className={cn(
             isMobile
               ? "flex flex-col gap-3 w-full"
               : viewMode === "grid"
@@ -853,7 +892,7 @@ export default function ViewOrderManagement() {
               : "flex flex-col gap-4 w-full"
           )}>
             {isMobile ? (
-              currentOrders.map((order) => (
+              pageOrders.map((order) => (
                 <OrderCard
                   key={order.id}
                   order={order}
@@ -877,20 +916,20 @@ export default function ViewOrderManagement() {
                 />
               ))
             ) : viewMode === "list" && currentOrders.length > 0 ? (
-              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[800px]">
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                <table className="w-full table-fixed text-left border-collapse min-w-[800px]">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
-                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer</th>
-                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Order ID & Location</th>
-                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total</th>
-                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                      <th className="px-5 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                      {orderListColumns.map(({ label, className }) => (
+                        <th key={label} scope="col" className={cn("px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider", className)}>
+                          {label}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
-                    {currentOrders.map((order) => (
+                    {pageOrders.map((order) => (
                       <OrderCard
                         key={order.id}
                         order={order}
@@ -915,9 +954,11 @@ export default function ViewOrderManagement() {
                     ))}
                   </tbody>
                 </table>
+                </div>
+                {paginationFooter}
               </div>
             ) : (
-              currentOrders.map((order) => (
+              pageOrders.map((order) => (
                 <OrderCard
                   key={order.id}
                   order={order}
@@ -947,23 +988,7 @@ export default function ViewOrderManagement() {
               </div>
             )}
           </div>
-          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm">
-            <p className="m-0 text-muted-foreground">
-              {historyDays != null
-                ? <>Showing orders from the last <span className="font-semibold text-foreground">{historyDays} days</span>, plus any older order that still needs action.</>
-                : <>Showing <span className="font-semibold text-foreground">all orders</span>.</>}
-            </p>
-            {historyDays != null && (
-              <div className="flex items-center gap-2 shrink-0">
-                <Button variant="outline" size="sm" disabled={isLoading} onClick={() => setHistoryDays(historyDays + ORDER_HISTORY_STEP_DAYS)}>
-                  Load {ORDER_HISTORY_STEP_DAYS} more days
-                </Button>
-                <Button variant="ghost" size="sm" disabled={isLoading} onClick={() => setHistoryDays(null)}>
-                  Show all
-                </Button>
-              </div>
-            )}
-          </div>
+          {(isMobile || viewMode === "grid" || currentOrders.length === 0) && paginationFooter}
         </div>
       )}
 

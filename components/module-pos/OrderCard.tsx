@@ -154,13 +154,13 @@ onRejectVoid,
   if (viewMode === "list") {
     return (
       <>
-        <tr className="hover:bg-muted/10 transition-colors border-b border-border last:border-b-0 group">
-          <td className="px-5 py-4 text-sm font-medium text-muted-foreground whitespace-nowrap align-middle">
+        <tr className="h-[50px] whitespace-nowrap hover:bg-muted/10 transition-colors border-b border-border last:border-b-0 group">
+          <td className="px-3 py-1 text-sm font-medium text-muted-foreground whitespace-nowrap align-middle">
             {order.date}
           </td>
-          <td className="px-5 py-4 text-sm font-bold text-foreground align-middle">
-            {order.customer}
-            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+          <td className="px-3 py-1 text-sm font-bold text-foreground align-middle">
+            <span className="block truncate" title={order.customer}>{order.customer}</span>
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
               <span
                 className="inline-flex items-center text-[10px] font-bold uppercase px-2 py-0.5 rounded-[6px] border"
                 style={TYPE_BADGE[order.type] ?? TYPE_BADGE.store}
@@ -177,26 +177,26 @@ onRejectVoid,
               )}
             </div>
           </td>
-          <td className="px-5 py-4 text-sm text-foreground align-middle">
-            <span className="font-bold">{order.orderNumber || order.id}</span>
-            <div className="text-[11px] text-muted-foreground mt-1 font-medium">
+          <td className="px-3 py-1 text-sm text-foreground align-middle">
+            <span className="block truncate font-bold" title={order.orderNumber || order.id}>{order.orderNumber || order.id}</span>
+            <div className="mt-1 truncate text-[11px] font-medium text-muted-foreground" title={order.location}>
               {order.location}
             </div>
           </td>
-          <td className="px-5 py-4 text-sm font-bold text-foreground whitespace-nowrap align-middle">
+          <td className="px-3 py-1 text-sm font-bold text-foreground whitespace-nowrap align-middle">
             ₱{order.total.toLocaleString()}
           </td>
-          <td className="px-5 py-4 whitespace-nowrap align-middle">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase" style={{
+          <td className="px-3 py-1 whitespace-nowrap align-middle">
+            <div className="inline-flex max-w-full items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase" style={{
               background: isShipped ? SHIPPED_BADGE.background : isPending ? "#fafafa" : isRejected ? "#fef2f2" : isCompleted ? "#f4f4f5" : `${primary}08`,
               color: isShipped ? SHIPPED_BADGE.color : isPending ? "#71717a" : isRejected ? "#dc2626" : isCompleted ? "#18181b" : primary,
               border: `1px solid ${isShipped ? SHIPPED_BADGE.borderColor : isPending ? "#e4e4e7" : isRejected ? "#fee2e2" : isCompleted ? "#e4e4e7" : `${primary}15`}`
             }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />
-              {STATUS_LABELS[order.status]}
+              <span className="truncate" title={STATUS_LABELS[order.status]}>{STATUS_LABELS[order.status]}</span>
             </div>
           </td>
-          <td className="px-5 py-4 whitespace-nowrap align-middle">
+          <td className="px-3 py-1 whitespace-nowrap align-middle">
             <button
               onClick={() => setShowViewModal(true)}
               className="h-8 px-4 rounded-lg bg-transparent text-xs font-bold uppercase cursor-pointer transition-all border"

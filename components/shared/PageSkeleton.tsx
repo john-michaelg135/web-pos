@@ -266,6 +266,15 @@ export function StockManagementSkeleton() {
 
 const ORDER_TABS = ["Active", "Paid", "Completed", "Refunds", "Voids", "Cancelled"];
 
+export const orderListColumns: SkeletonColumn[] = [
+  { label: "Date", kind: "short", className: "w-[14%]" },
+  { label: "Customer", kind: "stack", className: "w-[21%]" },
+  { label: "Order ID & Location", kind: "stack", className: "w-[25%]" },
+  { label: "Total", kind: "short", className: "w-[11%]" },
+  { label: "Status", kind: "badge", className: "w-[16%]" },
+  { label: "Actions", kind: "button", className: "w-[13%]" },
+];
+
 /** Orders list content: the list table (default) or order cards (grid view / phones). */
 export function OrderListSkeleton({ viewMode = "list" }: { viewMode?: "grid" | "list" }) {
   if (viewMode === "grid") {
@@ -280,17 +289,12 @@ export function OrderListSkeleton({ viewMode = "list" }: { viewMode?: "grid" | "
   return (
     <div role="status" aria-label="Loading orders">
       <SkeletonTable
-        frameClassName="bg-card border border-border rounded-xl shadow-sm"
+        frameClassName="bg-card border border-border rounded-xl shadow-sm [&_table]:table-fixed"
         minWidth={800}
+        thClassName="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+        cellClassName="h-[50px] px-3 py-1"
         rows={7}
-        columns={[
-          { label: "Date", kind: "stack" },
-          { label: "Customer", kind: "text" },
-          { label: "Order ID & Location", kind: "stack" },
-          { label: "Total", kind: "short" },
-          { label: "Status", kind: "badge" },
-          { label: "Actions", kind: "button" },
-        ]}
+        columns={orderListColumns}
       />
     </div>
   );
@@ -298,8 +302,8 @@ export function OrderListSkeleton({ viewMode = "list" }: { viewMode?: "grid" | "
 
 export function OrderManagementSkeleton() {
   return (
-    <Shell label="Loading orders">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+    <Shell label="Loading orders" className="space-y-3 px-4 pt-8 pb-4 md:px-5">
+      <div className="mx-2 flex flex-col lg:flex-row lg:items-center justify-between gap-5 pb-3 md:mx-3">
         <PageTitle title="Order Management" subtitle="Track and manage all orders" />
         <div className="flex items-center gap-3">
           <Bone className="h-10 w-36 rounded-xl" />
@@ -308,17 +312,17 @@ export function OrderManagementSkeleton() {
           <Bone className="h-12 w-28 rounded-xl" />
         </div>
       </div>
-      <div className="flex gap-1 overflow-hidden pb-3 border-b border-border">
+      <div className="flex gap-1 overflow-hidden">
         {ORDER_TABS.map((label, i) => (
           <span
             key={label}
             className={cn(
-              "shrink-0 h-10 px-4 inline-flex items-center gap-2 rounded-lg text-sm whitespace-nowrap",
+              "shrink-0 h-8 px-3 inline-flex items-center gap-1.5 rounded-lg text-xs whitespace-nowrap",
               i === 0 ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"
             )}
           >
             {label}
-            <Bone className="h-5 w-5 rounded-full" />
+            <Bone className="h-4 w-4 rounded-full" />
           </span>
         ))}
       </div>
