@@ -32,6 +32,8 @@ export interface SystemItem {
   active: boolean;
   /** The Enterprise Portal entry shows the returning card before leaving. */
   isPortal?: boolean;
+  /** The name the Portal knows this System by; the Enterprise Portal entry has none. */
+  portalName?: string;
 }
 
 const ICONS: Record<(typeof MODULES)[number]["name"], LucideIcon> = {
@@ -77,7 +79,8 @@ export const systems: SystemItem[] = [
     isPortal: true,
   },
   {
-    fullName: "Customer Relationship Management",
+    fullName: "Customer Relation and Ecommerce Ordering Management System",
+    portalName: "CRMS",
     desc: "Contact profiles, tickets & marketing",
     icon: Building2,
     url: process.env.NEXT_PUBLIC_CRM_URL || "https://epic-crms.vercel.app",
@@ -85,6 +88,7 @@ export const systems: SystemItem[] = [
   },
   {
     fullName: "Human Resource Management",
+    portalName: "HRMS",
     desc: "Staff directory & payroll",
     icon: Users2,
     url: process.env.NEXT_PUBLIC_HRM_URL || "https://hrms-arae.vercel.app",
@@ -92,12 +96,14 @@ export const systems: SystemItem[] = [
   },
   {
     fullName: "Point of Sale",
+    portalName: "POS",
     desc: "Retail & register checkout",
     icon: CreditCard,
     active: true,
   },
   {
     fullName: "Inventory Management System",
+    portalName: "IMS",
     desc: "Inventory & stock management",
     icon: Package,
     url: process.env.NEXT_PUBLIC_IMS_URL || "https://br-sims.vercel.app",
@@ -118,3 +124,17 @@ export const groupNavItems = (items: readonly NavItem[]): { label: string; items
 
 /** A bare host in an env var still has to open as an absolute address. */
 export const absoluteUrl = (url: string) => (/^https?:\/\//.test(url) ? url : `https://${url}`);
+
+/**
+ * The switcher entries this person may open: the Enterprise Portal, the System already open,
+ * and every System the Portal says an Admin granted them. When the Portal's answer is not known
+ * (null) only those first two show, so nothing is offered that may be refused.
+ */
+export function visibleSystems<T extends { portalName?: string; active: boolean }>(
+  all: readonly T[],
+  allowed: readonly string[] | null,
+): T[] {
+  return all.filter(
+    (sys) => !sys.portalName || sys.active || (allowed?.includes(sys.portalName) ?? false),
+  );
+}
