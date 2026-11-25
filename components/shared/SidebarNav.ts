@@ -79,9 +79,9 @@ export const systems: SystemItem[] = [
     isPortal: true,
   },
   {
-    fullName: "Customer Relation and Ecommerce Ordering Management System",
+    fullName: "CREOMS",
     portalName: "CRMS",
-    desc: "Contact profiles, tickets & marketing",
+    desc: "Customers, orders, tickets & feedback",
     icon: Building2,
     url: process.env.NEXT_PUBLIC_CRM_URL || "https://epic-crms.vercel.app",
     active: false,
