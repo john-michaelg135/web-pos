@@ -15,6 +15,7 @@ export interface CustomSelectProps {
   onChange: (value: string) => void;
   options: CustomSelectOption[];
   disabled?: boolean;
+  compact?: boolean;
   style?: React.CSSProperties;
   className?: string;
   placeholder?: string;
@@ -25,6 +26,7 @@ export function CustomSelect({
   onChange,
   options,
   disabled = false,
+  compact = false,
   style = {},
   className = "",
   placeholder = "Select...",
@@ -103,7 +105,7 @@ export function CustomSelect({
   const selectedOption = options.find((opt) => opt.value === value);
 
   return (
-    <div ref={dropdownRef} style={{ position: "relative", width: "100%", minWidth: 180, ...style }} className={className}>
+    <div ref={dropdownRef} style={{ position: "relative", width: compact ? "max-content" : "100%", minWidth: compact ? 0 : 180, ...style }} className={className}>
       <button
         ref={buttonRef}
         type="button"
@@ -115,12 +117,13 @@ export function CustomSelect({
           justifyContent: "space-between",
           gap: 6,
           width: "100%",
-          padding: "8px 12px",
+          padding: compact ? "0 0.75rem" : "8px 12px",
+          height: compact ? "2rem" : undefined,
           borderRadius: 10,
           background: dark ? "#1a2231" : "#ffffff",
           border: `1px solid ${border}`,
           color: disabled ? muted : text,
-          fontSize: 13,
+          fontSize: compact ? "0.75rem" : 13,
           fontWeight: 600,
           cursor: disabled ? "not-allowed" : "pointer",
           opacity: disabled ? 0.6 : 1,
@@ -148,6 +151,7 @@ export function CustomSelect({
             position: "fixed",
             left: menuPos.left,
             width: menuPos.width,
+            minWidth: compact ? "max-content" : undefined,
             ...(menuPos.top !== undefined ? { top: menuPos.top } : {}),
             ...(menuPos.bottom !== undefined ? { bottom: menuPos.bottom } : {}),
             background: cardBg,

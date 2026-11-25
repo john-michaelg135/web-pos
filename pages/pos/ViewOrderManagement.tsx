@@ -45,6 +45,31 @@ type OrderTab = "active" | "paid" | "completed" | "refunds" | "voids" | "cancell
 type RefundSubTab = "requested" | "refunded" | "rejected";
 type VoidSubTab = "requested" | "voided" | "rejected";
 
+// Preserve the original order and show each order once, including partial refunds
+// that also have a later rejected request.
+function combineOrderGroups(orders: Order[], groups: Record<string, Order[]>) {
+  const byId = new Map(Object.values(groups).flat().map((order) => [order.id, order]));
+  return orders.flatMap((order) => byId.get(order.id) ?? []);
+}
+
+function OrderStatusFilter<T extends string>({ value, onChange, options }: {
+  value: T | "all";
+  onChange: (value: T | "all") => void;
+  options: { value: T; label: string; count: number }[];
+}) {
+  return (
+    <CustomSelect
+      value={value}
+      onChange={(selected) => onChange(options.find((option) => option.value === selected)?.value ?? "all")}
+      compact
+      options={[
+        { value: "all", label: "All statuses" },
+        ...options.map(({ value, label, count }) => ({ value, label: `${label} (${count})` })),
+      ]}
+    />
+  );
+}
+
 const voidWasRejected = (o: Order) =>
   !!(o.remarks?.toLowerCase().startsWith("void rejected") || o.statusHistory?.some((h) => h.oldStatus === "Void Requested" && h.newStatus === "Completed"));
 
@@ -120,8 +145,9 @@ export default function ViewOrderManagement() {
   const [managerPinError, setManagerPinError] = useState<string | null>(null);
   const [isLoadingPin, setIsLoadingPin] = useState(false);
   const pinRequestInFlight = useRef(false);
-  const [refundSubTab, setRefundSubTab] = useState<"requested" | "refunded" | "rejected">("requested");
-  const [voidSubTab, setVoidSubTab] = useState<"requested" | "voided" | "rejected">("requested");
+  const [activeStatus, setActiveStatus] = useState<"all" | "processing" | "shipped">("all");
+  const [refundSubTab, setRefundSubTab] = useState<RefundSubTab | "all">("all");
+  const [voidSubTab, setVoidSubTab] = useState<VoidSubTab | "all">("all");
   const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("pos"); // Soft-delete: default to pos
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
@@ -325,6 +351,7 @@ export default function ViewOrderManagement() {
       if (order) {
         const { tab, refund, void: voidSub } = tabForOrder(order);
         setActiveTab(tab);
+        if (tab === "active") setActiveStatus("all");
         if (refund) setRefundSubTab(refund);
         if (voidSub) setVoidSubTab(voidSub);
         setSearchQuery("");
@@ -625,6 +652,10 @@ export default function ViewOrderManagement() {
   // There is no Pending tab, and Pending orders are filtered out above; pre-orders awaiting
   // stock are listed under Active.
   const activeOrders = filteredOrders.filter((o) => !["paid", "completed", "delivered", "rejected", "cancelled", "refund_requested", "refunded", "void_requested", "voided"].includes(o.status));
+  const activeGroups = {
+    processing: activeOrders.filter((order) => order.status === "processing"),
+    shipped: activeOrders.filter((order) => order.status === "shipped"),
+  };
   const rejectedRefunds = filteredOrders
     .filter((o) => o.status === "completed" && latestRefundWasRejected(o))
     .map((o) => ({ ...o, status: "rejected" as const }));
@@ -640,6 +671,11 @@ export default function ViewOrderManagement() {
     .map((o) => ({ ...o, status: "rejected" as const }));
   const cancelledOrders = filteredOrders.filter((o) => ["cancelled", "rejected"].includes(o.status));
 
+  const refundGroups = { requested: refundRequests, refunded: refundedOrders, rejected: rejectedRefunds };
+  const voidGroups = { requested: voidRequests, voided: voidedOrders, rejected: rejectedVoids };
+  const allRefunds = combineOrderGroups(filteredOrders, refundGroups);
+  const allVoids = combineOrderGroups(filteredOrders, voidGroups);
+
   const hasAccess = !!authUser && canViewOrders;
 
   useEffect(() => { if (!authLoading && !hasAccess) router.replace("/no-access"); }, [authUser, authLoading, hasAccess, router]);
@@ -648,12 +684,19 @@ export default function ViewOrderManagement() {
     { key: "active", label: "Active", count: activeOrders.length },
     { key: "paid", label: "Paid", count: paidOrders.length },
     { key: "completed", label: "Completed", count: completedOrders.length },
-    { key: "refunds", label: "Refunds", count: refundRequests.length + refundedOrders.length + rejectedRefunds.length, destructive: true },
-    { key: "voids", label: "Voids", count: voidRequests.length + voidedOrders.length + rejectedVoids.length, destructive: true },
+    { key: "refunds", label: "Refunds", count: allRefunds.length, destructive: true },
+    { key: "voids", label: "Voids", count: allVoids.length, destructive: true },
     { key: "cancelled", label: "Cancelled", count: cancelledOrders.length, destructive: true },
   ];
 
-  const currentOrders = activeTab === "active" ? activeOrders : activeTab === "paid" ? paidOrders : activeTab === "completed" ? completedOrders : activeTab === "refunds" ? (refundSubTab === "requested" ? refundRequests : refundSubTab === "refunded" ? refundedOrders : rejectedRefunds) : activeTab === "voids" ? (voidSubTab === "requested" ? voidRequests : voidSubTab === "voided" ? voidedOrders : rejectedVoids) : cancelledOrders;
+  const currentOrders = {
+    active: activeStatus === "all" ? activeOrders : activeGroups[activeStatus],
+    paid: paidOrders,
+    completed: completedOrders,
+    refunds: refundSubTab === "all" ? allRefunds : refundGroups[refundSubTab],
+    voids: voidSubTab === "all" ? allVoids : voidGroups[voidSubTab],
+    cancelled: cancelledOrders,
+  }[activeTab];
 
   const resultsRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLElement>(null);
@@ -691,7 +734,7 @@ export default function ViewOrderManagement() {
     };
   }, [hasRows, isLoading, isMounted, authLoading, hasAccess, activeTab, isMobile, viewMode, focusOrderId, linkedOrderMissing]);
 
-  const filterKey = JSON.stringify([activeTab, refundSubTab, voidSubTab, channelTab, searchQuery, filterType, filterStatus, filterLocation, focusOrderId, assignedLocation?.locationId, viewMode, isMobile]);
+  const filterKey = JSON.stringify([activeTab, activeStatus, refundSubTab, voidSubTab, channelTab, searchQuery, filterType, filterStatus, filterLocation, focusOrderId, assignedLocation?.locationId, viewMode, isMobile]);
   const [pagination, setPagination] = useState({ filterKey, page: 1 });
   const pageCount = Math.max(1, Math.ceil(currentOrders.length / pageSize));
   const page = pagination.filterKey === filterKey ? Math.min(pagination.page, pageCount) : 1;
@@ -710,7 +753,27 @@ export default function ViewOrderManagement() {
       <span aria-live="polite" className="text-xs text-muted-foreground tabular-nums">
         {currentOrders.length ? `Showing ${(offset + 1).toLocaleString()}–${(offset + pageOrders.length).toLocaleString()} of ${currentOrders.length.toLocaleString()}` : "Showing 0 of 0"}
       </span>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {activeTab === "active" && (
+          <OrderStatusFilter<"processing" | "shipped"> value={activeStatus} onChange={setActiveStatus} options={[
+            { value: "processing", label: "Processing", count: activeGroups.processing.length },
+            { value: "shipped", label: "Shipped", count: activeGroups.shipped.length },
+          ]} />
+        )}
+        {activeTab === "refunds" && (
+          <OrderStatusFilter<RefundSubTab> value={refundSubTab} onChange={setRefundSubTab} options={[
+            { value: "requested", label: "Refund Requests", count: refundRequests.length },
+            { value: "refunded", label: "Refunded", count: refundedOrders.length },
+            { value: "rejected", label: "Rejected", count: rejectedRefunds.length },
+          ]} />
+        )}
+        {activeTab === "voids" && (
+          <OrderStatusFilter<VoidSubTab> value={voidSubTab} onChange={setVoidSubTab} options={[
+            { value: "requested", label: "Void Requests", count: voidRequests.length },
+            { value: "voided", label: "Voided", count: voidedOrders.length },
+            { value: "rejected", label: "Rejected", count: rejectedVoids.length },
+          ]} />
+        )}
         <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPagination({ filterKey, page: page - 1 })}>Previous</Button>
         <Button variant="outline" size="sm" disabled={page === pageCount} onClick={() => setPagination({ filterKey, page: page + 1 })}>Next</Button>
       </div>
@@ -864,26 +927,6 @@ export default function ViewOrderManagement() {
         <OrderListSkeleton viewMode={isMobile ? "grid" : viewMode} />
       ) : (
         <div className="flex flex-col gap-4 w-full">
-          {activeTab === "refunds" && (
-            <div className="w-full max-w-xs">
-              <CustomSelect value={refundSubTab} onChange={(val) => setRefundSubTab(val as "requested" | "refunded" | "rejected")} className="w-full max-w-xs" options={[
-                { value: "requested", label: `Refund Requests (${refundRequests.length})` },
-                { value: "refunded", label: `Refunded (${refundedOrders.length})` },
-                { value: "rejected", label: `Rejected (${rejectedRefunds.length})` },
-              ]} />
-            </div>
-          )}
-
-          {activeTab === "voids" && (
-            <div className="w-full max-w-xs">
-              <CustomSelect value={voidSubTab} onChange={(val) => setVoidSubTab(val as "requested" | "voided" | "rejected")} className="w-full max-w-xs" options={[
-                { value: "requested", label: `Void Requests (${voidRequests.length})` },
-                { value: "voided", label: `Voided (${voidedOrders.length})` },
-                { value: "rejected", label: `Rejected (${rejectedVoids.length})` },
-              ]} />
-            </div>
-          )}
-
           <div ref={resultsRef} className={cn(
             isMobile
               ? "flex flex-col gap-3 w-full"
@@ -984,7 +1027,7 @@ export default function ViewOrderManagement() {
             )}
             {currentOrders.length === 0 && (
               <div className="col-span-full text-center py-12 text-muted-foreground">
-                No {activeTab === "refunds" ? (refundSubTab === "requested" ? "refund request" : refundSubTab === "refunded" ? "refunded" : "rejected") : activeTab === "voids" ? (voidSubTab === "requested" ? "void request" : "voided") : activeTab} orders found.
+                {activeTab === "refunds" || activeTab === "voids" ? "No orders match this view." : `No ${activeTab} orders found.`}
               </div>
             )}
           </div>
