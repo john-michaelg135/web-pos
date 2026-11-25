@@ -56,7 +56,7 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   const redirectFor = (decision: Validation["decision"]) =>
     decision === "unavailable" ? unavailable() : decision === "invalid" ? signIn() : null;
 
-  /** Every Module the Staff member may open, for the sidebar; Super Admin and CEO open all of them. */
+  /** Every Module the Staff member may open, for the sidebar; Admin and CEO open all of them. */
   const holdings = async (staff: Staff): Promise<{ modules: string[] } | { stop: NextResponse }> => {
     const roleModules = new Set(modulesForRole(staff.role));
     if (isSuperUser(staff.role)) return { modules: MODULES.map((m) => m.name) };
@@ -124,7 +124,7 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
 
   if (stop) return stop;
 
-  // Super Admin and CEO open every Module, whatever the Enterprise Portal granted.
+  // Admin and CEO open every Module, whatever the Enterprise Portal granted.
   const known = await access.role();
 
   if (known.decision === "allowed" && isSuperUser(known.role)) {

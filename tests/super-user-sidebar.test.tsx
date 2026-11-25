@@ -56,8 +56,8 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("Super Admin and CEO sidebar", () => {
-  it.each(["Super Admin", "CEO"])("shows all seven Modules to a %s granted only the Dashboard, and every page opens", async (role) => {
+describe("Admin and CEO sidebar", () => {
+  it.each(["Admin", "CEO"])("shows all seven Modules to a %s granted only the Dashboard, and every page opens", async (role) => {
     const handle = await signIn(role, ["Dashboard"]);
     const cookie = `pos_session=${handle}`;
     const forwarded = (response: Response) =>

@@ -79,7 +79,7 @@ describe("role guard", () => {
   it.each([
     ["Cashier", STARTING_CASH, true],
     ["Manager", STARTING_CASH, true],
-    ["Super Admin", STARTING_CASH, true],
+    ["Admin", STARTING_CASH, true],
     ["CEO", STARTING_CASH, true],
     ["Stock Clerk", STARTING_CASH, false],
   ])("%s opening %s: allowed=%s", async (role, path, allowed) => {

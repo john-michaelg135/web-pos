@@ -187,7 +187,7 @@ describe("module guard", () => {
     expect(await visit("/stock-management")).toBe("/unavailable?returnTo=%2Fstock-management");
   });
 
-  it.each(["Super Admin", "CEO"])("opens every Module for %s whatever the Enterprise Portal granted", async (role) => {
+  it.each(["Admin", "CEO"])("opens every Module for %s whatever the Enterprise Portal granted", async (role) => {
     await signInAda(["Dashboard"], role);
 
     for (const path of ["/", "/sales-processing", "/order-management", "/product-management/new", "/stock-management", "/manager/reports"]) {
@@ -196,8 +196,8 @@ describe("module guard", () => {
     expect(await forwardedModules("/stock-management")).toEqual(ALL);
   });
 
-  it("still sends a Super Admin who holds no Module to no-access", async () => {
-    await signInAda([], "Super Admin");
+  it("still sends an Admin who holds no Module to no-access", async () => {
+    await signInAda([], "Admin");
 
     expect(await visit("/sales-processing")).toBe("/no-access");
   });
