@@ -26,7 +26,7 @@ describe("module switcher entries a person sees", () => {
   const shown = (allowed: string[] | null) => visibleSystems(systems, allowed).map((s) => s.fullName);
 
   it("shows only the Portal and POS to someone granted POS only", () => {
-    expect(shown(["POS"])).toEqual(["Enterprise Portal", "Point of Sale"]);
+    expect(shown(["POS"])).toEqual(["Enterprise Portal", "Point of Sale System"]);
   });
 
   it("gives CREOMS its full name, without the retired marketing Module", () => {
