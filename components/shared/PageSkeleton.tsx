@@ -307,9 +307,6 @@ export function OrderManagementSkeleton() {
         <PageTitle title="Order Management" subtitle="Track and manage all orders" />
         <div className="flex items-center gap-3">
           <Bone className="h-10 w-36 rounded-xl" />
-          <Bone className="h-12 w-72 rounded-xl" />
-          <Bone className="h-12 w-[88px] rounded-xl" />
-          <Bone className="h-12 w-28 rounded-xl" />
         </div>
       </div>
       <div className="flex gap-1 overflow-hidden">
@@ -325,6 +322,12 @@ export function OrderManagementSkeleton() {
             <Bone className="h-4 w-4 rounded-full" />
           </span>
         ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 rounded-t-xl border border-border px-3 py-2.5">
+        <Bone className="h-9 w-full sm:w-80" />
+        <Bone className="h-8 w-28" />
+        <Bone className="h-8 w-24" />
+        <Bone className="ml-auto hidden h-8 w-20 sm:block" />
       </div>
       <OrderListSkeleton />
     </Shell>

@@ -13,7 +13,7 @@ vi.mock("@/components/module-pos/OrderCard", () => ({
 vi.mock("@/components/module-pos/api", () => ({
   apiClient: { apiPos: { orderManagementOrdersList: async () => ({
     data: [
-      ...Array.from({ length: 9 }, (_, i) => ({ orderId: i + 1, orderType: "Store", orderStatus: i === 8 ? "Shipped" : "Processing" })),
+      ...Array.from({ length: 9 }, (_, i) => ({ orderId: i + 1, orderNumber: "TEST-" + (i + 1), orderType: i === 8 ? "Institutional" : "Store", orderStatus: i === 8 ? "Shipped" : "Processing" })),
       ...["Refund Requested", "Refunded", "Void Requested", "Voided"].map((orderStatus, i) => ({
         orderId: 10 + i, orderType: "Store", orderStatus,
       })),
@@ -44,12 +44,15 @@ it("pages nine orders in both directions when only four rows fit", async () => {
 });
 
 it.each([["Active", "Shipped", 9], ["Refunds", "Refunded", 11], ["Voids", "Voided", 13]] as const)(
-  "%s starts with all statuses and can filter and clear from the footer",
+  "%s starts with all statuses and can filter and clear from the toolbar",
   async (tab, status, id) => {
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
     render(<ViewOrderManagement />);
     await screen.findByText("Order 1");
     fireEvent.click(screen.getByRole("tab", { name: new RegExp(tab) }));
+    const channel = screen.getByRole("button", { name: "All Channels" });
+    expect(channel.parentElement?.nextElementSibling?.contains(screen.getByRole("button", { name: "All statuses" }))).toBe(true);
+    expect(screen.queryByRole("button", { name: "Filters" })).toBeNull();
     const total = tab === "Active" ? 9 : 2;
     expect(screen.getByText(new RegExp("Showing .* of " + total))).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "All statuses" }));
@@ -61,3 +64,17 @@ it.each([["Active", "Shipped", 9], ["Refunds", "Refunded", 11], ["Voids", "Voide
     expect(screen.getByText(new RegExp("Showing .* of " + total))).toBeTruthy();
   },
 );
+
+it("combines order reference search with the channel selection", async () => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  render(<ViewOrderManagement />);
+  await screen.findByText("Order 1");
+  fireEvent.click(screen.getByRole("button", { name: "All Channels" }));
+  fireEvent.click(screen.getByRole("button", { name: "Institutional" }));
+  expect(screen.getByText("Order 9")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Institutional" }));
+  fireEvent.click(screen.getByRole("button", { name: "Walk-in" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Search orders" }), { target: { value: "TEST-2" } });
+  expect(screen.getByText("Order 2")).toBeTruthy();
+  expect(screen.getByText(/Showing .* of 1$/)).toBeTruthy();
+});

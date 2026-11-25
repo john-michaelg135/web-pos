@@ -3,7 +3,7 @@
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Search, Filter, LayoutGrid, List } from "lucide-react";
+import { Search, LayoutGrid, List } from "lucide-react";
 import { DeliveryConfirmationInput, Order, OrderStatus, REFUND_METHOD_HINT, STATUS_LABELS, SubmitOutcome, latestRefundWasRejected, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
@@ -13,7 +13,6 @@ import RejectRefundDialog from "@/components/module-pos/RejectRefundDialog";
 import RejectVoidDialog from "@/components/module-pos/RejectVoidDialog";
 import ApproveRefundDialog from "@/components/module-pos/ApproveRefundDialog";
 import ApproveVoidDialog from "@/components/module-pos/ApproveVoidDialog";
-import OrderFilters from "@/components/module-pos/OrderFilters";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { OrderManagementResponseDto, RefundItemDto } from "../../components/module-pos/api/api";
 import { toast, type ToastDetail } from "@/lib/toast";
@@ -149,12 +148,10 @@ export default function ViewOrderManagement() {
   const [refundSubTab, setRefundSubTab] = useState<RefundSubTab | "all">("all");
   const [voidSubTab, setVoidSubTab] = useState<VoidSubTab | "all">("all");
   const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("pos"); // Soft-delete: default to pos
-  const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("All");
-  const [filterStatus, setFilterStatus] = useState<string>("All");
   const [filterLocation, setFilterLocation] = useState<string>("All");
   const locationIndicator = locationsLoading
     ? "Loading location..."
@@ -319,7 +316,7 @@ export default function ViewOrderManagement() {
   ]);
 
   // Pin non-super users to their assigned branch. Super users ("all" scope)
-  // keep the "All" default and may switch freely via the filters.
+  // see all branches.
   useEffect(() => {
     if (canSwitchLocation) return;
     if (assignedLocation) {
@@ -327,15 +324,6 @@ export default function ViewOrderManagement() {
       setFilterLocation(assignedLocation.locationName || "Store");
     }
   }, [canSwitchLocation, assignedLocation]);
-
-  const resetFilters = () => {
-    setFilterType("All");
-    setFilterStatus("All");
-    if (!canSwitchLocation) {
-      setFilterLocation(cashierLocationName || "Store");
-    } else { setFilterLocation("All"); }
-    setSearchQuery("");
-  };
 
   // A notification selects the matching order across the full branch history.
   if (linkedOrderId !== handledOrderLink) {
@@ -356,7 +344,6 @@ export default function ViewOrderManagement() {
         if (voidSub) setVoidSubTab(voidSub);
         setSearchQuery("");
         setFilterType("All");
-        setFilterStatus("All");
       }
     }
   }
@@ -393,7 +380,8 @@ export default function ViewOrderManagement() {
       if (channelTab === "pos" && isWebOrder && !isRefundStatus) return false;
       if (channelTab === "web" && !isWebOrder) return false;
       if (searchQuery && !o.id.toLowerCase().includes(searchQuery.toLowerCase()) && !o.customer.toLowerCase().includes(searchQuery.toLowerCase()) && !(o.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase())) && !(o.date?.toLowerCase().includes(searchQuery.toLowerCase()))) return false;
-      if (filterType !== "All" && o.type.toLowerCase() !== filterType.toLowerCase()) return false;
+      const channel = o.type === "store" ? "walk-in" : o.type;
+      if (filterType !== "All" && channel !== filterType.toLowerCase()) return false;
       if (filterLocation !== "All") {
         const matchesName = o.location && o.location.toLowerCase() === filterLocation.toLowerCase();
         const matchesAssigned = assignedLocation?.locationId != null && o.locationId === assignedLocation.locationId;
@@ -401,7 +389,7 @@ export default function ViewOrderManagement() {
       }
       return true;
     });
-  }, [orders, focusOrderId, channelTab, searchQuery, filterType, filterStatus, filterLocation, authUser, cashierLocationName, canSwitchLocation, isCashierLevel, assignedLocation]);
+  }, [orders, focusOrderId, channelTab, searchQuery, filterType, filterLocation, authUser, cashierLocationName, canSwitchLocation, isCashierLevel, assignedLocation]);
 
   const handleApproveVoid = (order: Order) => { setOrderToApproveVoid(order); setShowApproveVoidDialog(true); };
 
@@ -734,7 +722,7 @@ export default function ViewOrderManagement() {
     };
   }, [hasRows, isLoading, isMounted, authLoading, hasAccess, activeTab, isMobile, viewMode, focusOrderId, linkedOrderMissing]);
 
-  const filterKey = JSON.stringify([activeTab, activeStatus, refundSubTab, voidSubTab, channelTab, searchQuery, filterType, filterStatus, filterLocation, focusOrderId, assignedLocation?.locationId, viewMode, isMobile]);
+  const filterKey = JSON.stringify([activeTab, activeStatus, refundSubTab, voidSubTab, channelTab, searchQuery, filterType, filterLocation, focusOrderId, assignedLocation?.locationId, viewMode, isMobile]);
   const [pagination, setPagination] = useState({ filterKey, page: 1 });
   const pageCount = Math.max(1, Math.ceil(currentOrders.length / pageSize));
   const page = pagination.filterKey === filterKey ? Math.min(pagination.page, pageCount) : 1;
@@ -754,26 +742,6 @@ export default function ViewOrderManagement() {
         {currentOrders.length ? `Showing ${(offset + 1).toLocaleString()}–${(offset + pageOrders.length).toLocaleString()} of ${currentOrders.length.toLocaleString()}` : "Showing 0 of 0"}
       </span>
       <div className="flex flex-wrap items-center gap-2">
-        {activeTab === "active" && (
-          <OrderStatusFilter<"processing" | "shipped"> value={activeStatus} onChange={setActiveStatus} options={[
-            { value: "processing", label: "Processing", count: activeGroups.processing.length },
-            { value: "shipped", label: "Shipped", count: activeGroups.shipped.length },
-          ]} />
-        )}
-        {activeTab === "refunds" && (
-          <OrderStatusFilter<RefundSubTab> value={refundSubTab} onChange={setRefundSubTab} options={[
-            { value: "requested", label: "Refund Requests", count: refundRequests.length },
-            { value: "refunded", label: "Refunded", count: refundedOrders.length },
-            { value: "rejected", label: "Rejected", count: rejectedRefunds.length },
-          ]} />
-        )}
-        {activeTab === "voids" && (
-          <OrderStatusFilter<VoidSubTab> value={voidSubTab} onChange={setVoidSubTab} options={[
-            { value: "requested", label: "Void Requests", count: voidRequests.length },
-            { value: "voided", label: "Voided", count: voidedOrders.length },
-            { value: "rejected", label: "Rejected", count: rejectedVoids.length },
-          ]} />
-        )}
         <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPagination({ filterKey, page: page - 1 })}>Previous</Button>
         <Button variant="outline" size="sm" disabled={page === pageCount} onClick={() => setPagination({ filterKey, page: page + 1 })}>Next</Button>
       </div>
@@ -809,7 +777,7 @@ export default function ViewOrderManagement() {
             </button>
           )}
         </div>
-        <div className={cn("flex items-center gap-3", isMobile && "w-full gap-2")}>
+        <div className={cn("flex items-center gap-3", (isMobile || isCashierLevel) && "hidden")}>
           {!isMobile && !isCashierLevel && (
             <button
               onClick={handleViewManagerPin}
@@ -823,38 +791,9 @@ export default function ViewOrderManagement() {
               View My PIN
             </button>
           )}
-          <div className="relative w-full min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder={isMobile ? "Search orders..." : "Search ID or Date..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} maxLength={25} className={cn("pl-10", isMobile ? "h-11" : "h-12")} />
-          </div>
-          {!isMobile && (
-            <div className="flex bg-muted/50 p-1 rounded-xl h-12 shrink-0">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          )}
-          <Button
-            variant={showFilters ? "default" : "outline"}
-            onClick={() => setShowFilters(!showFilters)}
-            aria-label="Filters"
-            className={cn("gap-2 rounded-xl text-xs font-bold uppercase shrink-0", isMobile ? "h-11 w-11 p-0" : "h-12")}
-          >
-            <Filter className="h-3.5 w-3.5" />{!isMobile && "Filters"}
-          </Button>
         </div>
       </div>
 
-      <OrderFilters show={showFilters} onClose={() => setShowFilters(false)} filterType={filterType} setFilterType={setFilterType} filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterLocation={filterLocation} setFilterLocation={setFilterLocation} resetFilters={resetFilters} canSwitchLocation={canSwitchLocation} locationOptions={orders.reduce<string[]>((acc, o) => { if (o.location && o.location !== "Unknown" && !acc.includes(o.location)) acc.push(o.location); return acc; }, [])} />
 
       {/* Channel Tabs — hidden for cashier-level users (no cross-channel view) */}
       {/* SOFT DELETE: Web Orders are now handled by CRMS
@@ -922,7 +861,56 @@ export default function ViewOrderManagement() {
         })}
       </div>
 
-      {/* Content */}
+      <section aria-label="Order results" className={cn("min-w-0", !isMobile && viewMode === "list" && "overflow-hidden rounded-xl border border-border bg-card shadow-sm")}>
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5">
+          <div className="relative w-full sm:w-80">
+            <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input aria-label="Search orders" placeholder="Search order or reference" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="h-9 pl-9 text-sm shadow-none" />
+          </div>
+          <CustomSelect compact value={filterType} onChange={setFilterType} options={[
+            { value: "All", label: "All Channels" },
+            { value: "Walk-in", label: "Walk-in" },
+            { value: "Institutional", label: "Institutional" },
+          ]} />
+          {activeTab === "active" && (
+            <OrderStatusFilter<"processing" | "shipped"> value={activeStatus} onChange={setActiveStatus} options={[
+              { value: "processing", label: "Processing", count: activeGroups.processing.length },
+              { value: "shipped", label: "Shipped", count: activeGroups.shipped.length },
+            ]} />
+          )}
+          {activeTab === "refunds" && (
+            <OrderStatusFilter<RefundSubTab> value={refundSubTab} onChange={setRefundSubTab} options={[
+              { value: "requested", label: "Refund Requests", count: refundRequests.length },
+              { value: "refunded", label: "Refunded", count: refundedOrders.length },
+              { value: "rejected", label: "Rejected", count: rejectedRefunds.length },
+            ]} />
+          )}
+          {activeTab === "voids" && (
+            <OrderStatusFilter<VoidSubTab> value={voidSubTab} onChange={setVoidSubTab} options={[
+              { value: "requested", label: "Void Requests", count: voidRequests.length },
+              { value: "voided", label: "Voided", count: voidedOrders.length },
+              { value: "rejected", label: "Rejected", count: rejectedVoids.length },
+            ]} />
+          )}
+          {!isMobile && (
+            <div className="ml-auto flex bg-muted/50 p-0.5 rounded-lg h-8 shrink-0">
+              <button
+                aria-label="Grid view"
+                onClick={() => setViewMode("grid")}
+                className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                aria-label="List view"
+                onClick={() => setViewMode("list")}
+                className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
       {isLoading ? (
         <OrderListSkeleton viewMode={isMobile ? "grid" : viewMode} />
       ) : (
@@ -959,7 +947,7 @@ export default function ViewOrderManagement() {
                 />
               ))
             ) : viewMode === "list" && currentOrders.length > 0 ? (
-              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+              <div className="min-w-0">
                 <div className="overflow-x-auto">
                 <table className="w-full table-fixed text-left border-collapse min-w-[800px]">
                   <thead>
@@ -1034,6 +1022,8 @@ export default function ViewOrderManagement() {
           {(isMobile || viewMode === "grid" || currentOrders.length === 0) && paginationFooter}
         </div>
       )}
+
+      </section>
 
       {/* Dialogs */}
             <VoidFormDialog isOpen={showVoidDialog} onClose={() => setShowVoidDialog(false)} order={selectedOrder} reason={voidReason} setReason={setVoidReason} onSubmit={handleRequestVoidSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
