@@ -17,7 +17,8 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LocationManagementTabs } from "@/components/module-pos/LocationManagementTabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 
 import { BranchTableSkeleton, LocationManagementSkeleton, StaffTableSkeleton } from "@/components/shared/PageSkeleton";
 
@@ -398,21 +399,7 @@ export default function ViewLocationsManagement() {
       </div>
 
       <Tabs defaultValue="branches" className="w-full">
-        {/* Same switcher as Product Management's Products / Variations */}
-        <TabsList className="h-auto bg-muted p-1 rounded-xl w-full sm:w-fit">
-          <TabsTrigger
-            value="branches"
-            className="flex-1 sm:flex-none h-auto px-6 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
-          >
-            Branches
-          </TabsTrigger>
-          <TabsTrigger
-            value="staff"
-            className="flex-1 sm:flex-none h-auto px-6 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
-          >
-            Staff Assignment
-          </TabsTrigger>
-        </TabsList>
+        <LocationManagementTabs />
 
         {/* ── Branches ── */}
         <TabsContent value="branches" className="mt-4">
@@ -468,6 +455,8 @@ export default function ViewLocationsManagement() {
                           <td className="px-5 py-4 align-middle">
                             <div className="flex items-center gap-2">
                               <Switch
+                                disabled={Number(loc.locationId) === 999 || loc.locationName?.trim().toLowerCase() === "commissary"}
+                                aria-label={`Active status for ${loc.locationName}`}
                                 checked={!!loc.isActive}
                                 onCheckedChange={() => toggleBranchActive(loc)}
                               />

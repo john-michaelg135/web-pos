@@ -43,7 +43,7 @@ interface StockLevelGridProps {
 
 /** "2 open requests" on an item that has stock on its way from IMS; hidden when there are none. */
 function OpenRequestsChip({ count, onClick }: { count: number; onClick?: () => void }) {
-  if (count <= 0) return null;
+  if (count <= 0) return <span aria-hidden className="mt-2 block h-6" />;
   const label = `${count} open request${count === 1 ? "" : "s"}`;
   return (
     <button
@@ -51,7 +51,7 @@ function OpenRequestsChip({ count, onClick }: { count: number; onClick?: () => v
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       disabled={!onClick}
       title="See this item's requests to IMS"
-      className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-bold text-purple-700 transition-colors hover:bg-purple-500/20 dark:text-purple-300"
+      className="mt-2 flex h-6 w-fit items-center gap-1.5 whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-bold text-purple-700 transition-colors hover:bg-purple-500/20 dark:text-purple-300"
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
       {label}
@@ -270,8 +270,8 @@ export function StockLevelGrid({ selectedLocation, searchQuery, viewMode, onAdju
                         {renderVariationBadges(stock.variationName || "", muted, border, inputBg, true)}
                         {requestChip(stock)}
                       </td>
-                      <td className="px-6 py-4 text-gray-500 dark:text-gray-400 text-xs font-bold">
-                        {stock.productName}
+                      <td className="px-6 py-4 text-xs font-bold">
+                        <span className="text-primary">{stock.productName}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">

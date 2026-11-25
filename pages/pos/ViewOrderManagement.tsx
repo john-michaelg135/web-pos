@@ -3,7 +3,7 @@
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Search, LayoutGrid, List } from "lucide-react";
+import { Search } from "lucide-react";
 import { DeliveryConfirmationInput, Order, OrderStatus, REFUND_METHOD_HINT, STATUS_LABELS, SubmitOutcome, latestRefundWasRejected, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
 import RefundFormDialog from "@/components/module-pos/RefundFormDialog";
@@ -63,7 +63,7 @@ function OrderStatusFilter<T extends string>({ value, onChange, options }: {
       onChange={(selected) => onChange(options.find((option) => option.value === selected)?.value ?? "all")}
       compact
       options={[
-        { value: "all", label: "All statuses" },
+        { value: "all", label: "All Statuses" },
         ...options.map(({ value, label, count }) => ({ value, label: `${label} (${count})` })),
       ]}
     />
@@ -149,7 +149,6 @@ export default function ViewOrderManagement() {
   const [refundSubTab, setRefundSubTab] = useState<RefundSubTab | "all">("all");
   const [voidSubTab, setVoidSubTab] = useState<VoidSubTab | "all">("all");
   const [channelTab, setChannelTab] = useState<"all" | "pos" | "web">("pos"); // Soft-delete: default to pos
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("All");
@@ -716,9 +715,9 @@ export default function ViewOrderManagement() {
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [hasRows, isLoading, isMounted, authLoading, hasAccess, activeTab, isMobile, viewMode, focusOrderId, linkedOrderMissing]);
+  }, [hasRows, isLoading, isMounted, authLoading, hasAccess, activeTab, isMobile, focusOrderId, linkedOrderMissing]);
 
-  const filterKey = JSON.stringify([activeTab, activeStatus, refundSubTab, voidSubTab, channelTab, searchQuery, filterType, filterLocation, focusOrderId, assignedLocation?.locationId, viewMode, isMobile]);
+  const filterKey = JSON.stringify([activeTab, activeStatus, refundSubTab, voidSubTab, channelTab, searchQuery, filterType, filterLocation, focusOrderId, assignedLocation?.locationId, isMobile]);
   const [pagination, setPagination] = useState({ filterKey, page: 1 });
   const pageCount = Math.max(1, Math.ceil(currentOrders.length / pageSize));
   const page = pagination.filterKey === filterKey ? Math.min(pagination.page, pageCount) : 1;
@@ -857,7 +856,7 @@ export default function ViewOrderManagement() {
         })}
       </div>
 
-      <section aria-label="Order results" className={cn("min-w-0", !isMobile && viewMode === "list" && "overflow-hidden rounded-xl border border-border bg-card shadow-sm")}>
+      <section aria-label="Order results" className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5">
           <div className="relative w-full sm:w-80">
             <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -888,61 +887,13 @@ export default function ViewOrderManagement() {
               { value: "rejected", label: "Rejected", count: rejectedVoids.length },
             ]} />
           )}
-          {!isMobile && (
-            <div className="ml-auto flex bg-muted/50 p-0.5 rounded-lg h-8 shrink-0">
-              <button
-                aria-label="Grid view"
-                onClick={() => setViewMode("grid")}
-                className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-              <button
-                aria-label="List view"
-                onClick={() => setViewMode("list")}
-                className={cn("px-3 h-full rounded-lg transition-colors flex items-center justify-center", viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-          )}
         </div>
       {isLoading ? (
-        <OrderListSkeleton viewMode={isMobile ? "grid" : viewMode} />
+        <OrderListSkeleton />
       ) : (
         <div className="flex flex-col gap-4 w-full">
-          <div ref={resultsRef} className={cn(
-            isMobile
-              ? "flex flex-col gap-3 w-full"
-              : viewMode === "grid"
-              ? "grid gap-6 grid-cols-[repeat(auto-fill,minmax(450px,1fr))]"
-              : "flex flex-col gap-4 w-full"
-          )}>
-            {isMobile ? (
-              pageOrders.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  primary={LEGACY_COLORS.primary}
-                  muted={LEGACY_COLORS.muted}
-                  border={LEGACY_COLORS.border}
-                  text={LEGACY_COLORS.text}
-                  cardBg={LEGACY_COLORS.cardBg}
-                  inputBg={LEGACY_COLORS.inputBg}
-                  onRequestRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
-                  onRequestVoid={() => { setSelectedOrder(order); setShowVoidDialog(true); }}
-                  onApplyVoid={() => handleApproveVoid(order)}
-                  onRejectVoid={() => handleRejectVoid(order)}
-                  onApplyRefund={() => handleApproveRefund(order)}
-                  onRejectRefund={() => handleRejectRefund(order)}
-                  onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
-                  onCompletePayment={() => completePayment(order.id)}
-                  onConfirmDelivery={(details: DeliveryConfirmationInput) => confirmDelivery(order.id, details)}
-                  isMobile
-                  viewMode="compact"
-                />
-              ))
-            ) : viewMode === "list" && currentOrders.length > 0 ? (
+          <div ref={resultsRef} className="flex w-full flex-col gap-4">
+            {currentOrders.length > 0 && (
               <div className="min-w-0">
                 <div className="overflow-x-auto">
                 <table className="w-full table-fixed text-left border-collapse min-w-[800px]">
@@ -984,30 +935,6 @@ export default function ViewOrderManagement() {
                 </div>
                 {paginationFooter}
               </div>
-            ) : (
-              pageOrders.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  primary={LEGACY_COLORS.primary}
-                  muted={LEGACY_COLORS.muted}
-                  border={LEGACY_COLORS.border}
-                  text={LEGACY_COLORS.text}
-                  cardBg={LEGACY_COLORS.cardBg}
-                  inputBg={LEGACY_COLORS.inputBg}
-                  onRequestRefund={() => { setSelectedOrder(order); setShowRefundDialog(true); }}
-                  onRequestVoid={() => { setSelectedOrder(order); setShowVoidDialog(true); }}
-                  onApplyVoid={() => handleApproveVoid(order)}
-                  onRejectVoid={() => handleRejectVoid(order)}
-                  onApplyRefund={() => handleApproveRefund(order)}
-                  onRejectRefund={() => handleRejectRefund(order)}
-                  onStatusUpdate={(s: OrderStatus) => updateOrderStatus(order.id, s)}
-                  onCompletePayment={() => completePayment(order.id)}
-                  onConfirmDelivery={(details: DeliveryConfirmationInput) => confirmDelivery(order.id, details)}
-                  isMobile={isMobile}
-                  viewMode="grid"
-                />
-              ))
             )}
             {currentOrders.length === 0 && (
               <div className="col-span-full text-center py-12 text-muted-foreground">
@@ -1015,7 +942,7 @@ export default function ViewOrderManagement() {
               </div>
             )}
           </div>
-          {(isMobile || viewMode === "grid" || currentOrders.length === 0) && paginationFooter}
+          {currentOrders.length === 0 && paginationFooter}
         </div>
       )}
 

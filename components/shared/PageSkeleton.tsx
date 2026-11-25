@@ -1,4 +1,6 @@
-import { ChevronDown, LayoutGrid, List, Search } from "lucide-react";
+import { Tabs } from "@/components/ui/tabs";
+import { LocationManagementTabs } from "@/components/module-pos/LocationManagementTabs";
+import { ChevronDown, Search } from "lucide-react";
 import { OrderTablePlaceholder } from "./OrderTablePlaceholder";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -16,7 +18,7 @@ export function Bone({ className, style }: { className?: string; style?: CSSProp
 }
 
 /** What a column holds, so its placeholder has the right shape. */
-export type CellKind = "text" | "short" | "num" | "badge" | "button" | "stack" | "variation";
+export type CellKind = "text" | "short" | "num" | "badge" | "button" | "stack" | "variation" | "stockVariation";
 
 function CellBone({ kind }: { kind: CellKind }) {
   switch (kind) {
@@ -34,6 +36,13 @@ function CellBone({ kind }: { kind: CellKind }) {
           <Bone className="h-4 w-28 rounded-md" />
           <Bone className="h-3 w-16 rounded-md" />
         </div>
+      );
+    case "stockVariation":
+      return (
+        <>
+          <CellBone kind="variation" />
+          <Bone className="mt-2 h-6 w-24 rounded-full" />
+        </>
       );
     case "variation":
       return (
@@ -190,7 +199,7 @@ function StockCardBone() {
       <div className="p-4 sm:p-5 flex flex-col gap-3">
         <Bone className="h-3 w-24 rounded-md" />
         <Bone className="h-5 w-40 rounded-md" />
-        <CellBone kind="variation" />
+        <CellBone kind="stockVariation" />
         <div className="flex items-end justify-between mt-3">
           <Bone className="h-9 w-20 rounded-lg" />
           <Bone className="h-6 w-20 rounded-md" />
@@ -213,14 +222,32 @@ export function StockLevelsSkeleton({ viewMode = "grid", withSearch = true }: { 
   return (
     <div className="w-full min-w-0" role="status" aria-label="Loading stock levels">
       {withSearch && <Bone className="mb-5 h-10 w-full sm:max-w-[280px] rounded-xl" />}
+      <div className="space-y-2.5 md:hidden">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} aria-hidden className="rounded-xl border border-border bg-card p-3.5">
+            <div className="flex items-start justify-between">
+              <div>
+                <Bone className="h-4 w-20 rounded-md" />
+                <Bone className="mt-0.5 h-4 w-32 rounded-md" />
+                <div className="mt-1.5"><CellBone kind="stockVariation" /></div>
+              </div>
+              <Bone className="h-7 w-10 rounded-md" />
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <Bone className="h-2 flex-1 rounded-full" />
+              <Bone className="h-9 w-20 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
       {viewMode === "table" ? (
         <SkeletonTable
-          frameClassName="bg-card border border-border rounded-2xl shadow-sm"
+          frameClassName="hidden md:block bg-card border border-border rounded-2xl shadow-sm"
           thClassName="px-6 py-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
           cellClassName="px-6 py-4"
           rows={7}
           columns={[
-            { label: "Variation", kind: "variation" },
+            { label: "Variation", kind: "stockVariation" },
             { label: "Product", kind: "text" },
             { label: "Location", kind: "badge" },
             { label: "Available Stock", kind: "num", align: "right" },
@@ -230,7 +257,7 @@ export function StockLevelsSkeleton({ viewMode = "grid", withSearch = true }: { 
           ]}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: 6 }, (_, i) => (
             <StockCardBone key={i} />
           ))}
@@ -330,18 +357,13 @@ export function OrderManagementSkeleton() {
           <div className="flex h-9 w-full items-center gap-2 rounded-md border border-input px-3 text-sm text-muted-foreground sm:w-80">
             <Search className="size-4" /> Search order or reference
           </div>
-          {["All Channels", "All statuses"].map(label => (
+          {["All Channels", "All Statuses"].map(label => (
             <span key={label} className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-input px-3 text-xs font-semibold">
               {label}<ChevronDown className="size-4 text-muted-foreground" />
             </span>
           ))}
-          <div className="ml-auto hidden h-8 items-stretch rounded-lg bg-muted/50 p-0.5 min-[769px]:flex">
-            <span className="flex items-center px-3 text-muted-foreground"><LayoutGrid className="size-4" /></span>
-            <span className="flex items-center rounded-lg bg-background px-3 shadow-sm"><List className="size-4" /></span>
-          </div>
         </div>
-        <div className="hidden min-[769px]:block"><OrderListSkeleton /></div>
-        <div className="min-[769px]:hidden"><OrderListSkeleton viewMode="grid" /></div>
+        <OrderListSkeleton />
       </div>
     </Shell>
   );
@@ -455,10 +477,9 @@ export function LocationManagementSkeleton() {
         <p className="text-sm text-muted-foreground mt-1">Manage branches and assign staff to the locations they work at.</p>
       </div>
       <div className="space-y-4">
-        <div className="inline-flex h-9 items-center rounded-lg bg-muted p-1 text-sm font-medium">
-          <span className="px-3 py-1 rounded-md bg-background shadow-sm text-foreground">Branches</span>
-          <span className="px-3 py-1 text-muted-foreground">Staff Assignment</span>
-        </div>
+        <Tabs value="branches" inert aria-hidden="true">
+          <LocationManagementTabs />
+        </Tabs>
         <div className="rounded-xl border border-border bg-card p-6 flex items-start justify-between gap-4">
           <div className="space-y-2 flex-1">
             <p className="text-base font-semibold text-foreground m-0">Branches</p>

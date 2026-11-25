@@ -176,7 +176,7 @@ export function PriceHistoryTable({ products, changes, isLoading, error }: {
                   <tr key={c.priceId} className="border-b border-border/60 last:border-0 hover:bg-muted/30">
                     <td className="px-5 py-3.5 align-top"><Period change={c} /></td>
                     <td className="px-5 py-3.5 align-top">
-                      <div className="font-semibold text-foreground">{c.productName}</div>
+                      <div className="font-semibold text-primary">{c.productName}</div>
                       <div className="text-xs text-muted-foreground">{variationLabel(c.variationName)}</div>
                     </td>
                     <td className="px-5 py-3.5 align-top tabular-nums text-muted-foreground">

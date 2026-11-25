@@ -35,7 +35,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
           {movements.length === 0 ? (
             <li className="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">No movements recorded yet.</li>
           ) : (
-            [...movements].reverse().map((m) => {
+            movements.map((m) => {
               const variation = MOCK_VARIATIONS.find(v => v.id === m.variationId);
               const product = MOCK_PRODUCTS.find(p => p.id === variation?.productId);
               const pName = m.productName || product?.name || "Unknown";
@@ -88,7 +88,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                   </td>
                 </tr>
               ) : (
-                [...movements].reverse().map((m) => {
+                movements.map((m) => {
                   const variation = MOCK_VARIATIONS.find(v => v.id === m.variationId);
                   const product = MOCK_PRODUCTS.find(p => p.id === variation?.productId);
 
@@ -117,7 +117,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
                         })()}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <div className="text-[11px] sm:text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
+                        <div className="text-[11px] sm:text-sm font-semibold text-primary line-clamp-1">
                           {pName}
                         </div>
                         {vName && (

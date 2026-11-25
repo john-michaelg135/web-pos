@@ -104,14 +104,14 @@ export function StockRequestsPanel({ requests, isLoading, onRefresh, onSelect, s
               aria-selected={filter === f.value}
               onClick={() => setFilter(f.value)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                "inline-flex items-center gap-2 rounded-[10px] px-3 py-2 text-sm font-medium transition-colors",
                 filter === f.value
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted",
+                  ? "bg-primary/10 font-semibold text-primary"
+                  : "text-muted-foreground hover:bg-muted",
               )}
             >
               {f.label}
-              <span className={cn("rounded-full px-1.5 text-[10px] tabular-nums", filter === f.value ? "bg-white/20" : "bg-muted")}>
+              <span className={cn("rounded-full px-2 text-xs font-semibold tabular-nums", filter === f.value ? "bg-primary text-primary-foreground" : "bg-muted-foreground/15")}>
                 {counts[f.value]}
               </span>
             </button>

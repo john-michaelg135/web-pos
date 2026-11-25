@@ -91,7 +91,7 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
           filtered.map((v) => (
             <li key={v.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3.5 flex flex-col gap-2.5">
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white m-0 min-w-0">{productMap.get(v.productId) ?? v.productId}</p>
+                <p className="text-sm font-semibold text-primary m-0 min-w-0">{productMap.get(v.productId) ?? v.productId}</p>
                 <VariationStatus isActive={v.isActive} />
               </div>
               <div className="flex items-center gap-2 flex-wrap text-xs">
@@ -149,7 +149,7 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
                 filtered.map((v) => (
                   <tr key={v.id} className="border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td className="px-5 py-4">
-                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                      <div className="text-sm font-semibold text-primary">
                         {productMap.get(v.productId) ?? v.productId}
                       </div>
                     </td>

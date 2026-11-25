@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { toast } from "@/lib/toast";
-import { PackageCheck } from "lucide-react";
 import { apiClient } from "@/components/module-pos/api";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -262,7 +261,6 @@ export function TransferReceiveDialog({
                 Back
               </Button>
               <Button type="button" className="gap-2" onClick={submit} disabled={submitting}>
-                <PackageCheck className="h-4 w-4" />
                 {submitting ? "Receiving…" : "Confirm receipt"}
               </Button>
             </>

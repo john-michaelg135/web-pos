@@ -94,8 +94,8 @@ export function StockLossTable({ losses, isLoading, onRefresh, showBranch }: {
                 <th className="px-5 py-3.5">Item</th>
                 {showBranch && <th className="px-5 py-3.5">Branch</th>}
                 <th className="px-5 py-3.5">Reason</th>
-                <th className="px-5 py-3.5 text-right">Units</th>
-                <th className="px-5 py-3.5 text-right">Value lost</th>
+                <th className="px-5 py-3.5 text-left">Units</th>
+                <th className="px-5 py-3.5 text-left">Value lost</th>
                 <th className="px-5 py-3.5">Recorded by</th>
               </tr>
             </thead>
@@ -117,7 +117,7 @@ export function StockLossTable({ losses, isLoading, onRefresh, showBranch }: {
                       <div className="text-xs text-muted-foreground">Loss #{l.lossId}</div>
                     </td>
                     <td className="px-5 py-3.5 align-top">
-                      <div className="font-semibold text-foreground">{l.productName}</div>
+                      <div className="font-semibold text-primary">{l.productName}</div>
                       <div className="text-xs text-muted-foreground">{sizeLabel(l.variationName)}</div>
                     </td>
                     {showBranch && <td className="px-5 py-3.5 align-top text-muted-foreground">{l.locationName}</td>}
@@ -127,8 +127,8 @@ export function StockLossTable({ losses, isLoading, onRefresh, showBranch }: {
                       </span>
                       {l.notes && <p className="m-0 mt-1 max-w-[260px] text-xs text-muted-foreground">{l.notes}</p>}
                     </td>
-                    <td className="px-5 py-3.5 text-right align-top font-semibold tabular-nums text-destructive">−{l.quantity}</td>
-                    <td className="px-5 py-3.5 text-right align-top tabular-nums text-foreground">
+                    <td className="px-5 py-3.5 text-left align-top font-semibold tabular-nums text-destructive">−{l.quantity}</td>
+                    <td className="px-5 py-3.5 text-left align-top tabular-nums text-foreground">
                       {l.lossValue == null ? "—" : peso(l.lossValue)}
                       {l.unitPrice != null && <div className="text-xs text-muted-foreground">{peso(l.unitPrice)} each</div>}
                     </td>

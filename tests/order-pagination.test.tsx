@@ -51,16 +51,16 @@ it.each([["Active", "Shipped", 9], ["Refunds", "Refunded", 11], ["Voids", "Voide
     await screen.findByText("Order 1");
     fireEvent.click(screen.getByRole("tab", { name: new RegExp(tab) }));
     const channel = screen.getByRole("button", { name: "All Channels" });
-    expect(channel.parentElement?.nextElementSibling?.contains(screen.getByRole("button", { name: "All statuses" }))).toBe(true);
+    expect(channel.parentElement?.nextElementSibling?.contains(screen.getByRole("button", { name: "All Statuses" }))).toBe(true);
     expect(screen.queryByRole("button", { name: "Filters" })).toBeNull();
     const total = tab === "Active" ? 9 : 2;
     expect(screen.getByText(new RegExp("Showing .* of " + total))).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "All statuses" }));
+    fireEvent.click(screen.getByRole("button", { name: "All Statuses" }));
     fireEvent.click(screen.getByRole("button", { name: status + " (1)" }));
     expect(screen.getByText("Order " + id)).toBeTruthy();
     expect(screen.getByText(/Showing .* of 1$/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: status + " (1)" }));
-    fireEvent.click(screen.getByRole("button", { name: "All statuses" }));
+    fireEvent.click(screen.getByRole("button", { name: "All Statuses" }));
     expect(screen.getByText(new RegExp("Showing .* of " + total))).toBeTruthy();
   },
 );

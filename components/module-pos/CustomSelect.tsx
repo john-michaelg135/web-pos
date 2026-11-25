@@ -111,19 +111,20 @@ export function CustomSelect({
         type="button"
         disabled={disabled}
         onClick={handleToggle}
-        style={{
+        aria-expanded={isOpen}
+        className={compact ? "inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-input px-3 text-xs font-semibold text-foreground disabled:opacity-60" : undefined}
+        style={compact ? undefined : {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: 6,
           width: "100%",
-          padding: compact ? "0 0.75rem" : "8px 12px",
-          height: compact ? "2rem" : undefined,
+          padding: "8px 12px",
           borderRadius: 10,
           background: dark ? "#1a2231" : "#ffffff",
           border: `1px solid ${border}`,
           color: disabled ? muted : text,
-          fontSize: compact ? "0.75rem" : 13,
+          fontSize: 13,
           fontWeight: 600,
           cursor: disabled ? "not-allowed" : "pointer",
           opacity: disabled ? 0.6 : 1,
@@ -133,10 +134,11 @@ export function CustomSelect({
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
+          className={compact ? "text-muted-foreground" : undefined}
           style={{
             width: 16,
             height: 16,
-            color: muted,
+            color: compact ? undefined : muted,
             flexShrink: 0,
             transition: "transform 0.2s",
             transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
