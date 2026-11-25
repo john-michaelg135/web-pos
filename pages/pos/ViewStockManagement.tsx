@@ -50,12 +50,16 @@ export function ViewStockManagement() {
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<StockTab>("levels");
 
-  // Notification links: ?tab=receive&transferId=… or ?tab=levels&locationId=…&variationId=…
+  // Notification links: ?tab=receive&transferId=…, ?tab=levels&locationId=…&variationId=…
+  // or ?tab=requests&locationId=…&requestId=…
   const searchParams = useSearchParams();
   const linkTab = searchParams?.get("tab") ?? null;
   const linkTransferId = searchParams?.get("transferId") ?? "";
   const linkLocationId = Number(searchParams?.get("locationId")) || null;
   const linkVariationId = Number(searchParams?.get("variationId")) || null;
+  const linkRequestId = linkTab === "requests" ? searchParams?.get("requestId")?.trim() ?? "" : "";
+  // The linked request opens once the Requests list reloads, so the dialog shows IMS's decision.
+  const [pendingRequestLink, setPendingRequestLink] = useState<string | null>(null);
   const focusVariationId = linkTab === "levels" ? linkVariationId : null;
   // Applied while rendering when the link changes (not in an effect), so a new link opens its tab.
   const linkKey = searchParams?.toString() ?? "";
@@ -63,6 +67,7 @@ export function ViewStockManagement() {
   if (linkKey !== appliedLink) {
     setAppliedLink(linkKey);
     if (isStockTab(linkTab)) setActiveTab(linkTab);
+    setPendingRequestLink(linkRequestId || null);
   }
 
   // Only admins/owners (super users, "all" scope) may see or switch between
@@ -216,7 +221,15 @@ export function ViewStockManagement() {
       const { data } = await apiClient.instance.get<StockRequestRecord[]>("/api-pos/stock-requests", {
         params: locationId ? { locationId: String(locationId) } : {},
       });
-      setBranchRequests(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setBranchRequests(list);
+      const linked = pendingRequestLink;
+      if (linked) {
+        setPendingRequestLink(null);
+        const found = list.find((r) => r.requestId === linked);
+        if (found) setDetailRequest(found);
+        else toast.error(`Stock request ${linked} isn't in this branch's list.`);
+      }
     } catch (err) {
       console.error("Failed to fetch stock requests:", err);
       toast.error("Failed to load stock requests.");
@@ -278,7 +291,8 @@ export function ViewStockManagement() {
     if (activeTab === "requests") fetchBranchRequests();
     if (activeTab === "levels") fetchOpenRequestCounts();
     fetchInventoryMovements();
-  }, [activeTab, selectedLocation, locations]);
+    // linkKey: a new notification link reloads even when its tab is already open.
+  }, [activeTab, selectedLocation, locations, linkKey]);
 
   // A low-stock link names the branch; owners switch to it once the branches have loaded
   // (assigned staff are already pinned to theirs).
