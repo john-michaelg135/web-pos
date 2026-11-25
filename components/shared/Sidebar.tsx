@@ -125,13 +125,13 @@ export function Sidebar() {
                           </div>
                           <div className="flex flex-col min-w-0 overflow-hidden flex-1 justify-center gap-0.5">
                             <span
-                              className={`text-xs truncate leading-snug text-foreground ${
+                              className={`text-xs whitespace-normal break-words leading-snug text-foreground ${
                                 sys.active ? "font-semibold" : "font-medium"
                               }`}
                             >
                               {sys.fullName}
                             </span>
-                            <span className="text-[11px] text-muted-foreground truncate leading-tight">
+                            <span className="text-[11px] text-muted-foreground whitespace-normal break-words leading-tight">
                               {sys.desc}
                             </span>
                           </div>
