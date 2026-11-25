@@ -51,6 +51,8 @@ const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   "pos.void-rejected": CircleX,
   "pos.transfer-arrived": Package,
   "pos.low-stock": AlertTriangle,
+  "pos.stock-request-approved": CircleCheck,
+  "pos.stock-request-rejected": CircleX,
 };
 
 export function HeaderNotifications() {

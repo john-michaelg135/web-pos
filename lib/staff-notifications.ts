@@ -9,7 +9,9 @@ export type StaffAlertKind =
   | "pos.void-approved"
   | "pos.void-rejected"
   | "pos.transfer-arrived"
-  | "pos.low-stock";
+  | "pos.low-stock"
+  | "pos.stock-request-approved"
+  | "pos.stock-request-rejected";
 
 export type StaffAlert = {
   id: number;
