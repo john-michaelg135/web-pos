@@ -1,3 +1,5 @@
+import { OnlineSalesReportBody } from "@/components/module-pos/OnlineSalesReportBody";
+import { useUrlTab } from "@/lib/useUrlTab";
 import { VariationTableSkeleton } from "@/components/module-pos/VariationTable";
 import { Tabs } from "@/components/ui/tabs";
 import { LocationManagementTabs } from "@/components/module-pos/LocationManagementTabs";
@@ -148,14 +150,14 @@ function PageTitle({ title, subtitle, badge = true, action }: {
   );
 }
 
-/** Underlined tab row used while the page loads; the first tab is active. */
+/** Underlined tab row used while the page loads; all tabs are inactive. */
 function SubtabSkeleton({ labels, shortLabels }: { labels: string[]; shortLabels?: string[] }) {
   return (
     <div className={subtabListClass}>
       {labels.map((label, i) => (
         <span
           key={label}
-          data-state={i === 0 ? "active" : "inactive"}
+          data-state="inactive"
           className={cn(subtabClass, shortLabels && compactSubtabClass)}
         >
           {shortLabels ? (
@@ -447,7 +449,7 @@ export function LocationManagementSkeleton() {
         <p className="text-sm text-muted-foreground mt-1">Manage branches and assign staff to the locations they work at.</p>
       </div>
       <div className="space-y-4">
-        <Tabs value="branches" inert aria-hidden="true">
+        <Tabs value="" inert aria-hidden="true">
           <LocationManagementTabs />
         </Tabs>
         <div className="rounded-xl border border-border bg-card p-6 flex items-start justify-between gap-4">
@@ -627,23 +629,24 @@ export function ReportSkeleton() {
 /** Draws the tabs this Staff member will get: Online Sales for the General Manager and Owner, never for branch Managers. */
 export function SalesReportPageSkeleton() {
   const { tabs } = useSalesReportTabs();
+  const online = useUrlTab(tabs.map(tab => tab.value), "analytics") === "online";
   return (
     <Shell label="Loading sales report">
       <div className="flex flex-col gap-5">
-        <PageTitle title="Sales Report" subtitle="Company sales for a period, compared with the period before." />
+        <PageTitle title="Sales Report" subtitle={online ? "Online storefront sales from CREOMS, by product and size." : "Company sales for a period, compared with the period before."} />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Period</span>
             <Bone className="h-10 w-[180px] rounded-xl" />
           </div>
-          <div className="flex gap-3">
+          {!online && <div className="flex gap-3">
             <Bone className="h-9 w-24 rounded-md" />
             <Bone className="h-9 w-32 rounded-md" />
-          </div>
+          </div>}
         </div>
       </div>
       <SubtabSkeleton labels={tabs.map((tab) => tab.label)} />
-      <ReportSkeleton />
+      {online ? <OnlineSalesReportBody /> : <ReportSkeleton />}
     </Shell>
   );
 }

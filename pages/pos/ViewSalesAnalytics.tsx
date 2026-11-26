@@ -1,5 +1,6 @@
 "use client";
 
+import { setUrlTab, useUrlTab } from "@/lib/useUrlTab";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Printer } from "lucide-react";
@@ -8,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 import { isManager } from "@/lib/portal/roles";
-import { useSalesReportTabs, type ReportTab } from "@/components/module-pos/salesReportTabs";
+import { useSalesReportTabs } from "@/components/module-pos/salesReportTabs";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { apiClient } from "@/components/module-pos/api";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
@@ -103,25 +104,7 @@ export function ViewSalesAnalytics() {
 
   const isManagerUser = isManager(authUser?.role);
   const { tabs, canMoneyAudit, canOnlineSales } = useSalesReportTabs();
-  const [activeTab, setActiveTab] = useState<ReportTab>("analytics");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const tabParam = new URLSearchParams(window.location.search).get("tab");
-      if (tabParam === "money-audit" || tabParam === "analytics" || (tabParam === "online" && canOnlineSales)) {
-        setActiveTab(tabParam);
-      }
-    }
-  }, [canOnlineSales]);
-
-  const handleTabChange = (val: ReportTab) => {
-    setActiveTab(val);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("tab", val);
-      window.history.replaceState({}, "", url.toString());
-    }
-  };
+  const activeTab = useUrlTab(tabs.map(tab => tab.value), "analytics");
 
   const handlePresetChange = (next: PeriodPreset) => {
     setPreset(next);
@@ -391,7 +374,7 @@ export function ViewSalesAnalytics() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as ReportTab)} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setUrlTab} className="space-y-6">
         <TabsList className={cn(subtabListClass, "print:hidden")}>
           {tabs.map((tab) => (
             <TabsTrigger
@@ -418,7 +401,7 @@ export function ViewSalesAnalytics() {
                   to={onlineTo}
                   inStoreNetSales={reportData ? reportData.current.netSales : null}
                   branchLabel={branchName}
-                  onOpenDetail={() => handleTabChange("online")}
+                  onOpenDetail={() => setUrlTab("online")}
                 />
               ) : undefined
             }

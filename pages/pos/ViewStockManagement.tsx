@@ -1,5 +1,6 @@
 "use client";
 
+import { setUrlTab } from "@/lib/useUrlTab";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid, List } from "lucide-react";
@@ -48,12 +49,12 @@ export function ViewStockManagement() {
   const { scope, locations: myLocations } = useMyLocations();
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<StockTab>("levels");
 
   // Notification links: ?tab=receive&transferId=…, ?tab=levels&locationId=…&variationId=…
   // or ?tab=requests&locationId=…&requestId=…
   const searchParams = useSearchParams();
   const linkTab = searchParams?.get("tab") ?? null;
+  const activeTab = isStockTab(linkTab) ? linkTab : "levels";
   const linkTransferId = searchParams?.get("transferId") ?? "";
   const linkLocationId = Number(searchParams?.get("locationId")) || null;
   const linkVariationId = Number(searchParams?.get("variationId")) || null;
@@ -66,7 +67,6 @@ export function ViewStockManagement() {
   const [appliedLink, setAppliedLink] = useState<string | null>(null);
   if (linkKey !== appliedLink) {
     setAppliedLink(linkKey);
-    if (isStockTab(linkTab)) setActiveTab(linkTab);
     setPendingRequestLink(linkRequestId || null);
   }
 
@@ -342,7 +342,7 @@ export function ViewStockManagement() {
       variationId: Number(stock.variationId),
       label: stockRequestItemLabel({ productName: stock.productName ?? "", variationName: stock.variationName ?? "" }),
     });
-    setActiveTab("requests");
+    setUrlTab("requests");
   };
 
   // Cancel: IMS is asked first; the request is Cancelled only once IMS confirms.
@@ -482,7 +482,7 @@ export function ViewStockManagement() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as StockTab)} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setUrlTab} className="space-y-6">
         <TabsList className={subtabListClass}>
           {[
             { value: "levels", label: "Stock Levels", short: "Levels" },

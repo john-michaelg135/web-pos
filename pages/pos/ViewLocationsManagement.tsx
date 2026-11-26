@@ -1,5 +1,6 @@
 "use client";
 
+import { setUrlTab, useUrlTab } from "@/lib/useUrlTab";
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useEffect, useState, useCallback, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
@@ -164,6 +165,7 @@ function ModalShell({
 }
 
 export default function ViewLocationsManagement() {
+  const activeTab = useUrlTab(["branches", "staff"], "branches");
   const { user } = useAuth();
   const router = useRouter();
 
@@ -402,7 +404,7 @@ export default function ViewLocationsManagement() {
         </p>
       </div>
 
-      <Tabs defaultValue="branches" className="w-full">
+      <Tabs value={activeTab} onValueChange={setUrlTab} className="w-full">
         <LocationManagementTabs />
 
         {/* ── Branches ── */}

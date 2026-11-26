@@ -1,5 +1,6 @@
 "use client";
 
+import { setUrlTab, useUrlTab } from "@/lib/useUrlTab";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/lib/toast";
@@ -30,7 +31,7 @@ export default function ViewProductManagement() {
   const [variations, setVariations] = useState<Variation[]>([]);
   const [editVariation, setEditVariation] = useState<Variation | null>(null);
   const [historyVariation, setHistoryVariation] = useState<Variation | null>(null);
-  const [activeTab, setActiveTab] = useState<"pricing" | "history">("pricing");
+  const activeTab = useUrlTab(["pricing", "history"], "pricing");
   // Bumped after a price change so the history tab reloads.
   const [historyKey, setHistoryKey] = useState(0);
   // Variations with a stock record at each location, for branch staff's view.
@@ -219,7 +220,7 @@ export default function ViewProductManagement() {
         ))}
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pricing" | "history")} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setUrlTab} className="space-y-6">
         <TabsList className={subtabListClass}>
           {[
             { value: "pricing", label: "Pricing Configuration", short: "Pricing" },
