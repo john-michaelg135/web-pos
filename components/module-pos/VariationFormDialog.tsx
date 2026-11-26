@@ -4,13 +4,13 @@ import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Variation, Product } from "@/components/module-pos/types";
-import { CloseLineIcon } from "@/icons/index";
+
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
 interface VariationFormDialogProps {
   isOpen:   boolean;
   onClose:  () => void;
-  onSubmit: (variation: Omit<Variation, "id">) => void;
+  onSubmit: (variation: Omit<Variation, "id">, productImage?: string) => Promise<void>;
   initial?: Variation | null;
   products: Product[];
   existingSkus: string[];
@@ -43,7 +43,25 @@ export function VariationFormDialog({
   const [touched,       setTouched]       = useState<Set<string>>(new Set());
   const [ready,         setReady]         = useState(false);
 
+  const [file, setFile] = useState<File>();
+  const [saving, setSaving] = useState(false);
+  const [imageError, setImageError] = useState("");
+
+  const [preview, setPreview] = useState("");
+
   useEffect(() => {
+    if (!file) {
+      setPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  useEffect(() => {
+    setFile(undefined);
+    setImageError("");
     if (!isOpen) {
       setReady(false);
       return;
@@ -82,7 +100,7 @@ export function VariationFormDialog({
     }
 
     // Packaging Type: required, min 2, max, letters/numbers/spaces only
-    if (check("packagingType")) {
+    if (!isEdit && check("packagingType")) {
       const trimmed = packagingType.trim();
       if (!trimmed)                                       e.packagingType = "Packaging type is required";
       else if (trimmed.length < 2)                        e.packagingType = "Must be at least 2 characters";
@@ -91,7 +109,7 @@ export function VariationFormDialog({
     }
 
     // Size: required, positive numeric only
-    if (check("size")) {
+    if (!isEdit && check("size")) {
       const trimmed = sizeValue.trim();
       if (!trimmed)                                       e.size = "Size is required";
       else if (trimmed.length > SIZE_MAX)                 e.size = `Must not exceed ${SIZE_MAX} characters`;
@@ -129,7 +147,7 @@ export function VariationFormDialog({
     setTimeout(() => validate(), 0);
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setTouched(new Set(["productId", "packagingType", "size", "price", "sku"]));
     
     // Resolve name to ID if it matches an existing product name
@@ -144,15 +162,39 @@ export function VariationFormDialog({
 
     if (!validate(true, finalProductId)) return;
 
-    onSubmit({
-      productId: finalProductId,
-      packagingType: packagingType.trim(),
-      size:          `${sizeValue.trim()}${sizeUnit}`,
-      price:         Number(Number(price).toFixed(2)),
-      sku:           sku.trim().toUpperCase(),
-      isActive,
-    });
-    onClose();
+    setSaving(true);
+    try {
+      let productImage: string | undefined;
+      if (file) {
+        const bitmap = await createImageBitmap(file);
+        try {
+          const scale = Math.min(1, 384 / Math.max(bitmap.width, bitmap.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+          canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("Image conversion failed");
+          context.fillStyle = "#fff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+          productImage = canvas.toDataURL("image/jpeg", 0.85);
+        } finally {
+          bitmap.close();
+        }
+      }
+      await onSubmit({
+        productId: finalProductId,
+        packagingType: packagingType.trim(),
+        size:          `${sizeValue.trim()}${sizeUnit}`,
+        price:         Number(Number(price).toFixed(2)),
+        sku:           sku.trim().toUpperCase(),
+        isActive,
+      }, productImage);
+    } catch {
+      setImageError("Could not read the image. Choose a JPEG, PNG, or WebP file.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   // Sanitize size input
@@ -184,7 +226,7 @@ export function VariationFormDialog({
   const modalContent = (
     <>
       <div
-        onClick={onClose}
+        onClick={saving ? undefined : onClose}
         style={{ position: "fixed", inset: 0, zIndex: 99998, backgroundColor: "rgba(0, 0, 0, 0.6)" }}
       />
       <div
@@ -210,9 +252,9 @@ export function VariationFormDialog({
         <div style={{ padding: "16px 24px", borderBottom: "1px solid #e4e4e7", flexShrink: 0 }}>
           <div className="flex items-center justify-between gap-3">
             <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: "#18181b" }}>
-              {isEdit ? "Edit Variation Price" : "Add Variation"}
+              {isEdit ? "Edit Variation" : "Add Variation"}
             </h2>
-            <ModalCloseButton onClick={onClose} />
+            <ModalCloseButton onClick={() => { if (!saving) onClose(); }} />
           </div>
         </div>
 
@@ -365,6 +407,33 @@ export function VariationFormDialog({
               {!isEdit && errors.sku && <p className="mt-1 text-xs text-destructive font-medium">{errors.sku}</p>}
             </div>
 
+            {isEdit && (
+              <div className="sm:col-span-2">
+                <label className="block w-fit">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Product photo
+                  </span>
+                  <span className="relative flex h-36 w-36 cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 text-center hover:border-primary focus-within:ring-2 focus-within:ring-ring dark:border-gray-600 dark:bg-gray-800">
+                    {preview && <img src={preview} alt="" className="absolute inset-0 block h-full w-full object-contain" />}
+                    <span className={preview ? "absolute inset-x-0 bottom-0 bg-black/65 py-1.5 text-sm font-semibold text-white" : "text-sm font-semibold text-gray-700 dark:text-gray-200"}>
+                      {preview ? "Change photo" : "Add a photo"}
+                    </span>
+                    {!preview && <span className="text-xs text-gray-500 dark:text-gray-400">JPEG, PNG or WebP</span>}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving}
+                      className="sr-only"
+                      onChange={(event) => {
+                        const selected = event.target.files?.[0];
+                        if (selected) {
+                          setFile(selected);
+                          setImageError("");
+                        }
+                      }} />
+                  </span>
+                </label>
+                {imageError && <p role="alert" className="mt-1 text-xs text-destructive">{imageError}</p>}
+              </div>
+            )}
+
             {/* Active Toggle */}
             <div className="sm:col-span-2 flex items-center justify-between mt-1">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Active</label>
@@ -389,16 +458,17 @@ export function VariationFormDialog({
         {/* Footer */}
         <div style={{ padding: "12px 24px", borderTop: "1px solid #e4e4e7", display: "flex", justifyContent: "flex-end", gap: 8, backgroundColor: "#fafafa", borderRadius: "0 0 12px 12px", flexShrink: 0 }}>
           <button
-            onClick={onClose}
+            onClick={saving ? undefined : onClose}
             className="px-4 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent border border-border transition-colors"
           >
             Cancel
           </button>
           <button
+            disabled={saving}
             onClick={handleSubmit}
             className="px-5 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary/90 transition-colors shadow-sm"
           >
-            {isEdit ? "Update Price" : "Add Variation"}
+            {isEdit ? "Update" : "Add Variation"}
           </button>
         </div>
       </div>

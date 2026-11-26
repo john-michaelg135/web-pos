@@ -46,7 +46,15 @@ import { isSuperUser, probeRoleFor } from "@/lib/portal/roles";
 
 import { ProductCatalogSkeleton, SalesProcessingSkeleton } from "@/components/shared/PageSkeleton";
 
+const defaultProductImage = "/images/product/default-pos-item-image.png";
+
+function ProductThumbnail({ src }: { src?: string }) {
+  return <img src={src || defaultProductImage} alt="" className="block h-full w-full min-w-0 object-contain"
+    onError={(event) => { event.currentTarget.src = defaultProductImage; }} />;
+}
+
 type Product = {
+  image?: string;
   id: string;
   name: string;
   variation: string;
@@ -128,6 +136,7 @@ export default function ViewSalesProcessing() {
           const mapped = data.map((p: any) => ({
             id: p.variationId?.toString() || "0",
             name: p.productName || "Unknown",
+            image: p.productImage,
             variation: p.variationName || "Unknown",
             price: Number(p.price) || 0,
             stock: Number(p.stockQuantity) || 0,
@@ -806,8 +815,8 @@ export default function ViewSalesProcessing() {
             <div className="flex flex-col gap-2.5">
               {cart.map((item) => (
                 <div key={item.id} className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-input border border-border flex items-center justify-center text-xl shrink-0">
-                    {item.category === "Ube Halaya" ? "🍠" : "🫙"}
+                  <div className="w-11 h-11 rounded-xl overflow-hidden bg-input border border-border flex items-center justify-center text-xl shrink-0">
+                    <ProductThumbnail src={item.image} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold m-0 text-foreground">{item.name}</p>
@@ -1797,10 +1806,10 @@ function ProductCard({ product, onAdd, isMobile }: { product: Product; onAdd: ()
       )}
     >
       <div className={cn(
-        "rounded-xl bg-input border border-border flex items-center justify-center shrink-0",
+        "rounded-xl overflow-hidden bg-input border border-border flex items-center justify-center shrink-0",
         isMobile ? "w-11 h-11 text-xl" : "w-14 h-14 text-[26px]"
       )}>
-        {product.category === "Ube Halaya" ? "🍠" : "🫙"}
+        <ProductThumbnail src={product.image} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-center gap-2">
@@ -1853,8 +1862,8 @@ function ProductRow({ product, onAdd }: { product: Product; onAdd: () => void })
           : "bg-card hover:border-foreground/20 hover:shadow-sm cursor-pointer"
       )}
     >
-      <div className="w-10 h-10 rounded-lg bg-input border border-border flex items-center justify-center text-lg shrink-0">
-        {product.category === "Ube Halaya" ? "🍠" : "🫙"}
+      <div className="w-10 h-10 rounded-lg overflow-hidden bg-input border border-border flex items-center justify-center text-lg shrink-0">
+        <ProductThumbnail src={product.image} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>

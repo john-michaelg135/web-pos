@@ -1008,12 +1008,14 @@ export default function ViewOrderManagement() {
               className="p-4 sm:p-5 border-t mt-auto flex justify-end gap-3 sticky bottom-0 rounded-b-2xl"
               style={{ borderColor: LEGACY_COLORS.border, background: LEGACY_COLORS.cardBg }}
             >
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-lg border-border"
                 onClick={() => setShowManagerPinDialog(false)}
-                className="px-6 py-2 rounded-xl text-sm font-bold bg-[#18181b] text-white hover:opacity-90 transition-opacity"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>,

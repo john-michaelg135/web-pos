@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { Bone, ProductManagementSkeleton, ProductTableSkeleton } from "@/components/shared/PageSkeleton";
+import { Bone, ProductManagementSkeleton } from "@/components/shared/PageSkeleton";
 
 // Products and variations come from IMS (SCMS product sync); POS only sets their selling prices.
 export default function ViewProductManagement() {
@@ -155,21 +155,22 @@ export default function ViewProductManagement() {
   ];
 
   // Only the price is editable here; everything else is owned by IMS.
-  async function handlePriceSubmit(data: Omit<Variation, "id">) {
+  async function handlePriceSubmit(data: Omit<Variation, "id">, productImage?: string) {
     if (!editVariation) return;
     try {
-      if (data.price !== editVariation.price) {
+      if (productImage || data.price !== editVariation.price) {
         await apiClient.apiPos.productCatalogVariationsPriceUpdate(Number(editVariation.id), {
           price: data.price,
+          productImage,
         });
       }
-      toast.success("Price updated.");
+      toast.success("Variation updated.");
       setHistoryKey((k) => k + 1);
       fetchProducts();
       setEditVariation(null);
     } catch (error) {
       console.error(error);
-      toast.error("An error occurred while saving the price.");
+      toast.error("An error occurred while saving the variation.");
     }
   }
 
@@ -240,19 +241,16 @@ export default function ViewProductManagement() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-foreground">Pricing Configuration</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Selling prices for each product variation. Products and variations come from IMS; use Edit Price to change what the POS charges.
+              Selling prices for each product variation. Use Edit to change what the branch charges and upload updated images.
             </p>
           </div>
-          {isLoading || locationsLoading ? (
-            <ProductTableSkeleton tab="variations" />
-          ) : (
-            <VariationTable
-              variations={visibleVariations}
-              products={visibleProducts}
-              onEdit={setEditVariation}
-              onHistory={setHistoryVariation}
-            />
-          )}
+          <VariationTable
+            isLoading={isLoading || locationsLoading}
+            variations={visibleVariations}
+            products={visibleProducts}
+            onEdit={setEditVariation}
+            onHistory={setHistoryVariation}
+          />
         </TabsContent>
 
         {/* Price history */}
@@ -263,17 +261,13 @@ export default function ViewProductManagement() {
               Every selling price each item has had, with the price it replaced, when it changed and who changed it.
             </p>
           </div>
-          {isLoading || locationsLoading ? (
-            <ProductTableSkeleton tab="variations" />
-          ) : (
-            <PriceHistoryTable
-              key={historyKey}
-              products={visibleProducts}
-              changes={visibleHistory}
-              isLoading={historyLoading}
-              error={history?.error ?? null}
-            />
-          )}
+          <PriceHistoryTable
+            key={historyKey}
+            products={visibleProducts}
+            changes={visibleHistory}
+            isLoading={isLoading || locationsLoading || historyLoading}
+            error={history?.error ?? null}
+          />
         </TabsContent>
       </Tabs>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowDownRight, ArrowUpRight, Loader2 } from "lucide-react";
 
 import { apiClient } from "@/components/module-pos/api";
@@ -156,14 +157,17 @@ export function PriceHistoryTable({ products, changes, isLoading, error }: {
                 <th className="px-5 py-3.5">Changed by</th>
               </tr>
             </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-muted-foreground">
-                    <Loader2 className="mx-auto h-5 w-5 animate-spin" aria-label="Loading price history" />
-                  </td>
+            <tbody aria-busy={isLoading}>
+              {isLoading ? Array.from({ length: 7 }, (_, i) => (
+                <tr key={i} aria-hidden className="border-b border-border/60 last:border-0">
+                  {["w-36", "w-32", "w-12", "w-12", "w-20 rounded-full", "w-20"].map((width, column) => (
+                    <td key={column} className="px-5 py-3.5 align-top">
+                      <Skeleton className={`h-5 ${width}`} />
+                      {column < 2 && <Skeleton className="h-4 w-20" />}
+                    </td>
+                  ))}
                 </tr>
-              ) : error ? (
+              )) : error ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-10 text-center text-destructive">{error}</td>
                 </tr>

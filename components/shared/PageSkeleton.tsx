@@ -1,3 +1,4 @@
+import { VariationTableSkeleton } from "@/components/module-pos/VariationTable";
 import { Tabs } from "@/components/ui/tabs";
 import { LocationManagementTabs } from "@/components/module-pos/LocationManagementTabs";
 import { ChevronDown, Search } from "lucide-react";
@@ -371,44 +372,6 @@ export function OrderManagementSkeleton() {
 
 // ── Product Management ──────────────────────────────────────────────
 
-const PRODUCT_TH = "px-5 py-3.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap";
-
-/** Products / Variations tab content: the filter row, then that tab's table. */
-export function ProductTableSkeleton({ tab = "products" }: { tab?: "products" | "variations" }) {
-  return (
-    <div className="w-full min-w-0" role="status" aria-label={`Loading ${tab}`}>
-      <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[240px_repeat(2,minmax(0,1fr))] sm:gap-3 mb-4 sm:mb-5">
-        <Bone className="col-span-2 h-[42px] w-full rounded-xl sm:col-span-1" />
-        <Bone className="h-[38px] w-full rounded-[10px]" />
-        <Bone className="h-[38px] w-full rounded-[10px]" />
-      </div>
-      <SkeletonTable
-        frameClassName="bg-card border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm"
-        headRowClassName="bg-gray-50 dark:bg-gray-800"
-        thClassName={PRODUCT_TH}
-        rows={7}
-        columns={
-          tab === "products"
-            ? [
-                { label: "Product", kind: "text" },
-                { label: "Category", kind: "badge" },
-                { label: "Status", kind: "badge" },
-              ]
-            : [
-                { label: "Product", kind: "text" },
-                { label: "Packaging", kind: "short" },
-                { label: "Size", kind: "short" },
-                { label: "Price", kind: "short" },
-                { label: "SKU", kind: "short" },
-                { label: "Status", kind: "badge" },
-                { label: "Actions", kind: "button" },
-              ]
-        }
-      />
-    </div>
-  );
-}
-
 export function ProductManagementSkeleton() {
   return (
     <Shell label="Loading products">
@@ -426,7 +389,13 @@ export function ProductManagementSkeleton() {
         ))}
       </div>
       <SubtabSkeleton labels={["Pricing Configuration", "Price History"]} shortLabels={["Pricing", "History"]} />
-      <ProductTableSkeleton tab="variations" />
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Pricing Configuration</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Selling prices for each product variation. Use Edit to change what the branch charges and upload updated images.</p>
+        </div>
+        <VariationTableSkeleton />
+      </div>
     </Shell>
   );
 }

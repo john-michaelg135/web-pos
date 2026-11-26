@@ -5,7 +5,10 @@ import type { Variation, Product } from "@/components/module-pos/types";
 import { SearchInput } from "@/components/module-pos/SearchInput";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 interface VariationTableProps {
+  isLoading?: boolean;
   variations: Variation[];
   products:   Product[];
   onEdit:     (variation: Variation) => void;
@@ -25,7 +28,11 @@ function VariationStatus({ isActive }: { isActive: boolean }) {
   );
 }
 
-export function VariationTable({ variations, products, onEdit, onHistory }: VariationTableProps) {
+export function VariationTableSkeleton() {
+  return <VariationTable isLoading variations={[]} products={[]} onEdit={() => {}} onHistory={() => {}} />;
+}
+
+export function VariationTable({ variations, products, onEdit, onHistory, isLoading }: VariationTableProps) {
   const [search, setSearch] = useState("");
   const [productFilter, setProductFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
@@ -47,7 +54,7 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
   });
 
   return (
-    <div className="w-full min-w-0">
+    <div className="w-full min-w-0" aria-busy={isLoading}>
 
       {/* Filters */}
       <div className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[240px_repeat(2,minmax(0,1fr))] sm:gap-3 mb-4 sm:mb-5">
@@ -85,7 +92,23 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
       {/* Table */}
       {/* Phones: one card per variation */}
       <ul className="md:hidden flex flex-col gap-2.5 m-0 p-0 list-none">
-        {filtered.length === 0 ? (
+        {isLoading ? Array.from({ length: 7 }, (_, i) => (
+          <li key={i} aria-hidden className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3.5 flex flex-col gap-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <Skeleton className="h-5 w-32" /><Skeleton className="h-[22px] w-14 rounded-full" />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Skeleton className="h-5 w-14 rounded-full" /><Skeleton className="h-4 w-9" /><Skeleton className="h-5 w-20" />
+            </div>
+            <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-gray-100 dark:border-gray-800">
+              <Skeleton className="h-7 w-14" />
+              <div className="flex items-center gap-2">
+                {onHistory && <Skeleton className="h-9 w-16 rounded-lg" />}
+                <Skeleton className="h-9 w-14 rounded-lg" />
+              </div>
+            </div>
+          </li>
+        )) : filtered.length === 0 ? (
           <li className="py-10 text-center text-sm text-gray-400 dark:text-gray-500">No variations found.</li>
         ) : (
           filtered.map((v) => (
@@ -116,7 +139,7 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
                     onClick={() => onEdit(v)}
                     className="h-9 px-4 text-xs font-semibold rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
-                    Edit Price
+                    Edit
                   </button>
                 </div>
               </div>
@@ -139,7 +162,19 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {isLoading ? Array.from({ length: 7 }, (_, i) => (
+                <tr key={i} aria-hidden className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+                  {["h-5 w-32", "h-6 w-16 rounded-full", "h-5 w-10", "h-5 w-12", "h-5 w-20", "h-[22px] w-14 rounded-full"].map((shape) => (
+                    <td key={shape} className="px-5 py-4"><Skeleton className={shape} /></td>
+                  ))}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-[30px] w-12 rounded-lg" />
+                      {onHistory && <Skeleton className="h-[30px] w-16 rounded-lg" />}
+                    </div>
+                  </td>
+                </tr>
+              )) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-400 dark:text-gray-500">
                     No variations found.
@@ -178,7 +213,7 @@ export function VariationTable({ variations, products, onEdit, onHistory }: Vari
                           onClick={() => onEdit(v)}
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                         >
-                          Edit Price
+                          Edit
                         </button>
                         {onHistory && (
                           <button

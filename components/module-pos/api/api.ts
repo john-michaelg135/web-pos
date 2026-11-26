@@ -823,6 +823,7 @@ export interface ScmsPullSummaryDto {
 }
 
 export interface SetPriceDto {
+  productImage?: string;
   /**
    * @format double
    * @min 0.01
