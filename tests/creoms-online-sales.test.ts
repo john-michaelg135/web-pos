@@ -50,6 +50,13 @@ describe("Reading online sales from CREOMS", () => {
     expect(await readOnlineSales("2024-01-01", "2026-11-30", fetcher as unknown as typeof fetch)).toEqual({ ok: false, reason: "range" });
   });
 
+  it("never follows CREOMS's sign-in redirect, and says why it is unavailable", async () => {
+    const fetcher = vi.fn(async () => new Response(null, { status: 307, headers: { location: "https://creoms.test/signing-in" } }));
+    expect(await readOnlineSales("2026-11-01", "2026-11-30", fetcher as unknown as typeof fetch)).toEqual({ ok: false, reason: "unavailable" });
+    expect(((fetcher.mock.calls[0] as unknown as [string, RequestInit])[1]).redirect).toBe("manual");
+    expect(String(vi.mocked(console.error).mock.calls[0][0])).toMatch(/redirected .*\/api\/internal\/pos-sales/);
+  });
+
   it("is unavailable when the secret is unset, CREOMS refuses the token or is down, or the network fails", async () => {
     for (const status of [401, 503]) {
       const fetcher = vi.fn(async () => new Response(null, { status }));
