@@ -9,12 +9,14 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
+import { MIN_REPORT_DATE, PERIOD_OPTIONS, manilaToday, presetRange, type PeriodPreset } from "@/lib/reportPeriods";
 import { cn } from "@/lib/utils";
 
 // ── API shape (GET /api-pos/dashboard/owner) ────────────────────────
 
-type Period = "today" | "week" | "month";
+type Granularity = "hour" | "day" | "month";
 
 interface Kpi {
   current: number;
@@ -22,9 +24,12 @@ interface Kpi {
 }
 
 interface OwnerDashboard {
-  period: Period;
   dateFrom: string;
   dateTo: string;
+  /** Null for "All dates", which has no earlier period to compare with. */
+  previousDateFrom: string | null;
+  previousDateTo: string | null;
+  granularity: Granularity;
   generatedAt: string;
   sales: Kpi;
   orders: Kpi;
@@ -37,16 +42,35 @@ interface OwnerDashboard {
   branchesToday: { locationId: number; name: string; shiftStatus: string; salesToday: number; cashOverShort: number | null }[];
 }
 
-const PERIODS: { value: Period; label: string; compareTo: string }[] = [
-  { value: "today", label: "Today", compareTo: "yesterday" },
-  { value: "week", label: "This Week", compareTo: "same days last week" },
-  { value: "month", label: "This Month", compareTo: "same days last month" },
+// The Sales Report's periods, plus "Today" for a quick look at the day so far (compared with yesterday).
+type DashboardPreset = PeriodPreset | "today";
+const DASHBOARD_PERIOD_OPTIONS: { value: DashboardPreset; label: string }[] = [
+  { value: "today", label: "Today" },
+  ...PERIOD_OPTIONS,
 ];
+const dashboardRange = (preset: DashboardPreset) =>
+  preset === "today" ? { from: manilaToday(), to: manilaToday() } : presetRange(preset);
 
-// "Today" refreshes itself on this interval; week and month totals barely move, so they wait for Refresh.
-const TODAY_REFRESH_MS = 5 * 60_000;
-// Coming back to the tab reloads "Today" only if the numbers are at least this old.
+// Same comparison as the Sales Report: the period of equal length just before this one.
+const COMPARE_TO = "previous period";
+
+// A period that runs to today refreshes itself on this interval; past periods don't move, so they wait for Refresh.
+const LIVE_REFRESH_MS = 5 * 60_000;
+// Coming back to the tab reloads a live period only if the numbers are at least this old.
 const STALE_ON_RETURN_MS = 60_000;
+
+/** "Nov 1 – Nov 26, 2026" for a pair of YYYY-MM-DD Philippine dates. */
+function formatRange(from: string, to: string) {
+  const fmt = (d: string, withYear: boolean) =>
+    new Date(`${d}T00:00:00+08:00`).toLocaleDateString("en-PH", {
+      timeZone: "Asia/Manila",
+      month: "short",
+      day: "numeric",
+      ...(withYear ? { year: "numeric" } : {}),
+    });
+  if (from === to) return fmt(from, true);
+  return `${fmt(from, from.slice(0, 4) !== to.slice(0, 4))} – ${fmt(to, true)}`;
+}
 
 const CHANNEL_COLORS: Record<string, string> = {
   "Walk-in": "var(--primary)",
@@ -104,7 +128,10 @@ function Panel({ title, subtitle, action, children, className }: {
   );
 }
 
-function Change({ kpi, compareTo }: { kpi: Kpi; compareTo: string }) {
+function Change({ kpi, compareTo }: { kpi: Kpi; compareTo: string | null }) {
+  if (!compareTo) {
+    return <p className="text-xs text-muted-foreground m-0">All recorded sales</p>;
+  }
   if (kpi.previous === 0) {
     return (
       <p className="text-xs text-muted-foreground m-0">
@@ -133,7 +160,7 @@ function KpiCard({ label, value, kpi, compareTo, hint }: {
   label: string;
   value: string;
   kpi: Kpi;
-  compareTo: string;
+  compareTo: string | null;
   hint: string;
 }) {
   return (
@@ -145,7 +172,7 @@ function KpiCard({ label, value, kpi, compareTo, hint }: {
   );
 }
 
-function SalesTrend({ data, period, compareTo }: { data: OwnerDashboard["trend"]; period: Period; compareTo: string }) {
+function SalesTrend({ data, compareTo }: { data: OwnerDashboard["trend"]; compareTo: string | null }) {
   const [hover, setHover] = useState<number | null>(null);
   const width = 1000;
   const height = 240;
@@ -169,7 +196,8 @@ function SalesTrend({ data, period, compareTo }: { data: OwnerDashboard["trend"]
     ? `M${x(pastPoints[0].i)},${y(0)} L${currentLine.replaceAll(" ", " L")} L${x(pastPoints[pastPoints.length - 1].i)},${y(0)} Z`
     : "";
 
-  const labelEvery = period === "today" ? 3 : period === "month" ? 5 : 1;
+  // About eight axis labels whatever the length (24 hours, a month of days, a year of months).
+  const labelEvery = Math.max(1, Math.ceil(data.length / 8));
   const gridValues = [max, max - span / 4, max - span / 2, max - (span * 3) / 4, min];
   const hovered = hover != null ? data[hover] : null;
 
@@ -179,9 +207,11 @@ function SalesTrend({ data, period, compareTo }: { data: OwnerDashboard["trend"]
         <span className="inline-flex items-center gap-1.5">
           <span className="h-0.5 w-4 rounded-full" style={{ background: "var(--primary)" }} /> This period
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-0 w-4 border-t-2 border-dashed border-muted-foreground/50" /> {compareTo.charAt(0).toUpperCase() + compareTo.slice(1)}
-        </span>
+        {compareTo && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-0 w-4 border-t-2 border-dashed border-muted-foreground/50" /> {compareTo.charAt(0).toUpperCase() + compareTo.slice(1)}
+          </span>
+        )}
       </div>
       <div className="flex gap-2">
         {/* Y axis */}
@@ -197,15 +227,17 @@ function SalesTrend({ data, period, compareTo }: { data: OwnerDashboard["trend"]
             <div key={i} className="absolute inset-x-0 border-t border-dashed border-border" style={{ top: `${(i / 4) * 100}%` }} />
           ))}
           <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
-            <polyline
-              points={previousLine}
-              fill="none"
-              stroke="var(--muted-foreground)"
-              strokeOpacity={0.45}
-              strokeWidth={1.5}
-              strokeDasharray="5 5"
-              vectorEffect="non-scaling-stroke"
-            />
+            {compareTo && (
+              <polyline
+                points={previousLine}
+                fill="none"
+                stroke="var(--muted-foreground)"
+                strokeOpacity={0.45}
+                strokeWidth={1.5}
+                strokeDasharray="5 5"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             {area && <path d={area} fill="var(--primary)" fillOpacity={0.08} />}
             <polyline
               points={currentLine}
@@ -242,7 +274,7 @@ function SalesTrend({ data, period, compareTo }: { data: OwnerDashboard["trend"]
             >
               <p className="font-semibold text-foreground m-0 mb-1">{hovered.label}</p>
               <p className="m-0 text-foreground tabular-nums">{hovered.isFuture ? "Not yet" : peso(hovered.sales)}</p>
-              <p className="m-0 text-muted-foreground tabular-nums">{peso(hovered.previousSales)} {compareTo}</p>
+              {compareTo && <p className="m-0 text-muted-foreground tabular-nums">{peso(hovered.previousSales)} {compareTo}</p>}
             </div>
           )}
         </div>
@@ -313,7 +345,10 @@ function Skeleton({ className }: { className?: string }) {
 export default function OwnerDashboard() {
   const { user } = useAuth();
   const ownerName = user?.name;
-  const [period, setPeriod] = useState<Period>("today");
+  // Same period choices as the Sales Report, starting on this month.
+  const [preset, setPreset] = useState<DashboardPreset>("this-month");
+  const [dateFrom, setDateFrom] = useState(() => presetRange("this-month").from);
+  const [dateTo, setDateTo] = useState(() => presetRange("this-month").to);
   const [branch, setBranch] = useState<string>("all");
   const [data, setData] = useState<OwnerDashboard | null>(null);
   const [branches, setBranches] = useState<{ value: string; label: string }[]>([]);
@@ -331,11 +366,25 @@ export default function OwnerDashboard() {
     setIsLoading(true);
     setReloadKey((k) => k + 1);
   }, []);
-  const choosePeriod = (next: Period) => {
-    if (next === period) return;
+  const choosePreset = (next: DashboardPreset) => {
+    if (next === preset) return;
+    setPreset(next);
+    if (next === "custom") return; // keep the current dates as the starting point
+    const range = dashboardRange(next);
+    if (range.from === dateFrom && range.to === dateTo) return;
     setIsLoading(true);
-    setPeriod(next);
+    setDateFrom(range.from);
+    setDateTo(range.to);
   };
+  const chooseDate = (which: "from" | "to", value: string) => {
+    if (value && value < MIN_REPORT_DATE) return;
+    setPreset("custom");
+    setIsLoading(true);
+    (which === "from" ? setDateFrom : setDateTo)(value);
+  };
+  // A period that runs to today keeps changing, so it refreshes itself.
+  const today = manilaToday();
+  const isLive = (!dateTo || dateTo >= today) && (!dateFrom || dateFrom <= today);
   const chooseBranch = (next: string) => {
     if (next === branch) return;
     setIsLoading(true);
@@ -347,7 +396,9 @@ export default function OwnerDashboard() {
     let cancelled = false;
     (async () => {
       try {
-        const params = new URLSearchParams({ period });
+        const params = new URLSearchParams();
+        if (dateFrom) params.set("from", dateFrom);
+        if (dateTo) params.set("to", dateTo);
         if (branch !== "all") params.set("locationId", branch);
         if (forceFresh.current) {
           params.set("fresh", "true");
@@ -379,14 +430,14 @@ export default function OwnerDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [isOwner, period, branch, reloadKey]);
+  }, [isOwner, dateFrom, dateTo, branch, reloadKey]);
 
-  // Keep "Today" fresh while the dashboard is left open, and catch up when the owner comes back to the tab.
+  // Keep a period that runs to today fresh while the dashboard is left open, and catch up when the owner comes back to the tab.
   useEffect(() => {
-    if (!isOwner || period !== "today") return;
+    if (!isOwner || !isLive) return;
     const id = window.setInterval(() => {
       if (document.visibilityState === "visible") setReloadKey((k) => k + 1);
-    }, TODAY_REFRESH_MS);
+    }, LIVE_REFRESH_MS);
     const onVisible = () => {
       if (document.visibilityState === "visible" && Date.now() - lastLoadedAt.current >= STALE_ON_RETURN_MS) {
         setReloadKey((k) => k + 1);
@@ -397,10 +448,19 @@ export default function OwnerDashboard() {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [isOwner, period]);
+  }, [isOwner, isLive]);
 
-  const compareTo = PERIODS.find((p) => p.value === period)!.compareTo;
-  const periodLabel = PERIODS.find((p) => p.value === period)!.label;
+  const compareTo = data?.previousDateFrom ? COMPARE_TO : null;
+  // Named presets keep their name; a custom range shows its dates.
+  const periodLabel =
+    preset === "custom" && data
+      ? formatRange(data.dateFrom, data.dateTo)
+      : DASHBOARD_PERIOD_OPTIONS.find((p) => p.value === preset)!.label;
+  // For a single day the "previous period" is the day before, so say so.
+  const compareLabel =
+    compareTo && data && data.dateFrom === data.dateTo
+      ? data.dateFrom === today ? "yesterday" : "the day before"
+      : compareTo;
 
   // The POS sells walk-in and institutional only; online orders belong to the e-commerce system.
   const channels = useMemo(() => (data ? data.salesByChannel.filter((c) => c.channel !== "Online") : []), [data]);
@@ -427,22 +487,37 @@ export default function OwnerDashboard() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex items-center gap-1 rounded-xl bg-muted p-1" role="tablist" aria-label="Period">
-            {PERIODS.map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                role="tab"
-                aria-selected={period === p.value}
-                onClick={() => choosePeriod(p.value)}
-                className={cn(
-                  "flex-1 sm:flex-none rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors whitespace-nowrap",
-                  period === p.value ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {p.label}
-              </button>
-            ))}
+          {preset === "custom" && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                aria-label="From"
+                min={MIN_REPORT_DATE}
+                max={dateTo || undefined}
+                value={dateFrom}
+                onChange={(e) => chooseDate("from", e.target.value)}
+                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                className="w-full sm:w-[150px] cursor-pointer"
+              />
+              <span className="text-muted-foreground text-sm">to</span>
+              <Input
+                type="date"
+                aria-label="To"
+                min={dateFrom || MIN_REPORT_DATE}
+                value={dateTo}
+                onChange={(e) => chooseDate("to", e.target.value)}
+                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                className="w-full sm:w-[150px] cursor-pointer"
+              />
+            </div>
+          )}
+          {/* CustomSelect has a 180px minimum width; a narrower box lets it overlap the next control. */}
+          <div className="w-full sm:w-[180px] shrink-0">
+            <CustomSelect
+              value={preset}
+              onChange={(val) => choosePreset(val as DashboardPreset)}
+              options={DASHBOARD_PERIOD_OPTIONS}
+            />
           </div>
           <CustomSelect
             value={branch}
@@ -485,10 +560,10 @@ export default function OwnerDashboard() {
         <div className={cn("flex flex-col gap-6 transition-opacity", isLoading && "opacity-60")}>
           {/* Headline numbers */}
           <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-4">
-            <KpiCard label="Money collected" value={peso(data.sales.current)} kpi={data.sales} compareTo={compareTo} hint="Payments received from customers, after refunds" />
-            <KpiCard label="Orders" value={count(data.orders.current)} kpi={data.orders} compareTo={compareTo} hint="Number of paid sales" />
-            <KpiCard label="Average sale" value={peso(data.averageSale.current)} kpi={data.averageSale} compareTo={compareTo} hint="Typical amount per order" />
-            <KpiCard label="Items sold" value={count(data.itemsSold.current)} kpi={data.itemsSold} compareTo={compareTo} hint="Units that left the store" />
+            <KpiCard label="Money collected" value={peso(data.sales.current)} kpi={data.sales} compareTo={compareLabel} hint="Payments received from customers, after refunds" />
+            <KpiCard label="Orders" value={count(data.orders.current)} kpi={data.orders} compareTo={compareLabel} hint="Number of paid sales" />
+            <KpiCard label="Average sale" value={peso(data.averageSale.current)} kpi={data.averageSale} compareTo={compareLabel} hint="Typical amount per order" />
+            <KpiCard label="Items sold" value={count(data.itemsSold.current)} kpi={data.itemsSold} compareTo={compareLabel} hint="Units that left the store" />
           </div>
           <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
             <Info className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -503,8 +578,11 @@ export default function OwnerDashboard() {
           </div>
 
           {/* Trend */}
-          <Panel title="Money collected over time" subtitle={period === "today" ? "By the hour" : "By the day"}>
-            <SalesTrend data={data.trend} period={period} compareTo={compareTo} />
+          <Panel
+            title="Money collected over time"
+            subtitle={`${periodLabel} · by the ${data.granularity}`}
+          >
+            <SalesTrend data={data.trend} compareTo={compareLabel} />
           </Panel>
 
           {/* Branches, products, channels */}
@@ -535,7 +613,7 @@ export default function OwnerDashboard() {
               )}
             </Panel>
 
-            <Panel title="Best sellers" subtitle={`By value of paid orders, ${periodLabel.toLowerCase()}`}>
+            <Panel title="Best sellers" subtitle={`By value of paid orders · ${periodLabel}`}>
               {data.topProducts.length === 0 ? (
                 <p className="text-sm text-muted-foreground m-0">No products sold yet.</p>
               ) : (
