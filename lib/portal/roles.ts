@@ -19,6 +19,9 @@ export const isGeneralManager = (role: string | undefined) => role === "General 
 export const seesAllLocations = (role: string | undefined) =>
   isSuperUser(role) || isGeneralManager(role);
 
+/** CREOMS online storefront sales are company-wide, so only the General Manager and the Owner (Admin, CEO) see them; branch Managers don't. */
+export const seesOnlineSales = (role: string | undefined) => seesAllLocations(role);
+
 /** Managers are prompted but may skip; administrators and General Managers are exempt; others must declare daily. */
 export const startingCashRule = (
   role: string | undefined,

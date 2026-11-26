@@ -7,6 +7,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { compactSubtabClass, subtabClass, subtabListClass } from "@/components/ui/subtab-styles";
 import { cn } from "@/lib/utils";
+import { useSalesReportTabs } from "@/components/module-pos/salesReportTabs";
 
 /*
  * Loading skeletons that mirror each page: real titles, tab labels and table headers,
@@ -623,7 +624,9 @@ export function ReportSkeleton() {
   );
 }
 
+/** Draws the tabs this Staff member will get: Online Sales for the General Manager and Owner, never for branch Managers. */
 export function SalesReportPageSkeleton() {
+  const { tabs } = useSalesReportTabs();
   return (
     <Shell label="Loading sales report">
       <div className="flex flex-col gap-5">
@@ -639,7 +642,7 @@ export function SalesReportPageSkeleton() {
           </div>
         </div>
       </div>
-      <SubtabSkeleton labels={["Sales Report", "Money Audit"]} />
+      <SubtabSkeleton labels={tabs.map((tab) => tab.label)} />
       <ReportSkeleton />
     </Shell>
   );

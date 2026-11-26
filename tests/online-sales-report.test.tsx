@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { OnlineSalesReport } from "@/components/module-pos/OnlineSalesReport";
+import { OnlineSalesReport, OnlineSalesSummary } from "@/components/module-pos/OnlineSalesReport";
 
 const data = {
   from: "2026-11-01", to: "2026-11-30", sales: 2559550, orders: 3, otherSales: 12000,
@@ -47,5 +47,34 @@ describe("Online sales report", () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ...data, sales: 0, orders: 0, otherSales: 0, products: [] })));
     render(<OnlineSalesReport from="2026-11-01" to="2026-11-30" />);
     expect(await screen.findByText("No online sales in this period.")).toBeTruthy();
+  });
+});
+
+describe("Online sales summary on the Sales Report", () => {
+  it("shows in-store, online and both together for all branches", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json(data)));
+    const open = vi.fn();
+    render(<OnlineSalesSummary from="2026-11-01" to="2026-11-30" inStoreNetSales={10000} branchLabel={null} onOpenDetail={open} />);
+    expect(await screen.findByText("₱25,595.50")).toBeTruthy();
+    expect(screen.getByText("₱10,000.00")).toBeTruthy();
+    expect(screen.getByText("₱35,595.50")).toBeTruthy();
+    expect(screen.getByText("3 orders · CREOMS storefront")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Online sales by product" }));
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it("never adds company-wide online sales to one branch", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json(data)));
+    render(<OnlineSalesSummary from="2026-11-01" to="2026-11-30" inStoreNetSales={10000} branchLabel="Makati" onOpenDetail={() => {}} />);
+    expect(await screen.findByText("₱25,595.50")).toBeTruthy();
+    expect(screen.queryByText("In-store and online")).toBeNull();
+    expect(screen.getByText(/not added to Makati/)).toBeTruthy();
+  });
+
+  it("keeps the in-store figure when CREOMS is unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 503 })));
+    render(<OnlineSalesSummary from="2026-11-01" to="2026-11-30" inStoreNetSales={10000} branchLabel={null} onOpenDetail={() => {}} />);
+    expect(await screen.findByText("Online sales are unavailable right now.")).toBeTruthy();
+    expect(screen.getByText("₱10,000.00")).toBeTruthy();
   });
 });
