@@ -724,7 +724,7 @@ onRejectVoid,
             {order.status === "void_requested" && onRejectVoid && canRejectVoid && (
               <button
                 onClick={onRejectVoid}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
+                className="px-4 py-2 text-xs font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-sm"
               >
                 Reject Void
               </button>
