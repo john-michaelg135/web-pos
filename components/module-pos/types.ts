@@ -245,6 +245,16 @@ export const REFUND_METHOD_HINT: Record<"Cash" | "GCash", string> = {
   GCash: "Send to the customer's GCash",
 };
 
+const MANILA_DAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", dateStyle: "short" });
+
+/** True when the order was created on the same Philippine-time day as `now`. Voids are allowed only then (the server checks too). */
+export function isVoidableToday(createdAtIso: string | undefined, now: number = Date.now()): boolean {
+  if (!createdAtIso) return false;
+  const created = Date.parse(createdAtIso);
+  if (Number.isNaN(created)) return false;
+  return MANILA_DAY.format(created) === MANILA_DAY.format(now);
+}
+
 /** "Nov 12, 2026, 11:59 PM" (Philippine time) for the last minute of the refund window. */
 export function formatRefundDeadline(deadlineIso: string): string {
   return new Date(Date.parse(deadlineIso) - 60_000).toLocaleString("en-PH", {

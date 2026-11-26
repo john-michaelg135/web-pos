@@ -5,7 +5,7 @@ import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircleIcon } from "@/icons/index";
-import { DeliveryConfirmationInput, SubmitOutcome, Order, STATUS_LABELS, OrderStatus, formatRefundDeadline, refundMethodOf } from "@/components/module-pos/types";
+import { DeliveryConfirmationInput, SubmitOutcome, Order, STATUS_LABELS, OrderStatus, formatRefundDeadline, refundMethodOf, isVoidableToday } from "@/components/module-pos/types";
 import { ConfirmDeliveryDialog, DeliveryConfirmationDetails, ProofPhoto } from "./ConfirmDeliveryDialog";
 import { renderVariationBadges } from "./utils";
 import { toast } from "@/lib/toast";
@@ -107,7 +107,10 @@ onRejectVoid,
   const refundDeadlineText = refundDeadline ? formatRefundDeadline(refundDeadline) : null;
   const showRefundWindow =
     !!refundDeadlineText && !isPartlyRefunded && ["completed", "delivered", "paid"].includes(order?.status ?? "");
-  const canRequestVoid = can(POS_MODULES.ORDER_MANAGEMENT, "write");
+  // Voids are requested and approved only on the day the order was made; later it's a refund.
+  // A leftover request from an earlier day can still be rejected (the server enforces both).
+  const voidableToday = isVoidableToday(order?.createdAt, mountedAt);
+  const canRequestVoid = can(POS_MODULES.ORDER_MANAGEMENT, "write") && voidableToday;
   const canApproveVoid = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const canRejectVoid = can(POS_MODULES.ORDER_MANAGEMENT, "approve");
   const _canRequestRefund_unused = can(POS_MODULES.ORDER_MANAGEMENT, "write");
@@ -702,10 +705,16 @@ onRejectVoid,
             {order.status === "void_requested" && onApplyVoid && canApproveVoid && (
               <button
                 onClick={onApplyVoid}
-                disabled={ownRequest}
+                disabled={ownRequest || !voidableToday}
                 aria-describedby={ownRequest ? "own-request-note" : undefined}
-                title={ownRequest ? "You requested this void. A different manager has to approve it." : undefined}
-                className="px-4 py-2 text-xs font-bold uppercase text-white bg-primary rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary disabled:active:scale-100"
+                title={
+                  !voidableToday
+                    ? "Voids can only be approved on the day the order was made. Reject this request, then request a refund."
+                    : ownRequest
+                      ? "You requested this void. A different manager has to approve it."
+                      : undefined
+                }
+                className="px-4 py-2 text-xs font-bold text-white bg-primary rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary disabled:active:scale-100"
               >
                 Approve Void
               </button>
