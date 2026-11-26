@@ -4,18 +4,18 @@ import { readOnlineSales } from "@/lib/creoms/online-sales";
 import { accessFor } from "@/lib/portal/access";
 import { SESSION_COOKIE } from "@/lib/portal/config";
 import { roleMayUseModule } from "@/lib/portal/modules";
-import { isSuperUser } from "@/lib/portal/roles";
+import { isSuperUser, seesOnlineSales } from "@/lib/portal/roles";
 
 export const dynamic = "force-dynamic";
 
 const NO_STORE = { "cache-control": "no-store" };
 const SALES_REPORTS = "Sales Reports";
 
-/** Online storefront Sales from CREOMS, for Staff who may open Sales Reports (Admin and CEO always may). */
+/** Online storefront Sales from CREOMS, for a General Manager who may open Sales Reports (Admin and CEO always may); never branch Managers. */
 export async function GET(request: NextRequest) {
   const access = accessFor(request.cookies.get(SESSION_COOKIE)?.value);
   const asked = await access.check(SALES_REPORTS);
-  let allowed = asked.decision === "allowed" && roleMayUseModule(asked.staff.role, SALES_REPORTS);
+  let allowed = asked.decision === "allowed" && roleMayUseModule(asked.staff.role, SALES_REPORTS) && seesOnlineSales(asked.staff.role);
   if (!allowed && asked.decision !== "invalid" && asked.decision !== "unavailable") {
     const known = await access.role();
     allowed = known.decision === "allowed" && isSuperUser(known.role);

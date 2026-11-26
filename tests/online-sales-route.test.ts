@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  check: { decision: "allowed", staff: { role: "Manager" } } as { decision: string; staff?: { role: string } },
+  check: { decision: "allowed", staff: { role: "General Manager" } } as { decision: string; staff?: { role: string } },
   role: { decision: "denied" } as { decision: string; role?: string },
   result: { ok: true, data: { sales: 1 } } as unknown,
   reads: [] as string[][],
@@ -19,14 +19,14 @@ import { GET } from "@/app/api/creoms/online-sales/route";
 const get = () => GET(new NextRequest("https://pos.test/api/creoms/online-sales?from=2026-11-01&to=2026-11-30"));
 
 beforeEach(() => {
-  state.check = { decision: "allowed", staff: { role: "Manager" } };
+  state.check = { decision: "allowed", staff: { role: "General Manager" } };
   state.role = { decision: "denied" };
   state.result = { ok: true, data: { sales: 1 } };
   state.reads = [];
 });
 
 describe("Online sales route", () => {
-  it("gives Staff with Sales Reports the online sales, never cached", async () => {
+  it("gives a General Manager with Sales Reports the online sales, never cached", async () => {
     const response = await get();
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
@@ -38,6 +38,15 @@ describe("Online sales route", () => {
     state.check = { decision: "denied" };
     state.role = { decision: "allowed", role: "CEO" };
     expect((await get()).status).toBe(200);
+  });
+
+  it("refuses branch Managers even with Sales Reports, because online sales are company-wide", async () => {
+    for (const role of ["Manager", "POS Manager"]) {
+      state.check = { decision: "allowed", staff: { role } };
+      state.role = { decision: "allowed", role };
+      expect((await get()).status).toBe(403);
+    }
+    expect(state.reads).toEqual([]);
   });
 
   it("refuses Staff without Sales Reports, a Role that may not use it, and a signed-out browser", async () => {

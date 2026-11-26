@@ -106,6 +106,8 @@ interface SalesReportProps extends SalesReportMeta {
   onData?: (data: SalesReportData | null) => void;
   /** Signature drawn before printing (PNG data URL), placed on the printed sign-off. */
   signature?: string | null;
+  /** Shown on screen under the key figures, such as the General Manager's online sales. */
+  afterKeyFigures?: ReactNode;
 }
 
 // Table look shared with the Order Management and Location Management tables.
@@ -512,7 +514,7 @@ function TrendChart({ data }: { data: SalesReportData }) {
  * income-statement sales section (gross → discounts → returns → net) against the
  * previous period, then breakdowns by branch, channel, payment method, product and day.
  */
-export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchLabel, preparedBy, onData, signature }: SalesReportProps) {
+export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchLabel, preparedBy, onData, signature, afterKeyFigures }: SalesReportProps) {
   // The result remembers which filters it was loaded for; any other filters mean it's still loading.
   const requestKey = `${dateFrom ?? ""}|${dateTo ?? ""}|${locationId ?? ""}`;
   const [result, setResult] = useState<{ key: string; data: SalesReportData | null } | null>(null);
@@ -646,6 +648,8 @@ export function SalesReport({ dateFrom, dateTo, locationId, periodLabel, branchL
               <KeyFigure label="Average transaction" value={peso(cur.averageTransaction)} current={cur.averageTransaction} previous={prev?.averageTransaction} />
               <KeyFigure label="Units sold" value={count(cur.unitsSold)} current={cur.unitsSold} previous={prev?.unitsSold} money={false} />
             </div>
+
+            {afterKeyFigures}
 
             <Section number={next()} title="Sales summary" subtitle="This period against the previous period of the same length">
               <TableFrame minWidth={680}>

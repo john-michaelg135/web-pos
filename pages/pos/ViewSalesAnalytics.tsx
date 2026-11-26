@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { POS_MODULES } from "@/lib/permissions";
 import { isManager } from "@/lib/portal/roles";
+import { useSalesReportTabs, type ReportTab } from "@/components/module-pos/salesReportTabs";
 import { useMyLocations } from "@/lib/useMyLocations";
 import { apiClient } from "@/components/module-pos/api";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
@@ -20,7 +21,7 @@ import {
 } from "@/components/module-pos/SalesReport";
 import { MONEY_AUDIT_NOTES, MoneyAuditPrint, moneyAuditXlsx } from "@/components/module-pos/MoneyAuditReport";
 import { PrintSignDialog } from "@/components/module-pos/PrintSignDialog";
-import { OnlineSalesReport } from "@/components/module-pos/OnlineSalesReport";
+import { OnlineSalesReport, OnlineSalesSummary } from "@/components/module-pos/OnlineSalesReport";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +31,6 @@ import { subtabClass, subtabListClass } from "@/components/ui/subtab-styles";
 import { ViewStartingCash, type StartingCashRecord } from "./ViewStartingCash";
 
 import { SalesReportPageSkeleton } from "@/components/shared/PageSkeleton";
-
-type ReportTab = "analytics" | "money-audit" | "online";
 
 type PeriodPreset = "this-month" | "last-month" | "this-quarter" | "year-to-date" | "all" | "custom";
 
@@ -70,7 +69,7 @@ function presetRange(preset: PeriodPreset): { from: string; to: string } {
 }
 
 export function ViewSalesAnalytics() {
-  const { user: authUser, isLoading: authLoading, canRead, can } = useAuth();
+  const { user: authUser, isLoading: authLoading, canRead } = useAuth();
   const { scope: locScope, locations: myLocations, isLoading: locLoading, isUnassigned } =
     useMyLocations();
   const router = useRouter();
@@ -103,18 +102,17 @@ export function ViewSalesAnalytics() {
   const [moneyAuditRecords, setMoneyAuditRecords] = useState<StartingCashRecord[]>([]);
 
   const isManagerUser = isManager(authUser?.role);
-  const canMoneyAudit = !!authUser &&
-    (authUser.isSuperUser || isManagerUser || can(POS_MODULES.ORDER_MANAGEMENT, "approve"));
+  const { tabs, canMoneyAudit, canOnlineSales } = useSalesReportTabs();
   const [activeTab, setActiveTab] = useState<ReportTab>("analytics");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const tabParam = new URLSearchParams(window.location.search).get("tab");
-      if (tabParam === "money-audit" || tabParam === "analytics" || tabParam === "online") {
+      if (tabParam === "money-audit" || tabParam === "analytics" || (tabParam === "online" && canOnlineSales)) {
         setActiveTab(tabParam);
       }
     }
-  }, []);
+  }, [canOnlineSales]);
 
   const handleTabChange = (val: ReportTab) => {
     setActiveTab(val);
@@ -224,6 +222,10 @@ export function ViewSalesAnalytics() {
     : branchName
       ? `Store - ${branchName}`
       : "All Locations";
+
+  // "All dates" has no bounds; CREOMS needs both, so it reads from the first day with sales to today.
+  const onlineFrom = dateFrom || MIN_REPORT_DATE;
+  const onlineTo = dateTo || presetRange("this-month").to;
 
   const reportMeta = {
     periodLabel: formatPeriod(getStartOfDay(dateFrom) ?? null, getEndOfDay(dateTo) ?? null),
@@ -391,11 +393,7 @@ export function ViewSalesAnalytics() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as ReportTab)} className="space-y-6">
         <TabsList className={cn(subtabListClass, "print:hidden")}>
-          {[
-            { value: "analytics", label: "Sales Report" },
-            ...(canMoneyAudit ? [{ value: "money-audit", label: "Money Audit" }] : []),
-            { value: "online", label: "Online Sales" },
-          ].map((tab) => (
+          {tabs.map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
@@ -413,18 +411,26 @@ export function ViewSalesAnalytics() {
             locationId={filterLocation}
             onData={setReportData}
             signature={signature}
+            afterKeyFigures={
+              canOnlineSales && activeTab === "analytics" ? (
+                <OnlineSalesSummary
+                  from={onlineFrom}
+                  to={onlineTo}
+                  inStoreNetSales={reportData ? reportData.current.netSales : null}
+                  branchLabel={branchName}
+                  onOpenDetail={() => handleTabChange("online")}
+                />
+              ) : undefined
+            }
             {...reportMeta}
           />
         </TabsContent>
 
-        <TabsContent value="online" className="subtab-content mt-0">
-          {activeTab === "online" && (
-            <OnlineSalesReport
-              from={dateFrom || MIN_REPORT_DATE}
-              to={dateTo || presetRange("this-month").to}
-            />
-          )}
-        </TabsContent>
+        {canOnlineSales && (
+          <TabsContent value="online" className="subtab-content mt-0">
+            {activeTab === "online" && <OnlineSalesReport from={onlineFrom} to={onlineTo} />}
+          </TabsContent>
+        )}
 
         {canMoneyAudit && (
           <TabsContent value="money-audit" className="subtab-content space-y-6 mt-0">
