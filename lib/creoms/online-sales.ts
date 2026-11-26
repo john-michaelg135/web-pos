@@ -57,8 +57,16 @@ export async function readOnlineSales(from: string, to: string, fetcher: typeof 
     const response = await fetcher(url, {
       headers: { Authorization: `Bearer ${creomsSalesToken(secret)}` },
       cache: "no-store",
+      // The feed answers JSON or an error status; a redirect means CREOMS's sign-in gate caught the request.
+      redirect: "manual",
       signal: AbortSignal.timeout(10_000),
     });
+    if ((response.status >= 300 && response.status < 400) || response.type === "opaqueredirect") {
+      console.error(
+        `CREOMS redirected the online sales request (${response.status}) instead of answering it: its proxy must let /api/internal/pos-sales through without a CREOMS session`,
+      );
+      return { ok: false, reason: "unavailable" };
+    }
     if (response.status === 400) return { ok: false, reason: "range" };
     if (!response.ok) {
       console.error(`CREOMS refused the online sales request (${response.status})`);
