@@ -20,6 +20,7 @@ import {
 } from "@/components/module-pos/SalesReport";
 import { MONEY_AUDIT_NOTES, MoneyAuditPrint, moneyAuditXlsx } from "@/components/module-pos/MoneyAuditReport";
 import { PrintSignDialog } from "@/components/module-pos/PrintSignDialog";
+import { OnlineSalesReport } from "@/components/module-pos/OnlineSalesReport";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,8 @@ import { subtabClass, subtabListClass } from "@/components/ui/subtab-styles";
 import { ViewStartingCash, type StartingCashRecord } from "./ViewStartingCash";
 
 import { SalesReportPageSkeleton } from "@/components/shared/PageSkeleton";
+
+type ReportTab = "analytics" | "money-audit" | "online";
 
 type PeriodPreset = "this-month" | "last-month" | "this-quarter" | "year-to-date" | "all" | "custom";
 
@@ -102,18 +105,18 @@ export function ViewSalesAnalytics() {
   const isManagerUser = isManager(authUser?.role);
   const canMoneyAudit = !!authUser &&
     (authUser.isSuperUser || isManagerUser || can(POS_MODULES.ORDER_MANAGEMENT, "approve"));
-  const [activeTab, setActiveTab] = useState<"analytics" | "money-audit">("analytics");
+  const [activeTab, setActiveTab] = useState<ReportTab>("analytics");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const tabParam = new URLSearchParams(window.location.search).get("tab");
-      if (tabParam === "money-audit" || tabParam === "analytics") {
+      if (tabParam === "money-audit" || tabParam === "analytics" || tabParam === "online") {
         setActiveTab(tabParam);
       }
     }
   }, []);
 
-  const handleTabChange = (val: "analytics" | "money-audit") => {
+  const handleTabChange = (val: ReportTab) => {
     setActiveTab(val);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -317,12 +320,14 @@ export function ViewSalesAnalytics() {
             <p className="text-sm text-muted-foreground">
               {activeTab === "analytics"
                 ? "Company sales for a period, compared with the period before."
-                : "Starting cash, sales and the end-of-shift count for each shift."}
+                : activeTab === "online"
+                  ? "Online storefront sales from CREOMS, by product and size."
+                  : "Starting cash, sales and the end-of-shift count for each shift."}
             </p>
             <Badge variant="secondary" className="text-primary bg-primary/10 font-bold text-xs truncate max-w-[200px]">
-              {locationLabel}
+              {activeTab === "online" ? "Online storefront" : locationLabel}
             </Badge>
-            {showLocationSelector && !(activeTab === "money-audit" && isManagerUser) && (
+            {showLocationSelector && activeTab !== "online" && !(activeTab === "money-audit" && isManagerUser) && (
               <div className="w-48 ml-1 shrink-0">
                 <CustomSelect
                   value={filterLocation ? String(filterLocation) : "All"}
@@ -353,7 +358,7 @@ export function ViewSalesAnalytics() {
             {(preset === "custom" || activeTab === "money-audit") && dateInputs}
           </div>
           {/* Same two exports on both tabs, each in its report template. */}
-          <div className="flex items-center gap-3">
+          <div className={cn("flex items-center gap-3", activeTab === "online" && "hidden")}>
             {(() => {
               const isAudit = activeTab === "money-audit";
               const ready = isAudit ? true : !!reportData;
@@ -384,11 +389,12 @@ export function ViewSalesAnalytics() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as "analytics" | "money-audit")} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as ReportTab)} className="space-y-6">
         <TabsList className={cn(subtabListClass, "print:hidden")}>
           {[
             { value: "analytics", label: "Sales Report" },
             ...(canMoneyAudit ? [{ value: "money-audit", label: "Money Audit" }] : []),
+            { value: "online", label: "Online Sales" },
           ].map((tab) => (
             <TabsTrigger
               key={tab.value}
@@ -409,6 +415,15 @@ export function ViewSalesAnalytics() {
             signature={signature}
             {...reportMeta}
           />
+        </TabsContent>
+
+        <TabsContent value="online" className="subtab-content mt-0">
+          {activeTab === "online" && (
+            <OnlineSalesReport
+              from={dateFrom || MIN_REPORT_DATE}
+              to={dateTo || presetRange("this-month").to}
+            />
+          )}
         </TabsContent>
 
         {canMoneyAudit && (
