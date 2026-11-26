@@ -29,7 +29,7 @@ export function PUT(request: NextRequest, context: RouteContext) {
   return proxy(request, context, "PUT");
 }
 
-// Only the two proof-upload route shapes accept POST.
+// POST: the proof-upload routes, the staff bell actions, and the manager PIN reveal.
 export function POST(request: NextRequest, context: RouteContext) {
   return proxy(request, context, "POST");
 }

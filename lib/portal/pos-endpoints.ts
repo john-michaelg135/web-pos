@@ -13,10 +13,11 @@ const BELL_ACTION = /^notifications\/(\d{1,18}\/read|read-all|live-ticket)$/;
 export function isAllowedPosEndpoint(method: PosProxyMethod, endpoint: string): boolean {
   switch (method) {
     case "GET":
-      return endpoint === "user-pin" || PROOF_READ.test(endpoint) || BELL_READ.test(endpoint);
+      return PROOF_READ.test(endpoint) || BELL_READ.test(endpoint);
     case "PUT":
       return ORDER_ACTION.test(endpoint);
     case "POST":
-      return PROOF_UPLOAD.test(endpoint) || BELL_ACTION.test(endpoint);
+      // user-pin: reveal the manager PIN after an account password check (password in the body only).
+      return endpoint === "user-pin" || PROOF_UPLOAD.test(endpoint) || BELL_ACTION.test(endpoint);
   }
 }

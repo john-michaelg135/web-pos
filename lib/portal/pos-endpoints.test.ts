@@ -24,7 +24,9 @@ describe("POS proxy allowlist", () => {
   });
 
   it("keeps the existing order routes", () => {
-    expect(isAllowedPosEndpoint("GET", "user-pin")).toBe(true);
+    expect(isAllowedPosEndpoint("POST", "user-pin")).toBe(true);
+    // The PIN is never readable with the session alone (ticket #15).
+    expect(isAllowedPosEndpoint("GET", "user-pin")).toBe(false);
     expect(isAllowedPosEndpoint("PUT", "order-management/orders/7/approve-refund")).toBe(true);
     expect(isAllowedPosEndpoint("POST", "order-management/orders/7/proof-uploads/refund/confirm")).toBe(true);
   });

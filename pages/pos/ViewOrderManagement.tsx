@@ -2,7 +2,6 @@
 
 import { ModalCloseButton } from "@/components/ui/modal-close-button";
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
-import { createPortal } from "react-dom";
 import { Search } from "lucide-react";
 import { DeliveryConfirmationInput, Order, OrderStatus, REFUND_METHOD_HINT, STATUS_LABELS, SubmitOutcome, latestRefundWasRejected, pendingRefundLines, refundMethodOf } from "@/components/module-pos/types";
 import OrderCard from "@/components/module-pos/OrderCard";
@@ -13,6 +12,7 @@ import RejectRefundDialog from "@/components/module-pos/RejectRefundDialog";
 import RejectVoidDialog from "@/components/module-pos/RejectVoidDialog";
 import ApproveRefundDialog from "@/components/module-pos/ApproveRefundDialog";
 import ApproveVoidDialog from "@/components/module-pos/ApproveVoidDialog";
+import ManagerPinDialog from "@/components/module-pos/ManagerPinDialog";
 import { CustomSelect } from "@/components/module-pos/CustomSelect";
 import { OrderManagementResponseDto, RefundItemDto } from "../../components/module-pos/api/api";
 import { toast, type ToastDetail } from "@/lib/toast";
@@ -29,7 +29,7 @@ import { orderTablePageSize } from "@/lib/orderTablePageSize";
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Bone, orderListColumns, OrderListSkeleton, OrderManagementSkeleton } from "@/components/shared/PageSkeleton";
+import { orderListColumns, OrderListSkeleton, OrderManagementSkeleton } from "@/components/shared/PageSkeleton";
 
 // Legacy color props for child components that haven't been rewritten yet
 const LEGACY_COLORS = {
@@ -141,10 +141,6 @@ export default function ViewOrderManagement() {
 
   const [activeTab, setActiveTab] = useState<"active" | "paid" | "completed" | "refunds" | "voids" | "cancelled">("active");
   const [showManagerPinDialog, setShowManagerPinDialog] = useState(false);
-  const [managerPin, setManagerPin] = useState<string | null>(null);
-  const [managerPinError, setManagerPinError] = useState<string | null>(null);
-  const [isLoadingPin, setIsLoadingPin] = useState(false);
-  const pinRequestInFlight = useRef(false);
   const [activeStatus, setActiveStatus] = useState<"all" | "processing" | "shipped">("all");
   const [refundSubTab, setRefundSubTab] = useState<RefundSubTab | "all">("all");
   const [voidSubTab, setVoidSubTab] = useState<VoidSubTab | "all">("all");
@@ -412,35 +408,8 @@ export default function ViewOrderManagement() {
     }
   };
 
-  const handleViewManagerPin = async () => {
-    if (pinRequestInFlight.current) return;
-    pinRequestInFlight.current = true;
-    setManagerPin(null);
-    setManagerPinError(null);
-    setShowManagerPinDialog(true);
-    setIsLoadingPin(true);
-    try {
-      const res = await requestManagerEndpoint("user-pin");
-      if (
-        typeof res !== "object" ||
-        res === null ||
-        !("pinCode" in res) ||
-        typeof res.pinCode !== "string" ||
-        !res.pinCode
-      ) {
-        throw new Error("The API returned an invalid manager PIN response.");
-      }
-      setManagerPin(res.pinCode);
-    } catch (err) {
-      console.error("Failed to fetch manager PIN:", err);
-      const message = err instanceof Error ? err.message : "Failed to fetch manager PIN.";
-      setManagerPinError(message);
-      toast.error(message);
-    } finally {
-      pinRequestInFlight.current = false;
-      setIsLoadingPin(false);
-    }
-  };
+  // Ticket #15: the PIN is fetched only after the password prompt in ManagerPinDialog succeeds.
+  const handleViewManagerPin = () => setShowManagerPinDialog(true);
 
   const handleRejectVoid = (order: Order) => { setOrderToRejectVoid(order); setRejectVoidReason(""); setShowRejectVoidDialog(true); };
 
@@ -760,7 +729,6 @@ export default function ViewOrderManagement() {
           {isMobile && !isCashierLevel && (
             <button
               onClick={handleViewManagerPin}
-              disabled={isLoadingPin}
               aria-label="View my PIN"
               className="h-10 px-3 shrink-0 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
             >
@@ -776,7 +744,6 @@ export default function ViewOrderManagement() {
           {!isMobile && !isCashierLevel && (
             <button
               onClick={handleViewManagerPin}
-              disabled={isLoadingPin}
               className="px-3 py-2 shrink-0 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
             >
               <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -956,71 +923,8 @@ export default function ViewOrderManagement() {
       <RejectRefundDialog isOpen={showRejectDialog} onClose={() => setShowRejectDialog(false)} order={orderToReject} onSubmit={handleRejectRefundSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
       <ApproveRefundDialog isOpen={showApproveDialog} onClose={() => setShowApproveDialog(false)} order={orderToApprove} onSubmit={handleApproveRefundSubmit} primary={LEGACY_COLORS.primary} muted={LEGACY_COLORS.muted} border={LEGACY_COLORS.border} text={LEGACY_COLORS.text} cardBg={LEGACY_COLORS.cardBg} inputBg={LEGACY_COLORS.inputBg} isMobile={isMobile} />
 
-      {/* View Manager PIN Dialog */}
-      {showManagerPinDialog && createPortal(
-        <div className="fixed inset-0 z-[100010] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div 
-            className="w-[90vw] sm:w-[400px] rounded-2xl shadow-xl border flex flex-col max-h-[90vh]"
-            style={{ background: LEGACY_COLORS.cardBg, borderColor: LEGACY_COLORS.border }}
-          >
-            {/* Header */}
-            <div 
-              className="flex items-center justify-between px-5 py-3 sm:px-6 sm:py-4 border-b sticky top-0 z-10 rounded-t-2xl"
-              style={{ borderColor: LEGACY_COLORS.border, background: LEGACY_COLORS.cardBg }}
-            >
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold" style={{ color: LEGACY_COLORS.text }}>
-                  Manager PIN
-                </h2>
-              </div>
-              <ModalCloseButton onClick={() => setShowManagerPinDialog(false)} />
-            </div>
-
-            {/* Body */}
-            <div className="px-5 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1 text-center">
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <svg viewBox="0 0 24 24" className="w-6 h-6 text-primary" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Use this PIN to approve Void and Refund requests. Keep this secure!
-              </p>
-              
-              <div className="py-4 px-6 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6">
-                {isLoadingPin ? (
-                  <div className="h-9 flex items-center justify-center" aria-label="Loading PIN">
-                    <Bone className="h-7 w-36 rounded-lg" />
-                  </div>
-                ) : managerPinError ? (
-                  <p className="text-sm text-red-600" role="alert">{managerPinError}</p>
-                ) : (
-                  <span className="text-3xl font-mono font-bold tracking-[0.2em] text-gray-900 dark:text-white">
-                    {managerPin}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div 
-              className="p-4 sm:p-5 border-t mt-auto flex justify-end gap-3 sticky bottom-0 rounded-b-2xl"
-              style={{ borderColor: LEGACY_COLORS.border, background: LEGACY_COLORS.cardBg }}
-            >
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-lg border-border"
-                onClick={() => setShowManagerPinDialog(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* View Manager PIN: password confirmation, then the PIN */}
+      {showManagerPinDialog && <ManagerPinDialog onClose={() => setShowManagerPinDialog(false)} />}
     </div>
   );
 }
