@@ -57,16 +57,45 @@ afterEach(() => {
 });
 
 describe("Admin and CEO sidebar", () => {
-  it.each(["Admin", "CEO"])("shows all seven Modules to a %s granted only the Dashboard, and every page opens", async (role) => {
-    const handle = await signIn(role, ["Dashboard"]);
-    const cookie = `pos_session=${handle}`;
-    const forwarded = (response: Response) =>
-      staffFromHeaders(
-        new Headers({
-          [STAFF_HEADER]: response.headers.get(`x-middleware-request-${STAFF_HEADER}`) ?? "",
-          [MODULE_HEADER]: response.headers.get(`x-middleware-request-${MODULE_HEADER}`) ?? "",
-        }),
-      );
+  const forwarded = (response: Response) =>
+    staffFromHeaders(
+      new Headers({
+        [STAFF_HEADER]: response.headers.get(`x-middleware-request-${STAFF_HEADER}`) ?? "",
+        [MODULE_HEADER]: response.headers.get(`x-middleware-request-${MODULE_HEADER}`) ?? "",
+      }),
+    );
+
+  const sidebarLinks = (staff: Parameters<typeof StaffProvider>[0]["staff"], modules: string[]) => {
+    const html = renderToStaticMarkup(
+      <StaffProvider staff={staff} modules={modules}>
+        <SidebarProvider>
+          <Sidebar />
+        </SidebarProvider>
+      </StaffProvider>,
+    );
+
+    return [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  };
+
+  it.each(["Admin", "CEO"])("shows a %s granted only the Dashboard just the Dashboard", async (role) => {
+    const cookie = `pos_session=${await signIn(role, ["Dashboard"])}`;
+
+    for (const path of PATHS.filter((p) => p !== "/")) {
+      const response = await guard(new NextRequest(`${APP}${path}`, { headers: { cookie } }));
+
+      expect(new URL(response.headers.get("location")!).pathname, path).toBe("/");
+    }
+
+    const { staff, modules } = forwarded(await guard(new NextRequest(`${APP}/`, { headers: { cookie } })))!;
+    const links = sidebarLinks(staff, modules);
+
+    expect(modules).toEqual(["Dashboard"]);
+    expect(links).toContain("/");
+    for (const path of PATHS.filter((p) => p !== "/")) expect(links).not.toContain(path);
+  });
+
+  it.each(["Admin", "CEO"])("shows all seven Modules to a %s granted all of them", async (role) => {
+    const cookie = `pos_session=${await signIn(role, ALL)}`;
 
     for (const path of PATHS) {
       const response = await guard(new NextRequest(`${APP}${path}`, { headers: { cookie } }));
@@ -75,14 +104,7 @@ describe("Admin and CEO sidebar", () => {
     }
 
     const { staff, modules } = forwarded(await guard(new NextRequest(`${APP}/`, { headers: { cookie } })))!;
-    const html = renderToStaticMarkup(
-      <StaffProvider staff={staff} modules={modules}>
-        <SidebarProvider>
-          <Sidebar />
-        </SidebarProvider>
-      </StaffProvider>,
-    );
-    const links = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]);
+    const links = sidebarLinks(staff, modules);
 
     for (const path of PATHS) expect(links).toContain(path);
     expect(modules).toEqual(ALL);

@@ -17,7 +17,6 @@ import {
   roleMayUseModule,
   rolesForPath,
 } from "./modules";
-import { isSuperUser } from "./roles";
 import { MODULE_HEADER, STAFF_HEADER, encodeModules, encodeStaff } from "./staff-header";
 
 const OPEN_PAGES = [NO_ACCESS_PATH, UNAVAILABLE_PATH, SIGN_IN_ERROR_PATH, SIGNING_IN_PATH];
@@ -56,11 +55,9 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
   const redirectFor = (decision: Validation["decision"]) =>
     decision === "unavailable" ? unavailable() : decision === "invalid" ? signIn() : null;
 
-  /** Every Module the Staff member may open, for the sidebar; Admin and CEO open all of them. */
+  /** Every Module the Staff member may open, for the sidebar: those their Role allows and the Portal granted. */
   const holdings = async (staff: Staff): Promise<{ modules: string[] } | { stop: NextResponse }> => {
     const roleModules = new Set(modulesForRole(staff.role));
-    if (isSuperUser(staff.role)) return { modules: MODULES.map((m) => m.name) };
-
     const eligibleModules = MODULES.filter((module) => roleModules.has(module.name));
     const answers = await Promise.all(eligibleModules.map((module) => access.check(module.name)));
 
@@ -124,20 +121,7 @@ export async function guard(request: NextRequest): Promise<NextResponse> {
 
   if (stop) return stop;
 
-  // Admin and CEO open every Module, whatever the Enterprise Portal granted.
-  const known = await access.role();
-
-  if (known.decision === "allowed" && isSuperUser(known.role)) {
-    forwarded.set(STAFF_HEADER, encodeStaff(known.staff));
-    forwarded.set(MODULE_HEADER, encodeModules(MODULES.map((m) => m.name)));
-
-    return pass();
-  }
-
-  const halted = known.decision === "allowed" ? null : redirectFor(known.decision);
-
-  if (halted) return halted;
-
+  // Not granted this Module (Admin and CEO included): land on the first Module they do hold.
   for (const candidate of MODULES) {
     if (candidate.name === module) continue;
 
