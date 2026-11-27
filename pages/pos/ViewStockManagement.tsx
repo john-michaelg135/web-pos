@@ -224,11 +224,17 @@ export function ViewStockManagement() {
       const list = Array.isArray(data) ? data : [];
       setBranchRequests(list);
       const linked = pendingRequestLink;
-      if (linked) {
+      const url = new URL(window.location.href);
+      if (linked && url.searchParams.toString() === linkKey) {
         setPendingRequestLink(null);
         const found = list.find((r) => r.requestId === linked);
-        if (found) setDetailRequest(found);
-        else toast.error(`Stock request ${linked} isn't in this branch's list.`);
+        if (found) {
+          setDetailRequest(found);
+          url.searchParams.delete("requestId");
+          window.history.replaceState(null, "", url);
+        } else {
+          toast.error(`Stock request ${linked} isn't in this branch's list.`);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch stock requests:", err);
