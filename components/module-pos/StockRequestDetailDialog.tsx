@@ -13,6 +13,7 @@ import {
 
 interface StockRequestDetailDialogProps {
   request: StockRequestRecord | null;
+  loadingRequestId?: string | null;
   onClose: () => void;
   /** Cancels a request IMS hasn't decided on. Resolves true once IMS confirmed. */
   onConfirmCancel?: (request: StockRequestRecord, reason: string) => Promise<boolean>;
@@ -24,7 +25,7 @@ interface StockRequestDetailDialogProps {
  * One request's facts and history. Cancelling is a second step inside the same popup (like
  * Receive delivery's confirm step), so no second overlay has to open above this dialog.
  */
-export function StockRequestDetailDialog({ request, onClose, onConfirmCancel, onOpenDelivery }: StockRequestDetailDialogProps) {
+export function StockRequestDetailDialog({ request, loadingRequestId, onClose, onConfirmCancel, onOpenDelivery }: StockRequestDetailDialogProps) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [reason, setReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
@@ -56,9 +57,15 @@ export function StockRequestDetailDialog({ request, onClose, onConfirmCancel, on
   };
 
   return (
-    <Dialog open={!!request} onOpenChange={(open) => !open && !isCancelling && onClose()}>
+    <Dialog open={!!request || !!loadingRequestId} onOpenChange={(open) => !open && !isCancelling && onClose()}>
       <DialogContent aria-describedby={undefined} className="flex max-h-[90dvh] w-[calc(100vw-2rem)] max-w-[38rem] flex-col gap-0 overflow-hidden rounded-t-3xl p-0 sm:rounded-2xl">
-        {request && (
+        {loadingRequestId && (
+          <DialogHeader className="px-6 py-5 text-left">
+            <DialogTitle>Request {loadingRequestId}</DialogTitle>
+            <p role="status">Loading request details…</p>
+          </DialogHeader>
+        )}
+        {!loadingRequestId && request && (
           <>
             <DialogHeader className="shrink-0 border-b border-border px-5 py-4 text-left sm:px-6">
               <div className="flex flex-wrap items-center gap-2 pr-6">

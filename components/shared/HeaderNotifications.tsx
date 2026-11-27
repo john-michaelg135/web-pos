@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigationPending } from "./NavigationPending";
 import { POS_MODULES } from "@/lib/permissions";
 import {
   BellUnavailableError,
@@ -36,6 +37,7 @@ const LIVE_RETRY_MS = 5 * 60_000;
 export function HeaderNotifications() {
   const { can } = useAuth();
   const router = useRouter();
+  const { start } = useNavigationPending();
   const eligible = can(POS_MODULES.ORDER_MANAGEMENT) || can(POS_MODULES.STOCK_MANAGEMENT);
 
   const [available, setAvailable] = useState(true);
@@ -168,7 +170,10 @@ export function HeaderNotifications() {
         .then((r) => setUnread(r.unread))
         .catch(() => void refresh());
     }
-    if (link) router.push(link);
+    if (link) {
+      start(new URL(link, window.location.href).pathname);
+      router.push(link);
+    }
   };
 
   const markAll = async () => {

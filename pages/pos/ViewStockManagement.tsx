@@ -238,6 +238,7 @@ export function ViewStockManagement() {
       }
     } catch (err) {
       console.error("Failed to fetch stock requests:", err);
+      if (new URL(window.location.href).searchParams.toString() === linkKey) setPendingRequestLink(null);
       toast.error("Failed to load stock requests.");
     } finally {
       setIsBranchRequestsLoading(false);
@@ -635,7 +636,18 @@ export function ViewStockManagement() {
 
       <StockRequestDetailDialog
         request={detailRequest}
-        onClose={() => setDetailRequest(null)}
+        loadingRequestId={pendingRequestLink}
+        onClose={() => {
+          setDetailRequest(null);
+          if (pendingRequestLink) {
+            setPendingRequestLink(null);
+            const url = new URL(window.location.href);
+            if (url.searchParams.toString() === linkKey) {
+              url.searchParams.delete("requestId");
+              window.history.replaceState(null, "", url);
+            }
+          }
+        }}
         onConfirmCancel={handleCancelRequest}
         onOpenDelivery={openDelivery}
       />
