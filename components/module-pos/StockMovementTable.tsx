@@ -28,12 +28,29 @@ function movementNames(m: StockMovement) {
   };
 }
 
+const monthName = new Intl.DateTimeFormat(undefined, { month: "long" });
+const shortDate = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+
+function searchableDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return [
+    `${month}/${day}/${year}`, `${mm}/${dd}/${year}`, `${year}-${mm}-${dd}`,
+    shortDate.format(date), `${monthName.format(date)} ${day}, ${year}`,
+  ].join(" ");
+}
+
 export function StockMovementTable({ movements }: StockMovementTableProps) {
   const [search, setSearch] = useState("");
   const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const visible = terms.length ? movements.filter(m => {
     const { pName, vName } = movementNames(m);
-    const text = [pName, vName, m.reference, m.type, m.notes].join(" ").toLowerCase();
+    const text = [pName, vName, m.reference, m.type, m.notes, searchableDate(m.date)].join(" ").toLowerCase();
     return terms.every(term => text.includes(term));
   }) : movements;
   const emptyMessage = movements.length ? "No stock movements match your search." : "No movements recorded yet.";
@@ -53,7 +70,7 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
           <SearchInput
             value={search}
             onChange={event => setSearch(event.target.value)}
-            placeholder="Search by product, reference or type…"
+            placeholder="Search by date, product, reference or type…"
             aria-label="Search stock history"
             className="sm:max-w-[320px]"
           />
