@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { SearchInput } from "./SearchInput";
 import type { StockMovement } from "./types";
 import { MOCK_VARIATIONS, MOCK_PRODUCTS } from "./productData";
 import { renderVariationBadges } from "./utils";
@@ -17,7 +19,24 @@ interface StockMovementTableProps {
   movements: StockMovement[];
 }
 
+function movementNames(m: StockMovement) {
+  const variation = MOCK_VARIATIONS.find(v => v.id === m.variationId);
+  const product = MOCK_PRODUCTS.find(p => p.id === variation?.productId);
+  return {
+    pName: m.productName || product?.name || "Unknown",
+    vName: m.variationName || variation?.size || "",
+  };
+}
+
 export function StockMovementTable({ movements }: StockMovementTableProps) {
+  const [search, setSearch] = useState("");
+  const terms = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const visible = terms.length ? movements.filter(m => {
+    const { pName, vName } = movementNames(m);
+    const text = [pName, vName, m.reference, m.type, m.notes].join(" ").toLowerCase();
+    return terms.every(term => text.includes(term));
+  }) : movements;
+  const emptyMessage = movements.length ? "No stock movements match your search." : "No movements recorded yet.";
   const { theme } = useTheme();
   const dark = theme === "dark";
   const border = dark ? "#2d3748" : "#e4e7ec";
@@ -26,20 +45,26 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
   return (
     <div className="w-full min-w-0">
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-200 dark:border-gray-700">
+          <div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Stock History Log</h3>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Recent stock arrivals and adjustments</p>
+          </div>
+          <SearchInput
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search by product, reference or type…"
+            aria-label="Search stock history"
+            className="sm:max-w-[320px]"
+          />
         </div>
         {/* Phones: one row per movement */}
         <ul className="md:hidden divide-y divide-gray-100 dark:divide-gray-800 m-0 p-0 list-none">
-          {movements.length === 0 ? (
-            <li className="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">No movements recorded yet.</li>
+          {visible.length === 0 ? (
+            <li className="px-4 py-10 text-center text-sm text-gray-400 dark:text-gray-500">{emptyMessage}</li>
           ) : (
-            movements.map((m) => {
-              const variation = MOCK_VARIATIONS.find(v => v.id === m.variationId);
-              const product = MOCK_PRODUCTS.find(p => p.id === variation?.productId);
-              const pName = m.productName || product?.name || "Unknown";
-              const vName = m.variationName || variation?.size || "";
+            visible.map((m) => {
+              const { pName, vName } = movementNames(m);
               const date = new Date(m.date);
               const when = isNaN(date.getTime())
                 ? m.date
@@ -81,19 +106,15 @@ export function StockMovementTable({ movements }: StockMovementTableProps) {
               </tr>
             </thead>
             <tbody>
-              {movements.length === 0 ? (
+              {visible.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-10 text-center text-sm text-gray-400 dark:text-gray-500">
-                    No movements recorded yet.
+                    {emptyMessage}
                   </td>
                 </tr>
               ) : (
-                movements.map((m) => {
-                  const variation = MOCK_VARIATIONS.find(v => v.id === m.variationId);
-                  const product = MOCK_PRODUCTS.find(p => p.id === variation?.productId);
-
-                  const pName = m.productName || product?.name || "Unknown";
-                  const vName = m.variationName || variation?.size || "";
+                visible.map((m) => {
+                  const { pName, vName } = movementNames(m);
 
                   return (
                     <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
